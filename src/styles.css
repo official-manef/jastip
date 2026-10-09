@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #f3ede3;
+  --color-surface: #fffdf8;
+  --color-fg: #1c1917;
+  --color-muted: #5c554c;
+  --color-primary: #0f6e56;
+  --color-primary-fg: #f3fbf7;
+  --color-accent: #b8431c;
+  --color-border: #e4d9cb;
+  --color-line: #d9cdb8;
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", georgia, "Times New Roman", serif;
+  --shadow-ticket: 0 1px 0 rgb(28 25 23 / 0.04), 0 16px 40px rgb(28 25 23 / 0.06);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+    font-weight: 560;
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-primary) 28%, white);
+    color: var(--color-fg);
+  }
+
+  input[type="range"] {
+    accent-color: var(--color-primary);
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+@layer components {
+  .meter {
+    height: 0.375rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-bg);
+  }
+
+  .meter > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+    transition: width 200ms ease-out;
+  }
+
+  .rise {
+    animation: rise 420ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .meter > span {
+    animation: none;
+    transition: none;
+  }
+}
