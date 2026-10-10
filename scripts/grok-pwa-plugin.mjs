@@ -103,27 +103,26 @@ function wrapHtmlResponses(middlewares, cwd) {
     const originalEnd = res.end.bind(res);
     const originalSetHeader = res.setHeader.bind(res);
     const originalWriteHead = res.writeHead.bind(res);
-    // Injection adds bytes. A precomputed Content-Length then truncates the
-    // hydration script at the end of the document, so the page never boots.
-    const dropLength = (headers) => {
-      if (!headers) return headers;
-      if (Array.isArray(headers)) {
-        return headers.filter(([key]) => String(key).toLowerCase() !== "content-length");
-      }
-      for (const key of Object.keys(headers)) {
-        if (key.toLowerCase() === "content-length") delete headers[key];
-      }
-      return headers;
-    };
+    // Injection grows the HTML. A stale Content-Length truncates the SvelteKit
+    // bootstrap script, so the page never hydrates.
     res.setHeader = (name, value) => {
       if (String(name).toLowerCase() === "content-length") return res;
       return originalSetHeader(name, value);
     };
-    res.writeHead = (status, headersOrReason, maybeHeaders) => {
-      if (typeof headersOrReason === "string") {
-        return originalWriteHead(status, headersOrReason, dropLength(maybeHeaders));
+    res.writeHead = (statusCode, reason, headers) => {
+      let message = reason;
+      let hdrs = headers;
+      if (reason && typeof reason === "object") {
+        hdrs = reason;
+        message = undefined;
       }
-      return originalWriteHead(status, dropLength(headersOrReason));
+      if (hdrs && typeof hdrs === "object" && !Array.isArray(hdrs)) {
+        for (const key of Object.keys(hdrs)) {
+          if (key.toLowerCase() === "content-length") delete hdrs[key];
+        }
+      }
+      if (message === undefined) return originalWriteHead(statusCode, hdrs);
+      return originalWriteHead(statusCode, message, hdrs);
     };
     const host = requestHost(req);
     const injector = createHeadInjector({

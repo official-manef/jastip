@@ -1,0 +1,63 @@
+import { browser } from "$app/env";
+import { isRole, type Role } from "./roles";
+
+export const PENDING_ROLE_KEY = "titipin-peran";
+
+export type MeUser = {
+  id: string;
+  name: string;
+  email: string;
+  image: string | null;
+};
+
+export const session = $state({
+  pending: true,
+  user: null as MeUser | null,
+  role: null as Role | null,
+});
+
+let inflight: Promise<void> | null = null;
+let resolved = false;
+
+export async function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (browser) {
+    const { getBearerToken } = await import("../auth/client");
+    const token = getBearerToken();
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
+  if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
+  return fetch(url, { ...init, headers, credentials: "same-origin" });
+}
+
+/** Resolve the session once per page load. Later calls share the in-flight request. */
+export function loadMe(): Promise<void> {
+  if (!browser) return Promise.resolve();
+  if (resolved && !inflight) return Promise.resolve();
+  return refreshMe();
+}
+
+export function refreshMe(): Promise<void> {
+  if (!browser) return Promise.resolve();
+  if (inflight) return inflight;
+  session.pending = true;
+  inflight = (async () => {
+    try {
+      // Better Auth materializes a gate session on this route (zero-click masuk).
+      await authedFetch("/api/auth/get-session");
+      const res = await authedFetch("/api/saya");
+      if (!res.ok) throw new Error("sesi");
+      const data = (await res.json()) as { user?: MeUser | null; role?: unknown };
+      session.user = data.user ?? null;
+      session.role = isRole(data.role) ? data.role : null;
+    } catch {
+      session.user = null;
+      session.role = null;
+    } finally {
+      session.pending = false;
+      resolved = true;
+      inflight = null;
+    }
+  })();
+  return inflight;
+}

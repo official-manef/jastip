@@ -2,6 +2,7 @@
 
 @source "./desk";
 @source "./routes";
+@source "./lib/titip";
 
 @theme {
   --color-bg: #f3ede3;

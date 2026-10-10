@@ -142,11 +142,29 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+/** App routes that must hit SvelteKit, not the Convex backend. */
+function bypassLocalApi(req: { url?: string }): string | undefined {
+  const path = (req.url ?? "").split("?", 1)[0] ?? "";
+  const local =
+    path === "/api/auth" ||
+    path.startsWith("/api/auth/") ||
+    path === "/api/saya" ||
+    path.startsWith("/api/saya/") ||
+    path === "/api/peran" ||
+    path.startsWith("/api/peran/") ||
+    path === "/api/titipan" ||
+    path.startsWith("/api/titipan/") ||
+    path === "/api/admin" ||
+    path.startsWith("/api/admin/");
+  return local ? req.url : undefined;
+}
+
 const convexProxy = {
   "/api": {
     target: "http://127.0.0.1:3210",
     changeOrigin: true,
     ws: true,
+    bypass: bypassLocalApi,
   },
 };
 
