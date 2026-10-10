@@ -1,27 +1,48 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { useMutation, useQuery } from "convex-svelte";
+  import { api } from "../convex/_generated/api";
   import { computeTrip, DIR_META, scenarioFor, type CapexLine, type Dir, type Good, type Scenario, type TripMode } from "../lib/titip/calc";
   import { idr, kg } from "../lib/titip/model";
-  import { loadLocal, saveLocal, startConvex, type Saved } from "./sync";
 
   const control =
     "min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-base outline-none placeholder:text-muted";
 
-  function seed(): Saved {
-    return {
-      dir: "cgk-ist",
-      mode: "one",
-      byDir: { "cgk-ist": scenarioFor("cgk-ist"), "ist-cgk": scenarioFor("ist-cgk") },
-    };
-  }
+  let dir = $state<Dir>("cgk-ist");
+  let mode = $state<TripMode>("one");
+  let byDir = $state<Record<Dir, Scenario>>({
+    "cgk-ist": scenarioFor("cgk-ist"),
+    "ist-cgk": scenarioFor("ist-cgk"),
+  });
+  let synced = $state(false);
+  let source = $state("menyambungkan");
+  let startedEnsure = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
-  const initial = loadLocal() ?? seed();
-  let dir = $state<Dir>(initial.dir);
-  let mode = $state<TripMode>(initial.mode);
-  let byDir = $state(initial.byDir);
-  let source = $state("Perangkat ini");
-  let dirty = false;
-  let pushRemote: (saved: Saved) => void = () => {};
+  const trip = useQuery(api.trip.get, {});
+  const save = useMutation(api.trip.save);
+  const ensure = useMutation(api.trip.ensure);
+
+  $effect(() => {
+    if (trip.isLoading) return;
+    if (trip.error) {
+      source = "Convex gagal";
+      return;
+    }
+    if (!trip.data) {
+      if (!startedEnsure) {
+        startedEnsure = true;
+        void ensure({});
+      }
+      return;
+    }
+    if (!synced) {
+      dir = trip.data.dir;
+      mode = trip.data.mode;
+      byDir = { "cgk-ist": trip.data.cgkIst, "ist-cgk": trip.data.istCgk };
+      synced = true;
+      source = "Convex";
+    }
+  });
 
   let draftName = $state("");
   let draftKg = $state("0,5");
@@ -33,16 +54,21 @@
   const n = $derived(computeTrip(mode, dir, byDir));
   const tiketHere = $derived(scenario.opex.find((line) => line.id === "tiket")?.label ?? "Tiket");
   const tiketThere = $derived(byDir[other].opex.find((line) => line.id === "tiket")?.label ?? "Tiket lawan");
-
-  function snap(): Saved {
-    return { dir, mode, byDir };
-  }
+  const over = $derived(n.sisa < 0);
 
   function commit() {
-    dirty = true;
-    const saved = snap();
-    saveLocal(saved);
-    pushRemote(saved);
+    if (!synced) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      void save({
+        dir,
+        mode,
+        cgkIst: byDir["cgk-ist"],
+        istCgk: byDir["ist-cgk"],
+      }).catch(() => {
+        source = "Convex gagal";
+      });
+    }, 120);
   }
 
   function patch(partial: Partial<Scenario>) {
@@ -135,23 +161,6 @@
     draftName = "";
     draftBeli = "";
   }
-
-  function applySaved(saved: Saved) {
-    if (dirty) return;
-    dir = saved.dir;
-    mode = saved.mode;
-    byDir = saved.byDir;
-    saveLocal(saved);
-  }
-
-  onMount(() => {
-    const remote = startConvex(snap, applySaved, () => {
-      source = "Convex";
-    });
-    pushRemote = remote.push;
-  });
-
-  const over = $derived(n.sisa < 0);
 </script>
 
 {#snippet slider(label: string, value: number, min: number, max: number, step: number, shown: string, onChange: (n: number) => void)}
@@ -196,6 +205,9 @@
   </div>
 {/snippet}
 
+{#if !synced}
+  <p class="sr-only">Menyambungkan Convex</p>
+{/if}
 <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
   <div class="order-2 space-y-4 lg:order-1">
     <div class="flex flex-wrap items-end justify-between gap-3">
@@ -206,7 +218,9 @@
             ? "Pulang-pergi. Tiket dan opex kedua kaki dijumlahkan. Capex tetap sekali."
             : `${meta.blurb} Hanya tiket dan opex arah ini.`}
         </p>
-        <p class="mt-1 text-xs text-muted">Tersimpan di {source}.</p>
+        <p class="mt-1 text-xs text-muted">
+          {source === "Convex gagal" ? "Convex belum tersambung." : synced ? "Tersimpan di Convex." : "Menyambungkan…"}
+        </p>
       </div>
       <div class="flex flex-col items-stretch gap-2 sm:items-end">
         <div class="flex flex-wrap rounded-full border border-border bg-surface p-1" role="group" aria-label="Arah rute">
