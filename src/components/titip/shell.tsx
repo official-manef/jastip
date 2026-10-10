@@ -1,13 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
-import { seedUjiIfEmpty, useLedger } from "@/lib/titip/ledger-store";
+import type { ReactNode } from "react";
 
 export function Shell({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    seedUjiIfEmpty();
-    void useLedger.persist.rehydrate();
-  }, []);
-
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-border bg-bg/90 backdrop-blur">
