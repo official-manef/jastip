@@ -99,6 +99,21 @@
   .rise {
     animation: rise 420ms cubic-bezier(0.2, 0, 0, 1) both;
   }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ticket {
+    border-radius: 1.5rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-ticket);
+  }
+
+  .hairline {
+    border-top: 1px dashed var(--color-line);
+  }
 }
 
 @keyframes rise {
