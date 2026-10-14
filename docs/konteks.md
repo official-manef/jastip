@@ -12,7 +12,7 @@ Bukan katalog banyak kota. Kalau rute bertambah, itu keputusan terpisah. Sekaran
 | Jastiper | Melihat semua titipan, mengubah status `baru` / `dibawa` / `selesai` | Membuat titipan sebagai klien |
 | Admin | Keduanya, plus mengubah peran orang | Menurunkan admin terakhir, atau mengangkat admin kedua |
 
-Peran terkunci setelah dipilih. Akun tidak bisa menaikkan dirinya sendiri. Admin kedua ditolak, baik lewat klaim maupun lewat panel.
+Peran klien/jastiper terkunci setelah dipilih. Akun tidak bisa menaikkan dirinya sendiri. Operator dapat menetapkan satu ID akun sebagai admin; admin kedua ditolak, baik lewat klaim maupun lewat panel.
 
 Rumah setelah masuk: klien `/titip`, jastiper `/`, admin `/admin`.
 
@@ -40,9 +40,9 @@ Pada benih pergi saja, sisa bagasi 17,7 kg dan laba −Rp5.896.750. Angka itu ti
 
 ## Data
 
-Dua tempat simpan, sengaja terpisah.
+Data akun disimpan terpusat; kalkulasi pengunjung memiliki salinan perangkat.
 
-**Convex** menyimpan satu dokumen trip, kunci `live`: arah yang sedang dibuka, mode pergi/PP, dan skenario kedua kaki. Query tidak boleh menyisipkan baris. Tulisan lewat mutasi `ensure` dan `save`.
+**Trip aktif** memakai `trip_scenarios` di Postgres, satu dokumen per ID akun yang berasal dari sesi server. Pengunjung tanpa akun memakai localStorage perangkat. Kalkulasi satu akun tidak memakai dokumen `live` bersama. Fungsi Convex lama dipertahankan sebagai kode historis dan tidak dipanggil UI.
 
 **Postgres** menyimpan akun Better Auth, tabel `profiles` (peran), dan tabel `titipan`. `user_id` bertipe teks. Setiap permintaan titipan dibatasi oleh sesi, bukan oleh id yang dikirim browser.
 
@@ -50,13 +50,13 @@ Portal `/portal` tidak menulis ke keduanya. Sari, Raka, Deniz, dan Manef hanya a
 
 ## Masuk
 
-Hanya Google dan X, lewat broker. Tidak ada kata sandi, tautan ajaib, atau OTP.
+Email/password mandiri melalui Better Auth. Login akun lama tidak membutuhkan pilihan peran ulang. Belum ada reset password atau verifikasi email.
 
-Di pratinjau yang sudah membawa identitas Grok, halaman Masuk langsung meminta peran. Tidak ada tombol masuk kedua, dan tidak ada tombol keluar, karena sesi itu terbentuk lagi dengan sendirinya.
+Klien dan jastiper dapat memilih peran sekali. Admin harus ditetapkan operator dengan `TITIPIN_ADMIN_USER_ID`; identitas email yang belum diverifikasi tidak dapat digunakan untuk mengambil admin. Admin tetap hanya satu.
 
 ## Yang sengaja ditunda
 
 - Banyak rute.
-- Convex cloud, sampai `PUBLIC_CONVEX_URL` yang bukan localhost ada.
+- Convex cloud tidak diperlukan untuk meja aktif.
 - Database produksi, sampai Neon benar-benar menempel ke proyek Vercel dan `DATABASE_URL` terisi saat build.
-- Kredensial broker per-aplikasi. Tanpa itu, tombol Google/X di situs publik belum menyelesaikan masuk.
+- OAuth broker tidak diperlukan oleh login email/password mandiri.

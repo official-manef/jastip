@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   appNameFromHost,
-  createHeadInjector,
+  createHeadInjector as createHeadInjectorInWorkspace,
   grokXCreatorHeadTags,
-  injectGrokPwaHead,
+  injectGrokPwaHead as injectGrokPwaHeadInWorkspace,
   isDocumentPath,
   isInstallQuery,
   publicAppHost,
@@ -20,6 +20,9 @@ import {
 import { renderInstallPage } from "./grok-pwa-plugin.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const EMPTY_WORKSPACE = mkdtempSync(join(tmpdir(), "grok-head-fixture-"));
+const injectGrokPwaHead = (html, context = {}) => injectGrokPwaHeadInWorkspace(html, { cwd: EMPTY_WORKSPACE, ...context });
+const createHeadInjector = (context = {}) => createHeadInjectorInWorkspace({ cwd: EMPTY_WORKSPACE, ...context });
 
 test("injects before </head>", () => {
   const out = injectGrokPwaHead("<html><head><title>x</title></head><body></body></html>");
@@ -518,9 +521,10 @@ test("renders the manifest with the per-app name", () => {
 // Tripwires: the deployed-app path only works if Nitro scans server/ — an
 // accidental edit that drops serverDir or the middleware file would otherwise
 // fail silently (published apps would just render the app for ?install=1).
-test("vite config keeps the nitro serverDir wiring", () => {
+test("vite config keeps the SvelteKit adapter and platform branding wiring", () => {
   const viteConfig = readFileSync(join(TEMPLATE_ROOT, "vite.config.ts"), "utf8");
-  assert.match(viteConfig, /serverDir:\s*"\.\/server"/);
+  assert.match(viteConfig, /sveltekit\(/);
+  assert.match(viteConfig, /adapter\(\{ runtime: "bun1\.x" \}\)/);
   assert.match(viteConfig, /grokPwaPlugin\(\)/);
 });
 

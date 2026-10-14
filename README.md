@@ -9,8 +9,8 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Meja trip: kuota bagasi, muatan per kg, harga per kg, opex, capex, laba.
 - Arah `Jakarta → Turki` dan `Turki → Jakarta`.
 - Mode **pergi saja** atau **pulang-pergi**. PP menjumlahkan tiket dan opex kedua kaki. Capex dihitung sekali.
-- Trip tersimpan di Convex selama URL cloud-nya terpasang. Tanpa itu, meja tetap bisa dihitung di browser.
-- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu, orang pertama yang mengambilnya.
+- Kalkulasi pengunjung tersimpan di perangkat. Trip akun memakai Postgres, dibatasi oleh sesi pengguna, dan dapat dibuka lintas perangkat setelah database produksi aktif.
+- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu dan ditetapkan operator melalui ID akun, bukan dipilih pengunjung pertama.
 - AI BYOK di `/pengaturan`: URL/model custom yang diizinkan operator. API key hanya berada di memori halaman dan diteruskan ke penyedia saat pengguna meminta.
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
@@ -23,7 +23,8 @@ Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [doc
 | --- | --- | --- |
 | `/` | Semua, rumah jastiper | Meja hitung |
 | `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin) |
-| `/masuk` | Belum masuk | Pilih peran, lalu Google atau X |
+| `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru |
+| `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan BYOK |
 | `/titip` | Klien, jastiper, admin | Permintaan titipan |
 | `/admin` | Admin | Daftar orang dan peran |
 
@@ -31,9 +32,9 @@ Meja tidak dikunci login.
 
 ## Tumpukan
 
-SvelteKit, Svelte 5, Bun, Convex, Tailwind, Better Auth, Vercel.
+SvelteKit, Svelte 5, Bun, Postgres, Tailwind, Better Auth, Vercel.
 
-Akun dan titipan memakai Postgres (Neon kalau `DATABASE_URL` ada, kalau tidak PGLite di proses yang sama). Trip memakai Convex, terpisah dari akun.
+Akun, titipan, dan trip pribadi memakai Postgres. PGLite hanya untuk pengembangan lokal; produksi menolak operasi akun tanpa database permanen. Fungsi Convex lama tetap tersimpan di repo tetapi tidak dipanggil UI dan tidak diterbitkan oleh perubahan ini.
 
 ## Menjalankan
 
@@ -66,7 +67,10 @@ Belum ada, dan masuk sungguhan di situs publik belum tersimpan tanpanya:
 | Nama | Kenapa belum |
 | --- | --- |
 | `DATABASE_URL` | Neon belum terhubung ke proyek Vercel ini |
-| `PUBLIC_CONVEX_URL` | Belum ada deployment Convex cloud |
+
+`PUBLIC_CONVEX_URL` tidak diperlukan oleh meja aktif. Trip tersimpan pada `trip_scenarios` melalui `/api/trip`; `user_id` selalu berasal dari sesi server. Migrasi `0003_trips.sql` berjalan bersama migrasi akun saat build yang memiliki `DATABASE_URL`.
+
+Operator menetapkan `TITIPIN_ADMIN_USER_ID` ke ID akun pemilik setelah akun tersebut dibuat. Pada permintaan berikutnya akun itu dapat menjadi satu-satunya admin; indeks unik tetap menolak admin kedua. Jangan memakai email yang belum diverifikasi sebagai bukti kepemilikan admin.
 
 Login mandiri tidak memakai `GROK_AUTH_ISSUER`, `GROK_AUTH_CLIENT_ID`, atau `GROK_AUTH_CLIENT_SECRET`. Nilai existing di Vercel belum dihapus oleh perubahan lokal ini. Tidak ada konfigurasi email reset/verifikasi; fitur tersebut belum disediakan.
 
@@ -85,6 +89,10 @@ Pengujian BYOK dan auth mandiri:
 ```bash
 node --experimental-strip-types --test src/lib/titip/ai.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts
 ```
+
+`npm test` menjalankan tes aplikasi dan platform; empat tes dokumen skill Grok dilewati hanya bila dokumen tersebut tidak tersedia di repo standalone. `npm run test:trip-api` membuat akun sintetis pada server lokal dan memeriksa batas admin serta isolasi dua akun. Script ini menolak origin selain localhost.
+
+CI memeriksa build, tipe, unit test, API akun lokal, dan render desktop/mobile pada dev serta hasil build. Akun produksi/BYOK sungguhan baru dapat diuji setelah Neon diotorisasi dan `DATABASE_URL` dipasang.
 
 ## Desain
 

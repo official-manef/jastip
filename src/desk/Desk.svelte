@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { useMutation, useQuery } from "convex-svelte";
-  import { api } from "../convex/_generated/api";
+  import { onMount } from "svelte";
+  import { authedFetch, loadMe, session } from "../lib/titip/session.svelte";
+  import { parseTrip, TRIP_STORAGE_KEY, type TripState } from "../lib/titip/trip-state";
   import { computeTrip, DIR_META, scenarioFor, type CapexLine, type Dir, type Good, type Scenario, type TripMode } from "../lib/titip/calc";
   import { idr, kg } from "../lib/titip/model";
 
@@ -13,40 +14,104 @@
     "cgk-ist": scenarioFor("cgk-ist"),
     "ist-cgk": scenarioFor("ist-cgk"),
   });
-  let synced = $state(false);
-  let source = $state("menyambungkan");
-  let startedEnsure = false;
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let source = $state("Memuat kalkulasi…");
+  let syncFailed = $state(false);
+  let initialized = false;
+  let revision = 0;
+  let saving = false;
+  let queued = false;
+  let localSaved = false;
+  const controller = new AbortController();
 
-  const trip = useQuery(api.trip.get, {});
-  const save = useMutation(api.trip.save);
-  const ensure = useMutation(api.trip.ensure);
+  function snapshot(): TripState {
+    return { dir, mode, cgkIst: byDir["cgk-ist"], istCgk: byDir["ist-cgk"] };
+  }
 
-  $effect(() => {
-    if (trip.isLoading) return;
-    if (trip.error) {
-      source = "Convex gagal";
-      return;
-    }
-    if (!trip.data) {
-      if (!startedEnsure) {
-        startedEnsure = true;
-        void ensure({});
+  function restore(trip: TripState) {
+    dir = trip.dir;
+    mode = trip.mode;
+    byDir = { "cgk-ist": trip.cgkIst, "ist-cgk": trip.istCgk };
+  }
+
+  function persistLocal() {
+    try {
+      const key = session.user ? `${TRIP_STORAGE_KEY}:${session.user.id}` : TRIP_STORAGE_KEY;
+      localStorage.setItem(key, JSON.stringify(snapshot()));
+      localSaved = true;
+    } catch { localSaved = false; }
+  }
+
+  async function syncAccount() {
+    if (!session.user || !initialized || controller.signal.aborted) return;
+    queued = true;
+    if (saving) return;
+    saving = true;
+    try {
+      while (queued && !controller.signal.aborted) {
+        queued = false;
+        const savingRevision = revision;
+        source = "Menyimpan ke akun…";
+        try {
+          const response = await authedFetch("/api/trip", {
+            method: "PUT", body: JSON.stringify(snapshot()),
+            signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+          });
+          if (!response.ok) throw new Error("save");
+          syncFailed = false;
+          if (revision === savingRevision) source = "Tersimpan di akun pribadi.";
+        } catch {
+          if (controller.signal.aborted) return;
+          syncFailed = true;
+          source = localSaved ? "Tersimpan di perangkat; sinkronisasi akun gagal." : "Belum tersimpan. Coba sinkronisasi lagi.";
+          // A later edit or explicit retry can try again without a retry loop.
+          queued = false;
+        }
       }
-      return;
-    }
-    if (!synced) {
-      dir = trip.data.dir;
-      mode = trip.data.mode;
-      byDir = { "cgk-ist": trip.data.cgkIst, "ist-cgk": trip.data.istCgk };
-      synced = true;
-      source = "Convex";
-    }
+    } finally { saving = false; }
+  }
+
+  onMount(() => {
+    void (async () => {
+      await loadMe();
+      if (controller.signal.aborted) return;
+      try {
+        const key = session.user ? `${TRIP_STORAGE_KEY}:${session.user.id}` : TRIP_STORAGE_KEY;
+        const trip = parseTrip(JSON.parse(localStorage.getItem(key) || "null"));
+        if (trip && revision === 0) restore(trip);
+      } catch { /* Corrupt or unavailable device storage leaves the calculator usable. */ }
+      persistLocal();
+      source = localSaved ? "Tersimpan di perangkat ini." : "Penyimpanan perangkat tidak tersedia. Kalkulasi belum tersimpan.";
+      if (session.user) {
+        const loadingRevision = revision;
+        try {
+          const response = await authedFetch("/api/trip", {
+            signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+          });
+          if (!response.ok) throw new Error("load");
+          const data = await response.json();
+          const trip = parseTrip(data.trip);
+          if (controller.signal.aborted) return;
+          if (trip && loadingRevision === 0 && revision === 0) {
+            restore(trip);
+            persistLocal();
+            source = "Tersimpan di akun pribadi.";
+          }
+        } catch {
+          if (controller.signal.aborted) return;
+          syncFailed = true;
+          source = localSaved ? "Tersimpan di perangkat; akun belum dapat dimuat." : "Akun belum dapat dimuat. Kalkulasi belum tersimpan.";
+        }
+      }
+      initialized = true;
+      if (revision > 0) { persistLocal(); void syncAccount(); }
+    })();
+    return () => controller.abort();
   });
 
   let draftName = $state("");
   let draftKg = $state("0,5");
   let draftBeli = $state("");
+  let draftNotice = $state("");
 
   const scenario = $derived(byDir[dir]);
   const meta = $derived(DIR_META[dir]);
@@ -57,18 +122,11 @@
   const over = $derived(n.sisa < 0);
 
   function commit() {
-    if (!synced) return;
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      void save({
-        dir,
-        mode,
-        cgkIst: byDir["cgk-ist"],
-        istCgk: byDir["ist-cgk"],
-      }).catch(() => {
-        source = "Convex gagal";
-      });
-    }, 120);
+    revision += 1;
+    if (!initialized) return;
+    persistLocal();
+    source = localSaved ? "Tersimpan di perangkat ini." : "Penyimpanan perangkat tidak tersedia. Kalkulasi belum tersimpan.";
+    void syncAccount();
   }
 
   function patch(partial: Partial<Scenario>) {
@@ -82,6 +140,7 @@
   }
 
   function setGood(id: string, partial: Partial<Good>) {
+    if (partial.qty !== undefined) partial.qty = Math.min(10_000, Math.max(0, Math.round(partial.qty)));
     byDir = {
       ...byDir,
       [dir]: {
@@ -106,6 +165,8 @@
   }
 
   function setOpex(id: string, amount: number) {
+    if (!Number.isFinite(amount)) return;
+    amount = Math.min(1_000_000_000_000, Math.max(0, amount));
     byDir = {
       ...byDir,
       [dir]: {
@@ -121,6 +182,8 @@
   }
 
   function setCapex(id: string, partial: Partial<CapexLine>) {
+    if (partial.price !== undefined) partial.price = Math.min(1_000_000_000_000, Math.max(0, partial.price));
+    if (partial.trips !== undefined) partial.trips = Math.min(10_000, Math.max(1, Math.round(partial.trips)));
     if (mode === "pp") {
       byDir = {
         "cgk-ist": { ...byDir["cgk-ist"], capex: applyCapex(byDir["cgk-ist"].capex, id, partial) },
@@ -155,8 +218,13 @@
   function addDraft() {
     const name = draftName.trim();
     const kgEach = Number(draftKg.replace(",", "."));
-    const beli = Number(draftBeli.replace(/\./g, "")) || 0;
-    if (name.length < 2 || !(kgEach > 0)) return;
+    const beli = Number(draftBeli.replace(/\./g, "").replace(",", "."));
+    if (name.length < 2 || name.length > 80 || !Number.isFinite(kgEach) || kgEach <= 0 || kgEach > 100 ||
+        !Number.isFinite(beli) || beli < 0 || beli > 1_000_000_000_000 || scenario.goods.length >= 200) {
+      draftNotice = "Isi nama 2–80 karakter, berat 0–100 kg, dan harga beli yang tidak negatif. Maksimal 200 barang.";
+      return;
+    }
+    draftNotice = "";
     addGood({ id: `g${Date.now().toString(36)}`, name, kg: kgEach, qty: 1, beli });
     draftName = "";
     draftBeli = "";
@@ -205,9 +273,6 @@
   </div>
 {/snippet}
 
-{#if !synced}
-  <p class="sr-only">Menyambungkan Convex</p>
-{/if}
 <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
   <div class="order-2 space-y-4 lg:order-1">
     <div class="flex flex-wrap items-end justify-between gap-3">
@@ -218,9 +283,10 @@
             ? "Pulang-pergi. Tiket dan opex kedua kaki dijumlahkan. Capex tetap sekali."
             : `${meta.blurb} Hanya tiket dan opex arah ini.`}
         </p>
-        <p class="mt-1 text-xs text-muted">
-          {source === "Convex gagal" ? "Convex belum tersambung." : synced ? "Tersimpan di Convex." : "Menyambungkan…"}
+        <p class="mt-1 text-xs text-muted" role="status">
+          {source}
         </p>
+        {#if syncFailed}<button type="button" class="mt-2 min-h-11 text-sm text-primary underline" onclick={() => void syncAccount()}>Coba simpan ke akun lagi</button>{/if}
       </div>
       <div class="flex flex-col items-stretch gap-2 sm:items-end">
         <div class="flex flex-wrap rounded-full border border-border bg-surface p-1" role="group" aria-label="Arah rute">
@@ -279,6 +345,7 @@
         <input bind:value={draftBeli} inputmode="numeric" placeholder={meta.shop === "TRY" ? "₺" : "Rp"} class={control} aria-label="Harga beli" />
         <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-fg">Tambah</button>
       </form>
+      {#if draftNotice}<p class="mt-2 text-sm text-accent" role="status">{draftNotice}</p>{/if}
     </section>
 
     <section class="rounded-3xl border border-border bg-surface p-4">

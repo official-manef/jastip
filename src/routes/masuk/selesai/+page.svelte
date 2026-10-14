@@ -28,6 +28,10 @@
           body: JSON.stringify({ role: pending }),
         });
         const data = (await res.json()) as { role?: unknown; error?: string };
+        if (data.error === "admin-forbidden") {
+          notice = "Akun ini belum ditetapkan sebagai admin. Pilih klien atau jastiper.";
+          return;
+        }
         if (data.error === "admin-taken") {
           notice = "Peran admin sudah diambil. Pilih klien atau jastiper.";
           return;

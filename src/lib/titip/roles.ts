@@ -12,7 +12,7 @@ export const ROLES = [
   {
     id: "admin",
     label: "Admin",
-    blurb: "Pengembang. Atur peran. Hanya orang pertama yang memilih ini.",
+    blurb: "Pengembang yang ditetapkan operator. Atur peran akun.",
   },
 ] as const;
 
