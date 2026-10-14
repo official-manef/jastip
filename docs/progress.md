@@ -2,6 +2,19 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 14 Oktober 2026 (lanjutan): PWA shell, Convex, pembersihan
+
+- [PR #7](https://github.com/official-manef/jastip/pull/7): buang seluruh chrome Grok App Builder (plugin/middleware, `public/__grok`, brand-check, preview-bridge, app-data, gate auth). Ganti dengan PWA sendiri: `manifest.webmanifest`, service worker (offline shell), ikon 180/192/512 + maskable, `files.assets=public`.
+- Navigasi satu sumber `src/lib/titip/nav.ts`: sidebar sticky desktop (>=lg), dock bawah + drawer dragable di mobile (dibuka tombol Menu paling kanan).
+- [PR #8](https://github.com/official-manef/jastip/pull/8): `model.ts` 498→20 baris, sisakan formatter `idr`/`kg`/`group`.
+- [PR #9](https://github.com/official-manef/jastip/pull/9): `.env.example` + script `convex:deploy`/`convex:dev`.
+- Convex deployment `impressive-wildcat-570` (https://impressive-wildcat-570.convex.cloud) sudah di-deploy: fungsi `trip:get/ensure/save`, tabel `trips`.
+- Modul murni baru: `risk.ts` (aturan risiko bea, wajib `source`+`checkedAt`, tanpa angka hukum bikinan) dan `suggest.ts` (rekomendasi proyeksi, dibatasi kapasitas). 23 tes baru; total 56 lulus, typecheck 0 error.
+- **Keputusan: Neon/Postgres dihapus dari rencana.** Sumber data = Convex. Referensi Neon dibersihkan dari `.env.example`, README, dan `docs/konteks.md`.
+- Konfigurasi Vercel (token, team id) disimpan di `.manef/config.json` (gitignored); template di `.manef/config.example.json`.
+
+Hambatan: `PUBLIC_CONVEX_URL` belum dipasang di Vercel; koneksi Convex via Composio masih 401 `MissingAccessToken` (deploy dilakukan lewat deploy key lokal).
+
 ## 14 Oktober 2026: persistensi dan akses akun
 
 Rilis perbaikan sudah digabung melalui [PR #3](https://github.com/official-manef/jastip/pull/3), commit `0f533edac3a3087d6c57f85dedff80915f4faee3`. Deployment produksi Vercel `dpl_2mkQDMfNZx26Qd2ErGeHQMVjVtN6` berstatus READY/PROMOTED.
@@ -21,7 +34,7 @@ Draft [PR #1](https://github.com/official-manef/jastip/pull/1) tentang tarif cam
 - Build dan pemeriksaan tipe lulus lokal. Unit test: 252 lulus, empat pemeriksaan dokumentasi skill Grok dilewati karena dokumennya tidak termasuk repo standalone. Uji API dua akun lulus untuk auth, batas admin, CSRF, validasi, isolasi trip dan titipan.
 - CI ditambahkan untuk tes, build, dan render desktop/mobile. Verifikasi browser lokal terhambat unduhan Chromium yang kosong; hasil render CI dan produksi harus diverifikasi sebelum dinyatakan siap.
 
-Hambatan produksi: Neon belum terhubung pada manef-composio dan `DATABASE_URL` belum tersedia di Vercel. Pendaftaran, titipan asli, dan BYOK dengan sesi produksi belum dapat dinyatakan selesai sampai koneksi tersebut aktif.
+Hambatan produksi (riwayat 14 Okt): Neon belum terhubung pada manef-composio dan `DATABASE_URL` belum tersedia di Vercel. Keputusan lanjutan: Neon dihapus dari rencana; sumber data memakai Convex.
 
 Catatan 10 Oktober di bawah adalah riwayat, bukan status produksi terkini.
 
@@ -69,7 +82,8 @@ Palet tetap: krem `#F3EDE3`, tinta `#1C1917`, jade `#0F6E56`, terracotta `#B8431
 
 ## Belum
 
-- Menghubungkan Neon supaya migrasi jalan saat build Vercel.
-- Menerbitkan kredensial broker untuk origin `jastip-ochre.vercel.app`.
-- Deployment Convex cloud dan `PUBLIC_CONVEX_URL`.
+- Memasang `PUBLIC_CONVEX_URL` di Vercel supaya skenario trip menulis ke Convex.
+- Menyambungkan UI trip ke fungsi Convex (`trip:get/save`).
 - Rute selain Jakarta ↔ Turki.
+
+Catatan: Neon/Postgres dihapus dari rencana; sumber data memakai Convex.

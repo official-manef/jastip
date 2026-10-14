@@ -1,0 +1,21 @@
+{
+  "$comment": "Template config manef untuk project jastip. Salin ke config.json lalu isi. config.json TIDAK masuk repo (.gitignore).",
+  "org": "manef",
+  "vercel": {
+    "apiToken": "<VERCEL_API_TOKEN>",
+    "teamId": "<TEAM_ID>",
+    "teamSlug": "manef",
+    "projectId": "<PROJECT_ID>",
+    "projectName": "jastip"
+  },
+  "convex": {
+    "teamSlug": "rahman-fakhrul",
+    "projectSlug": "jastip",
+    "deployment": "impressive-wildcat-570",
+    "url": "https://impressive-wildcat-570.convex.cloud"
+  },
+  "github": {
+    "org": "official-manef",
+    "repo": "jastip"
+  }
+}

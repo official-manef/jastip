@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import Dock from "../lib/titip/Dock.svelte";
   import Sidebar from "../lib/titip/Sidebar.svelte";
+  import UpdateToast from "../lib/titip/UpdateToast.svelte";
   import { loadMe } from "../lib/titip/session.svelte";
   import "../styles.css";
 
@@ -11,7 +12,7 @@
     void loadMe();
     // Register the app's own service worker (offline shell + installable PWA).
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(() => {});
     }
   });
 </script>
@@ -35,3 +36,4 @@
 </div>
 
 <Dock />
+<UpdateToast />

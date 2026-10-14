@@ -3,7 +3,7 @@
   import { authedFetch, loadMe, session } from "../lib/titip/session.svelte";
   import { parseTrip, TRIP_STORAGE_KEY, type TripState } from "../lib/titip/trip-state";
   import { computeTrip, DIR_META, scenarioFor, type CapexLine, type Dir, type Good, type LinePricing, type PricingModel, type Scenario, type TripMode } from "../lib/titip/calc";
-  import { capacity, computeRevenue, lineWeightKg, targetProgress } from "../lib/titip/pricing";
+  import { capacity, computeRevenue, CURRENCIES, ITEM_UNITS, lineWeightKg, targetProgress } from "../lib/titip/pricing";
   import { idr, kg } from "../lib/titip/model";
 
   const control =
@@ -426,27 +426,26 @@
                 {#if tarif.model === "per_item"}
                   <label class="flex items-center gap-1 text-muted">
                     Satuan
-                    <input
-                      type="text"
-                      value={tarif.unit ?? ""}
-                      placeholder="slop"
-                      maxlength="24"
-                      class="{control} w-20 py-1 text-xs"
+                    <select
+                      value={tarif.unit ?? "unit"}
+                      class="{control} w-24 py-1 text-xs"
                       aria-label="Satuan {g.name}"
-                      oninput={(e) => setPricing(g.id, { unit: e.currentTarget.value.trim() || undefined })}
-                    />
+                      onchange={(e) => setPricing(g.id, { unit: e.currentTarget.value })}
+                    >
+                      {#each ITEM_UNITS as u (u)}<option value={u}>{u}</option>{/each}
+                    </select>
                   </label>
                 {/if}
                 <label class="flex items-center gap-1 text-muted">
                   Mata uang
-                  <input
-                    type="text"
+                  <select
                     value={tarif.currency ?? meta.shop}
-                    maxlength="12"
-                    class="{control} w-16 py-1 text-xs uppercase"
+                    class="{control} w-20 py-1 text-xs"
                     aria-label="Mata uang {g.name}"
-                    oninput={(e) => setPricing(g.id, { currency: e.currentTarget.value.trim().toUpperCase() || undefined })}
-                  />
+                    onchange={(e) => setPricing(g.id, { currency: e.currentTarget.value })}
+                  >
+                    {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
+                  </select>
                 </label>
                 {#if (tarif.rate ?? 0) <= 0}
                   <span class="text-accent">tarif belum ditetapkan</span>
@@ -607,14 +606,14 @@
         <span class="mb-1 flex justify-between">
           <span>Mata uang target</span>
         </span>
-        <input
-          type="text"
+        <select
           value={scenario.hargaCurrency ?? meta.shop}
-          maxlength="12"
-          class="{control} uppercase"
+          class="{control}"
           aria-label="Mata uang target"
-          oninput={(e) => patch({ hargaCurrency: e.currentTarget.value.trim().toUpperCase() || undefined })}
-        />
+          onchange={(e) => patch({ hargaCurrency: e.currentTarget.value })}
+        >
+          {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
+        </select>
       </label>
       {#if asumsi}
         <p class="mt-2 text-xs text-accent" role="status">
