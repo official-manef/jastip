@@ -147,6 +147,7 @@ function bypassLocalApi(req: { url?: string }): string | undefined {
   const path = (req.url ?? "").split("?", 1)[0] ?? "";
   const local =
     path === "/api/ai" ||
+    path === "/api/trip" ||
     path === "/api/auth" ||
     path.startsWith("/api/auth/") ||
     path === "/api/saya" ||

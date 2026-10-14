@@ -11,6 +11,6 @@ export async function POST({ request }: { request: Request }) {
   if (!isRole(body.role)) return json({ error: "peran" }, 400);
   const sql = await getSql();
   const result = await claimRole(sql, account.user.id, body.role);
-  if (!result.ok) return json({ error: result.error }, 409);
+  if (!result.ok) return json({ error: result.error }, result.error === "admin-forbidden" ? 403 : 409);
   return json({ role: result.role, locked: result.locked });
 }

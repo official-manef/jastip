@@ -2,6 +2,21 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 14 Oktober 2026: persistensi dan akses akun
+
+- Pengunjung menyimpan kalkulasi di perangkat; status lokasi simpan ditampilkan dengan jelas.
+- Trip akun memakai Postgres melalui `/api/trip`, satu skenario per sesi pengguna. UI tidak lagi memanggil dokumen Convex bersama yang dapat ditulis tanpa autentikasi.
+- Penulisan akun berjalan berurutan; respons pemuatan yang terlambat tidak menimpa perubahan input pengguna. Gagal sinkronisasi menyisakan salinan lokal dan tombol mencoba kembali.
+- Admin hanya dapat diambil oleh ID akun yang ditetapkan operator. Peran klien/jastiper tetap terkunci setelah dipilih.
+- Produksi tanpa `DATABASE_URL` mengembalikan 503 untuk operasi akun, dan menampilkan keterangan bahwa login belum aktif. PGLite tidak digunakan sebagai penyimpanan akun produksi.
+- Login akun lama tidak lagi meminta pilihan peran lebih dahulu. Isian barang menolak harga negatif dan berat tidak valid dengan pesan terlihat.
+- Build dan pemeriksaan tipe lulus lokal. Unit test: 252 lulus, empat pemeriksaan dokumentasi skill Grok dilewati karena dokumennya tidak termasuk repo standalone. Uji API dua akun lulus untuk auth, batas admin, CSRF, validasi, isolasi trip dan titipan.
+- CI ditambahkan untuk tes, build, dan render desktop/mobile. Verifikasi browser lokal terhambat unduhan Chromium yang kosong; hasil render CI dan produksi harus diverifikasi sebelum dinyatakan siap.
+
+Hambatan produksi: Neon belum terhubung pada manef-composio dan `DATABASE_URL` belum tersedia di Vercel. Pendaftaran, titipan asli, dan BYOK dengan sesi produksi belum dapat dinyatakan selesai sampai koneksi tersebut aktif.
+
+Catatan 10 Oktober di bawah adalah riwayat, bukan status produksi terkini.
+
 ## 10 Oktober 2026
 
 ### Meja

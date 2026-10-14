@@ -1,23 +1,12 @@
 <script lang="ts">
-  import { browser } from "$app/env";
   import { page } from "$app/state";
   import { onMount } from "svelte";
-  import { setupConvex } from "convex-svelte";
   import Akun from "../lib/titip/Akun.svelte";
   import { session, loadMe } from "../lib/titip/session.svelte";
   import { installPreviewHostBridge } from "../lib/preview-host-bridge";
   import "../styles.css";
 
   let { children } = $props();
-
-  function convexUrl() {
-    const configured = import.meta.env.PUBLIC_CONVEX_URL;
-    if (configured && !/localhost|127\.0\.0\.1/.test(configured)) return configured;
-    return window.location.origin;
-  }
-
-  if (browser) setupConvex(convexUrl());
-  else setupConvex("https://convex.invalid");
 
   onMount(() => {
     void loadMe();
