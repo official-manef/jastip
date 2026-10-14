@@ -1,11 +1,26 @@
 export type Dir = "cgk-ist" | "ist-cgk";
 
+export type PricingModel = "per_kg" | "per_item";
+
+/** Optional per-line pricing. Absent → the scenario's global per-kg rate applies. */
+export type LinePricing = {
+  model: PricingModel;
+  rate: number;
+  /** Display/conversion currency; a stage 0 business decision. */
+  currency?: string;
+  /** Billing unit label for per_item rows, e.g. "slop", "unit". */
+  unit?: string;
+};
+
 export type Good = {
   id: string;
   name: string;
+  /** Weight per unit, not total. */
   kg: number;
   qty: number;
   beli: number;
+  pricing?: LinePricing;
+  beliCurrency?: string;
 };
 
 export type OpexLine = { id: string; label: string; amount: number };
@@ -18,6 +33,10 @@ export type Scenario = {
   tare: number;
   overPerKg: number;
   hargaPerKg: number;
+  /** Service revenue target; 0/absent means "not set" (no NaN). */
+  target?: number;
+  /** Currency label for `target` and `hargaPerKg`. Defaults to IDR. */
+  hargaCurrency?: string;
   margin: number;
   ujiKg: number;
   kursTry: number;
