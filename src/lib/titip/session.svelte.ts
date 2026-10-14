@@ -43,8 +43,6 @@ export function refreshMe(): Promise<void> {
   session.pending = true;
   inflight = (async () => {
     try {
-      // Better Auth materializes a gate session on this route (zero-click masuk).
-      await authedFetch("/api/auth/get-session");
       const res = await authedFetch("/api/saya");
       if (!res.ok) throw new Error("sesi");
       const data = (await res.json()) as { user?: MeUser | null; role?: unknown };

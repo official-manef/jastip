@@ -6,6 +6,8 @@ export type Good = {
   kg: number;
   qty: number;
   beli: number;
+  feeMode?: "kg" | "item";
+  feeRate?: number;
 };
 
 export type OpexLine = { id: string; label: string; amount: number };
@@ -46,6 +48,7 @@ export type Ledger = {
   potensi: number;
   breakEvenKg: number;
   penuh: number;
+  mixedPricing: boolean;
 };
 
 export const DIR_META: Record<Dir, { from: string; to: string; code: string; shop: "IDR" | "TRY"; blurb: string }> = {
@@ -134,6 +137,11 @@ export function scenarioFor(dir: Dir): Scenario {
   };
 }
 
+export function feeFor(g: Good, defaultPerKg: number): number {
+  const rate = g.feeRate ?? (g.feeMode === "item" ? 0 : defaultPerKg);
+  return g.qty * rate * (g.feeMode === "item" ? 1 : g.kg);
+}
+
 export function compute(dir: Dir, s: Scenario): Ledger {
   const kotor = round1(s.bags * s.kgPerBag + s.cabin);
   const bersih = round1(Math.max(0, kotor - s.tare));
@@ -149,7 +157,8 @@ export function compute(dir: Dir, s: Scenario): Ledger {
   const beban = opex + capexTrip;
   const modalPerKg = bersih > 0 ? Math.round(beban / bersih) : 0;
   const saranPerKg = Math.round(modalPerKg * (1 + s.margin / 100));
-  const pendapatan = Math.round(terpakai * s.hargaPerKg);
+  const pendapatan = Math.round(s.goods.reduce((sum, g) => sum + feeFor(g, s.hargaPerKg), 0));
+  const mixedPricing = s.goods.some((g) => g.feeMode === "item" || g.feeRate !== undefined);
   const laba = pendapatan - beban;
   const nilaiBeliIdr = Math.round(
     s.goods.reduce((sum, g) => {
@@ -160,7 +169,8 @@ export function compute(dir: Dir, s: Scenario): Ledger {
   const room = Math.max(0, sisa);
   const pcsUji = s.ujiKg > 0 ? Math.floor(room / s.ujiKg) : 0;
   const potensi = Math.round(room * s.hargaPerKg);
-  const breakEvenKg = s.hargaPerKg > 0 ? round1(beban / s.hargaPerKg) : 0;
+  const effectiveRate = mixedPricing && terpakai > 0 ? pendapatan / terpakai : s.hargaPerKg;
+  const breakEvenKg = effectiveRate > 0 ? round1(beban / effectiveRate) : 0;
   const penuh = bersih > 0 ? Math.min(1, terpakai / bersih) : 1;
   return {
     kotor,
@@ -182,6 +192,7 @@ export function compute(dir: Dir, s: Scenario): Ledger {
     potensi,
     breakEvenKg,
     penuh,
+    mixedPricing,
   };
 }
 
@@ -223,14 +234,17 @@ export function computeTrip(mode: TripMode, dir: Dir, byDir: Record<Dir, Scenari
   const opexBase = here.opexBase + there.opexBase;
   const denda = here.denda + there.denda;
   const opex = opexBase + denda;
-  const capexTrip = here.capexTrip;
+  const capexTrip = compute("cgk-ist", byDir["cgk-ist"]).capexTrip;
   const beban = opex + capexTrip;
   const bersihAll = here.bersih + there.bersih;
   const modalPerKg = bersihAll > 0 ? Math.round(beban / bersihAll) : 0;
   const saranPerKg = Math.round(modalPerKg * (1 + byDir[dir].margin / 100));
   const pendapatan = here.pendapatan + there.pendapatan;
   const laba = pendapatan - beban;
-  const hargaAvg = (byDir[dir].hargaPerKg + byDir[other].hargaPerKg) / 2;
+  const mixedPricing = here.mixedPricing || there.mixedPricing;
+  const usedAll = here.terpakai + there.terpakai;
+  const hargaAvg = usedAll > 0 ? pendapatan / usedAll
+    : bersihAll > 0 ? (here.bersih * byDir[dir].hargaPerKg + there.bersih * byDir[other].hargaPerKg) / bersihAll : 0;
   return {
     ...here,
     mode,
@@ -243,6 +257,7 @@ export function computeTrip(mode: TripMode, dir: Dir, byDir: Record<Dir, Scenari
     saranPerKg,
     pendapatan,
     laba,
+    mixedPricing,
     nilaiBeliIdr: here.nilaiBeliIdr + there.nilaiBeliIdr,
     breakEvenKg: hargaAvg > 0 ? round1(beban / hargaAvg) : 0,
     tiket,

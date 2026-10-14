@@ -32,6 +32,7 @@
           notice = "Peran admin sudah diambil. Pilih klien atau jastiper.";
           return;
         }
+        if (data.error === "admin-restricted") { notice = "Admin hanya tersedia untuk email pemilik yang ditentukan operator. Pilih klien atau jastiper."; return; }
         if (!res.ok || !isRole(data.role)) {
           notice = "Peran belum tersimpan. Coba lagi dari halaman masuk.";
           return;

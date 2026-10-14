@@ -10,10 +10,14 @@
   let name = $state("");
   let email = $state("");
   let password = $state("");
+  let accountsReady = $state(false);
+  let checkingReady = $state(true);
   const control = "min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-base outline-none focus:border-primary";
 
   onMount(() => {
     void loadMe();
+    void fetch("/api/readiness").then((res) => res.json()).then((data) => { accountsReady = data.accountsReady === true; })
+      .catch(() => { accountsReady = false; }).finally(() => { checkingReady = false; });
   });
 
   function pesan(error: unknown): string {
@@ -38,6 +42,7 @@
         busy = false;
         return;
       }
+      if (data.error === "admin-restricted") { notice = "Admin hanya dapat diambil oleh email pemilik yang ditentukan operator."; busy = false; return; }
       if (!res.ok || !isRole(data.role)) {
         notice = "Peran belum tersimpan. Coba lagi.";
         busy = false;
@@ -63,7 +68,7 @@
         body: JSON.stringify({ email: email.trim(), password, ...(registering ? { name: name.trim() } : {}) }),
       });
       if (!response.ok) {
-        notice = registering
+        notice = response.status === 503 ? "Penyimpanan akun belum tersedia. Meja hitung tetap bisa digunakan." : registering
           ? "Akun belum dibuat. Periksa isian atau masuk jika email sudah terdaftar."
           : "Email atau password tidak sesuai. Coba lagi.";
         return;
@@ -132,6 +137,8 @@
         {busy ? "Menyimpan…" : "Pakai peran ini"}
       </button>
     {:else}
+      {#if checkingReady}<p class="mt-4 text-sm text-muted" role="status">Memeriksa layanan akun…</p>
+      {:else if !accountsReady}<p class="mt-4 text-sm text-accent" role="status">Penyimpanan akun belum tersedia. Pendaftaran dan masuk sementara dinonaktifkan. <a href="/" class="underline">Gunakan meja hitung</a> atau <a href="/portal" class="underline">lihat portal contoh</a>.</p>{/if}
       <form class="mt-6 grid gap-4" onsubmit={lanjut}>
         {#if registering}
           <label class="grid gap-1 text-sm">Nama
@@ -145,7 +152,7 @@
           <input class={control} type="password" bind:value={password} autocomplete={registering ? "new-password" : "current-password"} required minlength={registering ? 12 : 1} maxlength="128" />
         </label>
         {#if registering}<p class="text-xs text-muted">Gunakan minimal 12 karakter.</p>{/if}
-        <button type="submit" class="min-h-11 rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={!chosen || busy}>
+        <button type="submit" class="min-h-11 rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={!chosen || busy || !accountsReady}>
           {busy ? "Memproses…" : registering ? "Buat akun" : "Masuk"}
         </button>
         <button type="button" class="min-h-11 rounded-full border border-border px-5 text-sm" disabled={busy} onclick={() => { registering = !registering; password = ""; notice = ""; }}>

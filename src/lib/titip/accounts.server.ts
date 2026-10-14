@@ -2,6 +2,7 @@ import { auth } from "../auth/server";
 import { getSql, type Sql } from "../db";
 import { isRole, type Role } from "./roles";
 import { isArah, isStatus, type TitipanRow } from "./titipan";
+import { databaseReady } from "./runtime-ready";
 
 export type AccountUser = {
   id: string;
@@ -16,6 +17,7 @@ export type Account = {
 };
 
 export async function readAccount(request: Request): Promise<Account | null> {
+  if (!databaseReady(process.env)) return null;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user) return null;
   const sql = await getSql();

@@ -9,8 +9,10 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Meja trip: kuota bagasi, muatan per kg, harga per kg, opex, capex, laba.
 - Arah `Jakarta → Turki` dan `Turki → Jakarta`.
 - Mode **pergi saja** atau **pulang-pergi**. PP menjumlahkan tiket dan opex kedua kaki. Capex dihitung sekali.
-- Trip tersimpan di Convex selama URL cloud-nya terpasang. Tanpa itu, meja tetap bisa dihitung di browser.
-- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu, orang pertama yang mengambilnya.
+- Beberapa trip terpisah dengan nama, tanggal dan target omzet jasa. Data tersimpan di perangkat serta dapat diekspor dan diimpor sebagai JSON.
+- Tarif IDR per kg/per item dapat diatur per barang. Harga beli tetap terpisah dari jasa.
+- Penyimpanan akun memakai Postgres dengan pembatasan pemilik dan pemeriksaan konflik versi. Aktif setelah database produksi terhubung.
+- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin produksi hanya satu dan hanya email pemilik yang dikonfigurasi operator dapat mengambilnya.
 - AI BYOK di `/pengaturan`: URL/model custom yang diizinkan operator. API key hanya berada di memori halaman dan diteruskan ke penyedia saat pengguna meminta.
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
@@ -23,7 +25,7 @@ Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [doc
 | --- | --- | --- |
 | `/` | Semua, rumah jastiper | Meja hitung |
 | `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin) |
-| `/masuk` | Belum masuk | Pilih peran, lalu Google atau X |
+| `/masuk` | Belum masuk | Pilih peran, lalu email/password; status database terlihat |
 | `/titip` | Klien, jastiper, admin | Permintaan titipan |
 | `/admin` | Admin | Daftar orang dan peran |
 
@@ -33,7 +35,7 @@ Meja tidak dikunci login.
 
 SvelteKit, Svelte 5, Bun, Convex, Tailwind, Better Auth, Vercel.
 
-Akun dan titipan memakai Postgres (Neon kalau `DATABASE_URL` ada, kalau tidak PGLite di proses yang sama). Trip memakai Convex, terpisah dari akun.
+Akun, titipan dan buku trip memakai Postgres. PGLite hanya untuk pengembangan; tanpa database persisten login produksi dinonaktifkan. Meja lokal tetap berjalan tanpa akun. Kode Convex lama dipertahankan untuk migrasi, tetapi UI tidak memakai dokumen bersama `live`.
 
 ## Menjalankan
 
@@ -66,7 +68,7 @@ Belum ada, dan masuk sungguhan di situs publik belum tersimpan tanpanya:
 | Nama | Kenapa belum |
 | --- | --- |
 | `DATABASE_URL` | Neon belum terhubung ke proyek Vercel ini |
-| `PUBLIC_CONVEX_URL` | Belum ada deployment Convex cloud |
+| `JASTIP_ADMIN_EMAIL` | Email pemilik ditentukan operator; admin tidak terbuka untuk pendaftar umum |
 
 Login mandiri tidak memakai `GROK_AUTH_ISSUER`, `GROK_AUTH_CLIENT_ID`, atau `GROK_AUTH_CLIENT_SECRET`. Nilai existing di Vercel belum dihapus oleh perubahan lokal ini. Tidak ada konfigurasi email reset/verifikasi; fitur tersebut belum disediakan.
 

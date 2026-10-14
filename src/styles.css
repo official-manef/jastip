@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "@fontsource-variable/outfit";
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/fraunces/wght-italic.css";
 
 @source "./desk";
 @source "./routes";
@@ -14,8 +17,8 @@
   --color-accent: #b8431c;
   --color-border: #e4d9cb;
   --color-line: #d9cdb8;
-  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", georgia, "Times New Roman", serif;
+  --font-sans: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces Variable", georgia, "Times New Roman", serif;
   --shadow-ticket: 0 1px 0 rgb(28 25 23 / 0.04), 0 16px 40px rgb(28 25 23 / 0.06);
 }
 
@@ -77,6 +80,12 @@
   textarea {
     font: inherit;
     color: inherit;
+  }
+
+  input:not([type="range"]),
+  select,
+  textarea {
+    border-color: #87796a;
   }
 }
 

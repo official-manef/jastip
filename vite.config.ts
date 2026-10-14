@@ -142,48 +142,18 @@ function authPopupPlugin(): Plugin {
   };
 }
 
-/** App routes that must hit SvelteKit, not the Convex backend. */
-function bypassLocalApi(req: { url?: string }): string | undefined {
-  const path = (req.url ?? "").split("?", 1)[0] ?? "";
-  const local =
-    path === "/api/ai" ||
-    path === "/api/auth" ||
-    path.startsWith("/api/auth/") ||
-    path === "/api/saya" ||
-    path.startsWith("/api/saya/") ||
-    path === "/api/peran" ||
-    path.startsWith("/api/peran/") ||
-    path === "/api/titipan" ||
-    path.startsWith("/api/titipan/") ||
-    path === "/api/admin" ||
-    path.startsWith("/api/admin/");
-  return local ? req.url : undefined;
-}
-
-const convexProxy = {
-  "/api": {
-    target: "http://127.0.0.1:3210",
-    changeOrigin: true,
-    ws: true,
-    bypass: bypassLocalApi,
-  },
-};
-
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 export default defineConfig(async () => ({
   server: {
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
-    proxy: convexProxy,
   },
   preview: {
     host: "127.0.0.1",
     port: 8081,
     strictPort: true,
-    proxy: convexProxy,
   },
-  resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
     authPopupPlugin(),
