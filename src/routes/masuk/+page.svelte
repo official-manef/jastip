@@ -6,13 +6,14 @@
   let chosen = $state<Role | null>(null);
   let busy = $state(false);
   let notice = $state("");
-  let signInFn = $state<((providerId: string, opts: { callbackURL?: string }) => Promise<void>) | null>(null);
+  let registering = $state(false);
+  let name = $state("");
+  let email = $state("");
+  let password = $state("");
+  const control = "min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-base outline-none focus:border-primary";
 
   onMount(() => {
     void loadMe();
-    void import("../../lib/auth/client").then((mod) => {
-      signInFn = mod.signIn;
-    });
   });
 
   function pesan(error: unknown): string {
@@ -49,15 +50,33 @@
     }
   }
 
-  function lanjut(providerId: string) {
-    if (!chosen || !signInFn || busy) return;
+  async function lanjut(event: SubmitEvent) {
+    event.preventDefault();
+    if (!chosen || busy) return;
     busy = true;
     notice = "";
-    sessionStorage.setItem(PENDING_ROLE_KEY, chosen);
-    void signInFn(providerId, { callbackURL: "/masuk/selesai" }).catch((error: unknown) => {
-      busy = false;
+    try {
+      const response = await fetch(`/api/auth/${registering ? "sign-up" : "sign-in"}/email`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password, ...(registering ? { name: name.trim() } : {}) }),
+      });
+      if (!response.ok) {
+        notice = registering
+          ? "Akun belum dibuat. Periksa isian atau masuk jika email sudah terdaftar."
+          : "Email atau password tidak sesuai. Coba lagi.";
+        return;
+      }
+      password = "";
+      sessionStorage.removeItem("grok-auth.bearer-token");
+      sessionStorage.setItem(PENDING_ROLE_KEY, chosen);
+      window.location.assign("/masuk/selesai");
+    } catch (error) {
       notice = pesan(error);
-    });
+    } finally {
+      busy = false;
+    }
   }
 </script>
 
@@ -86,7 +105,7 @@
       {#if session.user}
         Kamu sudah masuk sebagai {session.user.name || session.user.email}. Pilih peran sekali. Admin hanya untuk pengembang, dan hanya satu.
       {:else}
-        Pilih peran, lalu masuk dengan Google atau X. Meja hitung tetap bisa dibuka tanpa akun.
+        Pilih peran, lalu masuk dengan email dan password. Meja hitung tetap bisa dibuka tanpa akun.
       {/if}
     </p>
 
@@ -113,14 +132,26 @@
         {busy ? "Menyimpan…" : "Pakai peran ini"}
       </button>
     {:else}
-      <div class="mt-6 grid gap-2">
-        <button type="button" class="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={!chosen || !signInFn || busy} onclick={() => lanjut("grok-google")}>
-          Lanjut dengan Google
+      <form class="mt-6 grid gap-4" onsubmit={lanjut}>
+        {#if registering}
+          <label class="grid gap-1 text-sm">Nama
+            <input class={control} bind:value={name} autocomplete="name" required maxlength="80" />
+          </label>
+        {/if}
+        <label class="grid gap-1 text-sm">Email
+          <input class={control} type="email" bind:value={email} autocomplete="email" required maxlength="254" />
+        </label>
+        <label class="grid gap-1 text-sm">Password
+          <input class={control} type="password" bind:value={password} autocomplete={registering ? "new-password" : "current-password"} required minlength={registering ? 12 : 1} maxlength="128" />
+        </label>
+        {#if registering}<p class="text-xs text-muted">Gunakan minimal 12 karakter.</p>{/if}
+        <button type="submit" class="min-h-11 rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={!chosen || busy}>
+          {busy ? "Memproses…" : registering ? "Buat akun" : "Masuk"}
         </button>
-        <button type="button" class="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-surface px-5 text-sm font-medium disabled:opacity-50" disabled={!chosen || !signInFn || busy} onclick={() => lanjut("grok-x")}>
-          Lanjut dengan X
+        <button type="button" class="min-h-11 rounded-full border border-border px-5 text-sm" disabled={busy} onclick={() => { registering = !registering; password = ""; notice = ""; }}>
+          {registering ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar"}
         </button>
-      </div>
+      </form>
       {#if !chosen}
         <p class="mt-3 text-sm text-muted">Pilih peran dulu, baru lanjut.</p>
       {/if}
