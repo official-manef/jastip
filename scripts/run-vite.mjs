@@ -2,7 +2,12 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { exitStatusFromChild } from "./with-app-env.mjs";
+
+/** Exit code that mirrors the child's status (or 1 when a signal killed it). */
+function exitStatusFromChild(code, signal) {
+  if (typeof code === "number") return code;
+  return signal ? 1 : 0;
+}
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const viteBin = join(root, "node_modules/vite/bin/vite.js");

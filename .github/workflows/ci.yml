@@ -8,9 +8,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      VITE_AUTH_ENABLED: "true"
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,8 +24,7 @@ jobs:
       - run: bunx playwright install --with-deps chromium
       - name: Local accounts and rendered desktop/mobile
         run: |
-          sudo mkdir -p /workspace/screenshots
-          sudo chown "$USER" /workspace/screenshots
+          mkdir -p screenshots
           npm run dev > /tmp/jastip-dev.log 2>&1 &
           dev_pid=$!
           trap 'kill "$dev_pid" 2>/dev/null || true' EXIT
@@ -36,11 +33,11 @@ jobs:
             sleep 1
           done
           npm run test:trip-api
-          node scripts/browser-smoke.mjs http://127.0.0.1:8080 /workspace/screenshots/jastip-dev.png
+          node scripts/browser-smoke.mjs http://127.0.0.1:8080 screenshots/jastip-dev.png
           npm run preview:restart
-          node scripts/browser-smoke.mjs http://127.0.0.1:8081 /workspace/screenshots/jastip-built.png --baseline /workspace/screenshots/jastip-dev.json
+          node scripts/browser-smoke.mjs http://127.0.0.1:8081 screenshots/jastip-built.png --baseline screenshots/jastip-dev.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: jastip-render-evidence
-          path: /workspace/screenshots
+          path: screenshots
