@@ -23,7 +23,7 @@
     void loadMe();
     return installPreviewHostBridge({
       navigate: (path) => history.pushState({}, "", path),
-      getRoutePaths: () => ["/", "/portal", "/masuk", "/titip", "/admin"],
+      getRoutePaths: () => ["/", "/portal", "/masuk", "/titip", "/admin", "/pengaturan"],
     });
   });
 
@@ -31,6 +31,7 @@
     const items = [
       { href: "/portal", label: "Portal" },
       { href: "/", label: "Meja" },
+      { href: "/pengaturan", label: "AI" },
     ];
     if (session.role) items.push({ href: "/titip", label: "Titipan" });
     if (session.role === "admin") items.push({ href: "/admin", label: "Orang" });

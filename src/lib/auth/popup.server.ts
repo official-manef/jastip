@@ -30,6 +30,14 @@ type PopupMessage = {
  * preview). Do not re-export this from a React route file.
  */
 export async function handleAuthPopupRequest(request: Request): Promise<Response> {
+  const oauth = (auth.api as typeof auth.api & {
+    signInWithOAuth2?: (options: {
+      body: { providerId: string; callbackURL: string; errorCallbackURL: string };
+      headers: Headers;
+      asResponse: true;
+    }) => Promise<Response>;
+  }).signInWithOAuth2;
+  if (!oauth) return new Response("OAuth is disabled", { status: 404 });
   const url = new URL(request.url);
   const done = url.searchParams.get("done") === "1";
 
@@ -62,7 +70,7 @@ export async function handleAuthPopupRequest(request: Request): Promise<Response
   // Stay first-party for the callback so the session cookie lands in THIS popup.
   const back = `${url.origin}/auth/popup?done=1`;
   try {
-    const apiRes = await auth.api.signInWithOAuth2({
+    const apiRes = await oauth({
       body: {
         providerId,
         callbackURL: back,

@@ -10,7 +10,8 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Arah `Jakarta → Turki` dan `Turki → Jakarta`.
 - Mode **pergi saja** atau **pulang-pergi**. PP menjumlahkan tiket dan opex kedua kaki. Capex dihitung sekali.
 - Trip tersimpan di Convex selama URL cloud-nya terpasang. Tanpa itu, meja tetap bisa dihitung di browser.
-- Masuk Google dan X. Peran: klien, jastiper, admin. Admin hanya satu, orang pertama yang mengambilnya.
+- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu, orang pertama yang mengambilnya.
+- AI BYOK di `/pengaturan`: URL/model custom yang diizinkan operator. API key hanya berada di memori halaman dan diteruskan ke penyedia saat pengguna meminta.
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
 
@@ -58,7 +59,6 @@ Sudah dipasang di production, preview, dan development:
 | --- | --- |
 | `BETTER_AUTH_URL` | Origin publik situs |
 | `BETTER_AUTH_SECRET` | Menandatangani sesi |
-| `GROK_AUTH_ISSUER` | Broker masuk (`https://auth.grok.me`) |
 | `VITE_AUTH_ENABLED` | `true` |
 
 Belum ada, dan masuk sungguhan di situs publik belum tersimpan tanpanya:
@@ -66,9 +66,25 @@ Belum ada, dan masuk sungguhan di situs publik belum tersimpan tanpanya:
 | Nama | Kenapa belum |
 | --- | --- |
 | `DATABASE_URL` | Neon belum terhubung ke proyek Vercel ini |
-| `GROK_AUTH_CLIENT_ID` | Kredensial broker per-aplikasi belum diterbitkan |
-| `GROK_AUTH_CLIENT_SECRET` | Sama |
 | `PUBLIC_CONVEX_URL` | Belum ada deployment Convex cloud |
+
+Login mandiri tidak memakai `GROK_AUTH_ISSUER`, `GROK_AUTH_CLIENT_ID`, atau `GROK_AUTH_CLIENT_SECRET`. Nilai existing di Vercel belum dihapus oleh perubahan lokal ini. Tidak ada konfigurasi email reset/verifikasi; fitur tersebut belum disediakan.
+
+## AI BYOK
+
+- `AI_API_BASE_URL`: default `https://token.conextlab.ai/v1`.
+- `AI_MODEL`: default `deepseakv4.1 flash`, sesuai input pengguna; ID API penyedia belum terverifikasi. Tombol **Ambil daftar model** mengambil `/models` memakai key pengguna.
+- `AI_ALLOWED_HOSTS`: daftar host HTTPS yang diizinkan, dipisahkan koma; default host base URL. Contoh `token.conextlab.ai,provider.example`. Tambahkan host custom sebelum menggunakannya. Proxy/egress lingkungan harus mengizinkan host yang sama.
+- Tidak ada shared `AI_API_KEY` atau key `VITE_*`. Key pengguna tidak disimpan ke database, localStorage, atau sessionStorage. Preferensi URL/model dapat disimpan secara eksplisit di perangkat.
+- Endpoint harus kompatibel dengan OpenAI `/models` dan `/chat/completions`. Request AI membutuhkan sesi login, tidak mengikuti redirect, dan dibatasi 512 token keluaran serta 4.000 karakter pertanyaan.
+- Konfigurasi berada di server SvelteKit/Vercel. Fungsi trip Convex saat ini tidak membutuhkan env AI.
+- Untuk CLI/CI Convex, gunakan `CONVEX_DEPLOY_KEY` dari Settings deployment. `CONVEX_OVERRIDE_ACCESS_TOKEN` adalah override internal CLI, bukan nama variabel deploy key.
+
+Pengujian BYOK dan auth mandiri:
+
+```bash
+node --experimental-strip-types --test src/lib/titip/ai.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts
+```
 
 ## Desain
 
