@@ -11,7 +11,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { isMigrationFile, migrationName, pendingMigrations } from "./migration-plan.mjs";
-import { projectRoot } from "./with-app-env.mjs";
+
+/** Repo root, resolved from this file (former `scripts/with-app-env.mjs` helper). */
+function projectRoot() {
+  return join(import.meta.dirname, "..");
+}
 
 const AUTH_MIGRATION = "0001_auth.sql";
 
@@ -59,7 +63,7 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
 test("standalone app ships auth, roles, and private trips as ordered migrations", () => {
   const migrationsDir = join(projectRoot(), "migrations");
   assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []).map((m) => m.name), [
-    "0001_auth.sql", "0002_roles.sql", "0003_trips.sql",
+    "0001_auth.sql", "0002_roles.sql", "0003_trips.sql", "0004_multi_trip.sql",
   ]);
   assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
 });

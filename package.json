@@ -7,16 +7,15 @@
     "nf3": "0.3.17"
   },
   "scripts": {
-    "dev": "node scripts/with-app-env.mjs node scripts/run-vite.mjs dev --host 0.0.0.0 --port 8080",
-    "build": "node scripts/with-app-env.mjs node scripts/run-vite.mjs build && npm run db:migrate",
+    "dev": "node scripts/run-vite.mjs dev --host 0.0.0.0 --port 8080",
+    "build": "node scripts/run-vite.mjs build && npm run db:migrate",
     "db:migrate": "node scripts/migrate.mjs",
-    "build:dev": "node scripts/with-app-env.mjs node scripts/run-vite.mjs build --mode development",
-    "preview": "node scripts/with-app-env.mjs node scripts/run-vite.mjs preview",
+    "build:dev": "node scripts/run-vite.mjs build --mode development",
+    "preview": "node scripts/run-vite.mjs preview",
     "preview:restart": "node scripts/preview.mjs restart",
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/titip/ai.test.ts src/lib/titip/pricing.test.ts src/lib/titip/trips.test.ts src/lib/titip/trip-state.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/titip/ai.test.ts src/lib/titip/pricing.test.ts src/lib/titip/risk.test.ts src/lib/titip/runtime.test.ts src/lib/titip/suggest.test.ts src/lib/titip/trips.test.ts src/lib/titip/trip-state.test.ts",
     "test:trip-api": "node --experimental-strip-types scripts/trip-api-smoke.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."

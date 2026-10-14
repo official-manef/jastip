@@ -74,7 +74,6 @@
         return;
       }
       password = "";
-      sessionStorage.removeItem("grok-auth.bearer-token");
       if (chosen) sessionStorage.setItem(PENDING_ROLE_KEY, chosen);
       else sessionStorage.removeItem(PENDING_ROLE_KEY);
       window.location.assign("/masuk/selesai");
