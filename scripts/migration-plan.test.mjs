@@ -56,9 +56,11 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
   assert.deepEqual(pendingMigrations(["auth", "README.md"], []), []);
 });
 
-test("app migrations include auth, roles and trip books, excluding the source directory", () => {
+test("standalone app ships auth, roles, and private trips as ordered migrations", () => {
   const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []).map((entry) => entry.name), ["0001_auth.sql", "0002_roles.sql", "0003_trip_books.sql"]);
+  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []).map((m) => m.name), [
+    "0001_auth.sql", "0002_roles.sql", "0003_trips.sql", "0004_trip_books.sql",
+  ]);
   assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
 });
 

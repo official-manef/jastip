@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { compute, computeTrip, scenarioFor } from "./calc.ts";
 import { newTrip, parseTripBook, targetProgress } from "./trip-drafts.ts";
-import { canClaimAdmin, databaseReady } from "./runtime-ready.ts";
+import { canClaimAdmin, databaseReady } from "./runtime.ts";
 
 test("legacy one-way baseline remains compatible", () => {
   const n = compute("cgk-ist", scenarioFor("cgk-ist"));
@@ -81,7 +81,7 @@ test("hosted signup needs a durable DB and admin requires the configured owner",
   assert.equal(databaseReady({ NODE_ENV: "production", DATABASE_URL: "   " }), false);
   assert.equal(databaseReady({ NODE_ENV: "production", DATABASE_URL: "postgresql://db" }), true);
   assert.equal(databaseReady({ NODE_ENV: "development" }), true);
-  assert.equal(canClaimAdmin("stranger@example.test", { VERCEL: "1" }), false);
-  assert.equal(canClaimAdmin("OWNER@example.test", { VERCEL: "1", JASTIP_ADMIN_EMAIL: "owner@example.test" }), true);
-  assert.equal(canClaimAdmin("stranger@example.test", { VERCEL: "1", JASTIP_ADMIN_EMAIL: "owner@example.test" }), false);
+  assert.equal(canClaimAdmin("stranger", undefined), false);
+  assert.equal(canClaimAdmin("owner", "owner"), true);
+  assert.equal(canClaimAdmin("stranger", "owner"), false);
 });

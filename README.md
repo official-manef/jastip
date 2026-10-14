@@ -12,7 +12,7 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Beberapa trip terpisah dengan nama, tanggal dan target omzet jasa. Data tersimpan di perangkat serta dapat diekspor dan diimpor sebagai JSON.
 - Tarif IDR per kg/per item dapat diatur per barang. Harga beli tetap terpisah dari jasa.
 - Penyimpanan akun memakai Postgres dengan pembatasan pemilik dan pemeriksaan konflik versi. Aktif setelah database produksi terhubung.
-- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin produksi hanya satu dan hanya email pemilik yang dikonfigurasi operator dapat mengambilnya.
+- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu dan ditentukan operator lewat ID akun, mengikuti rilis PR #3.
 - AI BYOK di `/pengaturan`: URL/model custom yang diizinkan operator. API key hanya berada di memori halaman dan diteruskan ke penyedia saat pengguna meminta.
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
@@ -68,7 +68,7 @@ Belum ada, dan masuk sungguhan di situs publik belum tersimpan tanpanya:
 | Nama | Kenapa belum |
 | --- | --- |
 | `DATABASE_URL` | Neon belum terhubung ke proyek Vercel ini |
-| `JASTIP_ADMIN_EMAIL` | Email pemilik ditentukan operator; admin tidak terbuka untuk pendaftar umum |
+| `TITIPIN_ADMIN_USER_ID` | ID akun pemilik ditentukan operator; admin tidak terbuka untuk pendaftar umum |
 
 Login mandiri tidak memakai `GROK_AUTH_ISSUER`, `GROK_AUTH_CLIENT_ID`, atau `GROK_AUTH_CLIENT_SECRET`. Nilai existing di Vercel belum dihapus oleh perubahan lokal ini. Tidak ada konfigurasi email reset/verifikasi; fitur tersebut belum disediakan.
 

@@ -4,18 +4,34 @@
 
 - Tarif campuran per kg/per item, target omzet jasa per trip, dan buku trip terpisah dengan nama/tanggal.
 - Simpan lokal, salin/hapus trip, ekspor JSON dan impor yang menambahkan salinan tanpa menghapus data lama.
-- `/api/trips` dan migrasi `0003_trip_books.sql`: isolasi pemilik dari sesi server, akses jastiper/admin, validasi buku trip, dan konflik revisi HTTP 409.
+- `/api/trips` dan migrasi `0004_trip_books.sql`: isolasi pemilik dari sesi server, akses jastiper/admin, validasi buku trip, dan konflik revisi HTTP 409.
 - Login produksi tidak memakai PGLite sementara. Tanpa `DATABASE_URL`, layanan akun menampilkan status belum tersedia.
-- Klaim admin produksi memerlukan `JASTIP_ADMIN_EMAIL` dari operator. Tidak memilih email pemilik secara otomatis.
+- Integrasi mempertahankan pembatasan admin `TITIPIN_ADMIN_USER_ID` dari rilis PR #3. Tidak memilih identitas pemilik secara otomatis.
+- Skenario perangkat dan akun dari PR #3 tetap dibaca saat buku trip baru belum ada. Muat akun yang terlambat tidak menimpa perubahan perangkat yang dibuat selama permintaan berjalan.
 - Endpoint Convex bersama `live` tidak lagi dipakai UI. Kode dan data lama dipertahankan.
 - Font Outfit/Fraunces disertakan dalam build. Kontrol muatan reflow pada layar kecil.
 - Pipeline GitHub menjalankan unit test, typecheck, build dan smoke API.
 
-Validasi lokal: 256 tes lulus, 4 pemeriksaan dokumen template Grok dilewati karena dokumen tidak dikirim bersama repo. Typecheck lulus. Build Vercel lulus. Browser menguji reload, tarif per item, PP, salinan trip, ekspor/impor, pendaftaran dan simpan akun; tidak ada error JavaScript aplikasi. Lebar 320/390/768/1024 tidak overflow. Smoke API memverifikasi pemilik, pengguna lain, peran klien, konflik revisi, origin dan input tidak valid.
+Validasi lokal setelah integrasi PR #3: 260 tes lulus, 4 pemeriksaan dokumen template Grok dilewati karena dokumen tidak dikirim bersama repo. Typecheck lulus. Build Vercel lulus. Browser menguji reload, tarif per item, PP, salinan trip, ekspor/impor, pendaftaran dan simpan akun; tidak ada error JavaScript aplikasi. Lebar 320/390/768/1024 tidak overflow. Smoke API memverifikasi pemilik, pengguna lain, peran klien, konflik revisi, origin dan input tidak valid.
 
 Batas verifikasi: database uji menggunakan PGLite lokal. Koneksi akun produksi Neon belum tersedia (`DATABASE_URL` tidak terpasang). Operasi proxy Vercel untuk menghubungkan resource ditolak oleh batas tool enable/disable toolkit. Skrip branding eksternal Grok tidak dapat diakses dari jaringan pengujian. Belum menyatakan login atau persistensi akun produksi selesai.
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
+
+## 14 Oktober 2026: persistensi dan akses akun
+
+- Pengunjung menyimpan kalkulasi di perangkat; status lokasi simpan ditampilkan dengan jelas.
+- Trip akun memakai Postgres melalui `/api/trip`, satu skenario per sesi pengguna. UI tidak lagi memanggil dokumen Convex bersama yang dapat ditulis tanpa autentikasi.
+- Penulisan akun berjalan berurutan; respons pemuatan yang terlambat tidak menimpa perubahan input pengguna. Gagal sinkronisasi menyisakan salinan lokal dan tombol mencoba kembali.
+- Admin hanya dapat diambil oleh ID akun yang ditetapkan operator. Peran klien/jastiper tetap terkunci setelah dipilih.
+- Produksi tanpa `DATABASE_URL` mengembalikan 503 untuk operasi akun, dan menampilkan keterangan bahwa login belum aktif. PGLite tidak digunakan sebagai penyimpanan akun produksi.
+- Login akun lama tidak lagi meminta pilihan peran lebih dahulu. Isian barang menolak harga negatif dan berat tidak valid dengan pesan terlihat.
+- Build dan pemeriksaan tipe lulus lokal. Unit test: 252 lulus, empat pemeriksaan dokumentasi skill Grok dilewati karena dokumennya tidak termasuk repo standalone. Uji API dua akun lulus untuk auth, batas admin, CSRF, validasi, isolasi trip dan titipan.
+- CI ditambahkan untuk tes, build, dan render desktop/mobile. Verifikasi browser lokal terhambat unduhan Chromium yang kosong; hasil render CI dan produksi harus diverifikasi sebelum dinyatakan siap.
+
+Hambatan produksi: Neon belum terhubung pada manef-composio dan `DATABASE_URL` belum tersedia di Vercel. Pendaftaran, titipan asli, dan BYOK dengan sesi produksi belum dapat dinyatakan selesai sampai koneksi tersebut aktif.
+
+Catatan 10 Oktober di bawah adalah riwayat, bukan status produksi terkini.
 
 ## 10 Oktober 2026
 

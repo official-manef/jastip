@@ -17,7 +17,6 @@ import {
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(TEMPLATE_ROOT, "scripts/brand-check.mjs");
-const templateDocs = { skip: !existsSync(join(TEMPLATE_ROOT, ".grok/skills/og/SKILL.md")) && "Grok template skill docs are not distributed with the standalone app" };
 
 const GAME_SITE = JSON.stringify({ title: "Wild Race", type: "x:game", card: "custom" });
 const UTILITY_SITE = JSON.stringify({ title: "Invoice" });
@@ -305,8 +304,9 @@ test("cli: a non-game with a compliant card passes", () => {
 // --- the prompts are the only enforcement here, so pin them to the code ---
 
 const readDoc = (rel) => readFileSync(join(TEMPLATE_ROOT, rel), "utf8");
+const platformDocs = { skip: existsSync(join(TEMPLATE_ROOT, ".grok/skills/og/SKILL.md")) ? false : "Grok platform skill docs are not shipped in this standalone repo" };
 
-test("SKILL.md and AGENTS.md name the marker path and bound this script uses", templateDocs, () => {
+test("SKILL.md and AGENTS.md name the marker path and bound this script uses", platformDocs, () => {
   // Prose wraps, so the minute count may straddle a line break.
   const bound = new RegExp(`${OG_PENDING_MAX_AGE_MS / 60_000}\\s+minutes`);
   for (const rel of [".grok/skills/og/SKILL.md", "AGENTS.md"]) {
@@ -344,7 +344,7 @@ function prohibitionSection({ rel, label, from, until }) {
   return (from + (end === -1 ? rest : rest.slice(0, end))).replace(/[`*]/g, "").replace(/\s+/g, " ");
 }
 
-test("the sections that own the brand-task prohibition never affirm a wait", templateDocs, () => {
+test("the sections that own the brand-task prohibition never affirm a wait", platformDocs, () => {
   // Pinned on the shape of the prohibition, not on a negation being somewhere
   // nearby: "So: wait_tasks before the final verify, but never get_task_output"
   // keeps a negation in the sentence while instructing exactly the wait.
@@ -363,7 +363,7 @@ test("the sections that own the brand-task prohibition never affirm a wait", tem
   }
 });
 
-test("SKILL.md tells the pass to self-check with the flag this CLI accepts", templateDocs, () => {
+test("SKILL.md tells the pass to self-check with the flag this CLI accepts", platformDocs, () => {
   const skill = readDoc(".grok/skills/og/SKILL.md");
   const invocations = skill.match(/node scripts\/brand-check\.mjs[^\n`]*/g) ?? [];
   assert.ok(invocations.length > 0);

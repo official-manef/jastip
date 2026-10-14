@@ -1,5 +1,5 @@
 import { auth } from "../../../../lib/auth/server";
-import { databaseReady } from "../../../../lib/titip/runtime-ready";
+import { databaseReady } from "../../../../lib/titip/runtime";
 
 const handle = ({ request }: { request: Request }) => {
   if (!databaseReady(process.env)) return Response.json({ error: "database-unavailable" }, { status: 503, headers: { "cache-control": "no-store" } });

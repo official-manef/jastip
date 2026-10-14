@@ -12,7 +12,7 @@ const scenarioSchema = z.object({
   goods: z.array(z.object({
     id: identifier, name: label, kg: weight, qty: z.number().int().min(0).max(100000), beli: amount,
     feeMode: z.enum(["kg", "item"]).optional(), feeRate: amount.optional(),
-  }).refine((good) => good.feeMode !== "item" || good.feeRate !== undefined, "Tarif per item wajib diisi")).max(100),
+  }).refine((good) => good.feeMode !== "item" || good.feeRate !== undefined, "Tarif per item wajib diisi")).max(200),
   opex: z.array(z.object({ id: identifier, label, amount })).max(100),
   capex: z.array(z.object({ id: identifier, label, price: amount, trips: z.number().int().min(1).max(100000) })).max(100),
 }).superRefine((s, ctx) => {

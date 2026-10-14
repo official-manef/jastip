@@ -90,9 +90,8 @@ test("only a divergence warns the smoke verdict", () => {
   }
 });
 
-test("the standalone app defaults auth on and supports deployment overrides", () => {
+test("the standalone app defaults to auth on without a platform env file", () => {
   assert.equal(buildAuthEnabled(projectRoot(), {}), true);
-  assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "false" }), false);
   assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "true" }), true);
 });
 

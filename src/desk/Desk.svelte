@@ -4,6 +4,7 @@
   import { idr, kg } from "../lib/titip/model";
   import { DRAFTS_KEY, newTrip, parseTripBook, targetProgress, type TripBook, type TripDraft } from "../lib/titip/trip-drafts";
   import { authedFetch, session } from "../lib/titip/session.svelte";
+  import { parseTrip, TRIP_STORAGE_KEY } from "../lib/titip/trip-state";
 
   const control =
     "min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-base outline-none placeholder:text-muted";
@@ -26,6 +27,7 @@
   let cloudRevision = $state(0);
   let cloudOwner = $state<string | null>(null);
   let importInput: HTMLInputElement;
+  let editVersion = 0;
 
   onMount(() => {
     try {
@@ -34,6 +36,14 @@
         const book = parseTripBook(stored);
         trips = book.trips;
         activate(book.activeId);
+      } else {
+        const old = localStorage.getItem(TRIP_STORAGE_KEY);
+        const legacy = old ? parseTrip(JSON.parse(old)) : null;
+        if (legacy) {
+          trips = [{ ...newTrip("legacy-device", "Trip tersimpan"), dir: legacy.dir, mode: legacy.mode,
+            byDir: { "cgk-ist": legacy.cgkIst, "ist-cgk": legacy.istCgk } }];
+          activate("legacy-device");
+        }
       }
       source = "Trip tersimpan di perangkat ini.";
     } catch {
@@ -64,6 +74,7 @@
 
   function commit() {
     if (!ready) return;
+    editVersion += 1;
     trips = trips.map((trip) => trip.id === activeId ? { id: activeId, name: tripName.trim() || "Trip tanpa nama", date: tripDate, targetOmzet, dir, mode, byDir } : trip);
     try {
       const book = parseTripBook(JSON.stringify({ version: 1, activeId, trips }));
@@ -132,17 +143,21 @@
     cloudBusy = true; notice = "";
     try {
       commit();
+      const requestedVersion = editVersion;
+      const requestedOwner = session.user?.id;
       const response = await authedFetch("/api/trips", action === "save" ? { method: "PUT", body: JSON.stringify({ revision: cloudRevision, book: { version: 1, activeId, trips } }) } : {});
       if (response.status === 409) throw new Error("Trip akun telah berubah. Ekspor trip perangkat, lalu muat trip akun sebelum menyimpan lagi.");
       if (!response.ok) throw new Error(response.status === 503 ? "Penyimpanan akun belum tersedia. Trip tetap dapat disimpan dan diekspor dari perangkat." : "Tidak dapat menyimpan trip akun. Masuk sebagai jastiper atau admin lalu coba lagi.");
       const data = await response.json();
+      if (session.user?.id !== requestedOwner) return;
       if (action === "load") {
+        if (editVersion !== requestedVersion) { notice = "Trip perangkat telah berubah selama memuat. Muat lagi jika ingin menggantinya."; return; }
         if (!data.book) { cloudRevision = 0; notice = "Akun belum memiliki trip tersimpan."; return; }
         const book = parseTripBook(JSON.stringify(data.book));
         trips = book.trips; activate(book.activeId); commit();
       }
       cloudRevision = data.revision;
-      notice = action === "save" ? "Trip tersimpan ke akun." : "Trip akun dimuat ke perangkat.";
+      notice = action === "save" ? editVersion === requestedVersion ? "Trip tersimpan ke akun." : "Salinan trip tersimpan. Perubahan terbaru di perangkat belum tersimpan ke akun." : "Trip akun dimuat ke perangkat.";
     } catch (error) { notice = error instanceof Error ? error.message : "Penyimpanan akun gagal."; }
     finally { cloudBusy = false; }
   }
@@ -237,7 +252,7 @@
     if (name.length < 2 || !Number.isFinite(kgEach) || !(kgEach > 0) || !Number.isFinite(beli) || beli < 0 || feeRate !== undefined && (!Number.isFinite(feeRate) || feeRate < 0) || draftFeeMode === "item" && feeRate === undefined) {
       notice = "Isi nama, berat positif, dan harga yang valid. Tarif per item wajib diisi."; return;
     }
-    if (scenario.goods.length >= 100) { notice = "Maksimal 100 jenis barang per arah."; return; }
+    if (scenario.goods.length >= 200) { notice = "Maksimal 200 jenis barang per arah."; return; }
     notice = "";
     addGood({ id: crypto.randomUUID(), name, kg: kgEach, qty: 1, beli, feeMode: draftFeeMode, ...(feeRate !== undefined ? { feeRate } : {}) });
     draftName = "";

@@ -2,7 +2,7 @@ import { auth } from "../auth/server";
 import { getSql, type Sql } from "../db";
 import { isRole, type Role } from "./roles";
 import { isArah, isStatus, type TitipanRow } from "./titipan";
-import { databaseReady } from "./runtime-ready";
+import { canClaimAdmin } from "./runtime";
 
 export type AccountUser = {
   id: string;
@@ -17,11 +17,14 @@ export type Account = {
 };
 
 export async function readAccount(request: Request): Promise<Account | null> {
-  if (!databaseReady(process.env)) return null;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user) return null;
   const sql = await getSql();
-  const role = await roleFor(sql, session.user.id);
+  let role = await roleFor(sql, session.user.id);
+  if (role !== "admin" && canClaimAdmin(session.user.id, process.env.TITIPIN_ADMIN_USER_ID)) {
+    const result = await claimRole(sql, session.user.id, "admin");
+    if (result.ok) role = result.role;
+  }
   return {
     user: {
       id: session.user.id,
@@ -76,15 +79,23 @@ export async function claimRole(
   sql: Sql,
   userId: string,
   role: Role,
-): Promise<{ ok: true; role: Role; locked: boolean } | { ok: false; error: "admin-taken" }> {
+): Promise<{ ok: true; role: Role; locked: boolean } | { ok: false; error: "admin-taken" | "admin-forbidden" }> {
+  if (role === "admin" && !canClaimAdmin(userId, process.env.TITIPIN_ADMIN_USER_ID)) {
+    return { ok: false, error: "admin-forbidden" };
+  }
   const current = await roleFor(sql, userId);
-  if (current) return { ok: true, role: current, locked: true };
+  if (current && role !== "admin") return { ok: true, role: current, locked: true };
+  if (current === "admin") return { ok: true, role: current, locked: true };
   if (role === "admin") {
     const admins = await sql<{ user_id: string }>`select user_id from profiles where role = 'admin' limit 1`;
     if (admins.length > 0) return { ok: false, error: "admin-taken" };
   }
   try {
-    await sql`insert into profiles (user_id, role) values (${userId}, ${role})`;
+    if (current) {
+      await sql`update profiles set role = ${role} where user_id = ${userId}`;
+    } else {
+      await sql`insert into profiles (user_id, role) values (${userId}, ${role})`;
+    }
   } catch (err) {
     const again = await roleFor(sql, userId);
     if (again) return { ok: true, role: again, locked: true };

@@ -16,7 +16,8 @@ import {
 const execFileAsync = promisify(execFile);
 const WRAPPER = join(projectRoot(), "scripts/with-app-env.mjs");
 const PRINT_FLAG = "process.stdout.write(String(process.env.VITE_AUTH_ENABLED));";
-const EXPECTED_FLAG = String(mergeAppEnv(readAppEnv(projectRoot()), process.env).VITE_AUTH_ENABLED);
+const CLEAN_ENV = { ...process.env };
+delete CLEAN_ENV.VITE_AUTH_ENABLED;
 
 function makeWorkspace(appEnvJson) {
   const root = mkdtempSync(join(tmpdir(), "app-env-"));
@@ -60,7 +61,7 @@ test("an explicit process-env override wins over the file", () => {
   assert.equal(merged.PATH, "/usr/bin");
 });
 
-test("the standalone app uses deployment env without a checked-in auth override", () => {
+test("standalone app does not ship platform-specific env overrides", () => {
   assert.deepEqual(readAppEnv(projectRoot()), {});
 });
 
@@ -80,8 +81,8 @@ test("the wrapped command runs with the app env applied", async () => {
     process.execPath,
     "-e",
     PRINT_FLAG,
-  ]);
-  assert.equal(stdout, EXPECTED_FLAG);
+  ], { env: CLEAN_ENV });
+  assert.equal(stdout, "undefined");
 });
 
 test("the wrapped command sees an explicit override, not the file value", async () => {
@@ -124,6 +125,6 @@ test("the CLI still runs when invoked through a symlinked path", async () => {
     process.execPath,
     "-e",
     PRINT_FLAG,
-  ]);
-  assert.equal(stdout, EXPECTED_FLAG);
+  ], { env: CLEAN_ENV });
+  assert.equal(stdout, "undefined");
 });

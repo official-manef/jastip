@@ -1,6 +1,8 @@
 import { getSql } from "../../../lib/db";
 import { readAccount, rejectedCrossSite } from "../../../lib/titip/accounts.server";
-import { databaseReady } from "../../../lib/titip/runtime-ready";
+import { databaseReady } from "../../../lib/titip/runtime";
+import { parseTrip } from "../../../lib/titip/trip-state";
+import { newTrip } from "../../../lib/titip/trip-drafts";
 import { tripBookSchema } from "../../../lib/titip/trip-drafts";
 
 function reply(body: unknown, status = 200) {
@@ -22,7 +24,13 @@ export async function GET({ request }: { request: Request }) {
   if (account instanceof Response) return account;
   const sql = await getSql();
   const rows = await sql<{ book: unknown; revision: number }>`select book, revision from trip_books where user_id = ${account.user.id}`;
-  return reply(rows[0] ?? { book: null, revision: 0 });
+  if (rows[0]) return reply(rows[0]);
+  const legacyRows = await sql<{ state: unknown }>`select state from trip_scenarios where user_id = ${account.user.id}`;
+  const legacy = legacyRows.length ? parseTrip(legacyRows[0].state) : null;
+  if (!legacy) return reply({ book: null, revision: 0 });
+  const trip = { ...newTrip("legacy-account", "Trip tersimpan"), dir: legacy.dir, mode: legacy.mode,
+    byDir: { "cgk-ist": legacy.cgkIst, "ist-cgk": legacy.istCgk } };
+  return reply({ book: { version: 1, activeId: trip.id, trips: [trip] }, revision: 0 });
 }
 
 export async function PUT({ request }: { request: Request }) {

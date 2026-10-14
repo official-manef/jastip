@@ -52,7 +52,7 @@ Portal `/portal` tidak menulis ke keduanya. Sari, Raka, Deniz, dan Manef hanya a
 
 Login mandiri email/password. Kode broker lama bukan jalur login aplikasi ini.
 
-Produksi memerlukan `DATABASE_URL` yang persisten. Jika belum ada, pendaftaran dan masuk ditutup dengan status layanan yang jelas. Admin produksi hanya dapat diklaim oleh email yang cocok dengan `JASTIP_ADMIN_EMAIL`; pembatasan satu admin tetap berlaku. Email pemilik ditentukan operator.
+Produksi memerlukan `DATABASE_URL` yang persisten. Jika belum ada, pendaftaran dan masuk ditutup dengan status layanan yang jelas. Admin ditentukan oleh `TITIPIN_ADMIN_USER_ID`, mengikuti rilis PR #3; pembatasan satu admin tetap berlaku. ID akun pemilik ditentukan operator.
 
 Di pratinjau yang sudah membawa identitas Grok, halaman Masuk langsung meminta peran. Tidak ada tombol masuk kedua, dan tidak ada tombol keluar, karena sesi itu terbentuk lagi dengan sendirinya.
 
@@ -69,6 +69,6 @@ Meja tidak lagi menghubungi endpoint Convex bersama `live`. Fungsi Convex lama d
 
 Trip memiliki ID, nama, tanggal, target jasa, mode dan kedua arah. Perangkat menyimpan hingga 50 trip di `titipin-trip-drafts-v1`. Ekspor JSON membuat cadangan; impor menambahkan trip dengan ID baru tanpa menimpa trip lama. Kerusakan penyimpanan ditampilkan, bukan dianggap berhasil.
 
-Jastiper dan admin dapat memuat/menyimpan buku trip ke akun melalui `/api/trips`. Tabel `trip_books` menggunakan user ID dari sesi server. Data pengguna lain tidak dapat diminta melalui parameter ID. Versi optimistis menolak tulisan yang tertinggal. Klien tidak memiliki akses API buku trip.
+Jastiper dan admin dapat memuat/menyimpan buku trip ke akun melalui `/api/trips`. Tabel `trip_books` menggunakan user ID dari sesi server. Data pengguna lain tidak dapat diminta melalui parameter ID. Versi optimistis menolak tulisan yang tertinggal. Klien tidak memiliki akses API buku trip. Skenario lokal `titipin-trip-v1` dan skenario akun dari PR #3 dibaca saat buku trip baru belum tersedia. Data lama tetap dipertahankan.
 
 Setiap barang memakai tarif IDR per kg atau per item. Tarif kosong mengikuti default per kg. Harga pembelian tidak ditambahkan ke omzet jasa. Target adalah proyeksi jasa, bukan status pembayaran. Impas hanya estimasi berdasarkan tarif rata-rata komposisi muatan. PP menjumlahkan jasa dan biaya kedua arah; capex CGK–IST dihitung satu kali agar total tidak berubah saat memilih arah.

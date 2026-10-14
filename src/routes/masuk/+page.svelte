@@ -10,14 +10,10 @@
   let name = $state("");
   let email = $state("");
   let password = $state("");
-  let accountsReady = $state(false);
-  let checkingReady = $state(true);
   const control = "min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-base outline-none focus:border-primary";
 
   onMount(() => {
     void loadMe();
-    void fetch("/api/readiness").then((res) => res.json()).then((data) => { accountsReady = data.accountsReady === true; })
-      .catch(() => { accountsReady = false; }).finally(() => { checkingReady = false; });
   });
 
   function pesan(error: unknown): string {
@@ -37,12 +33,16 @@
         body: JSON.stringify({ role: chosen }),
       });
       const data = (await res.json()) as { role?: unknown; error?: string };
+      if (data.error === "admin-forbidden") {
+        notice = "Akun ini belum ditetapkan sebagai admin.";
+        busy = false;
+        return;
+      }
       if (data.error === "admin-taken") {
         notice = "Peran admin sudah diambil. Pilih klien atau jastiper.";
         busy = false;
         return;
       }
-      if (data.error === "admin-restricted") { notice = "Admin hanya dapat diambil oleh email pemilik yang ditentukan operator."; busy = false; return; }
       if (!res.ok || !isRole(data.role)) {
         notice = "Peran belum tersimpan. Coba lagi.";
         busy = false;
@@ -57,7 +57,7 @@
 
   async function lanjut(event: SubmitEvent) {
     event.preventDefault();
-    if (!chosen || busy) return;
+    if ((registering && !chosen) || busy || !session.databaseReady) return;
     busy = true;
     notice = "";
     try {
@@ -75,7 +75,8 @@
       }
       password = "";
       sessionStorage.removeItem("grok-auth.bearer-token");
-      sessionStorage.setItem(PENDING_ROLE_KEY, chosen);
+      if (chosen) sessionStorage.setItem(PENDING_ROLE_KEY, chosen);
+      else sessionStorage.removeItem(PENDING_ROLE_KEY);
       window.location.assign("/masuk/selesai");
     } catch (error) {
       notice = pesan(error);
@@ -108,14 +109,14 @@
     <h1 class="mt-1 font-display text-4xl italic">{session.user ? "Pilih peran" : "Masuk ke titipin"}</h1>
     <p class="mt-3 text-muted">
       {#if session.user}
-        Kamu sudah masuk sebagai {session.user.name || session.user.email}. Pilih peran sekali. Admin hanya untuk pengembang, dan hanya satu.
+        Kamu sudah masuk sebagai {session.user.name || session.user.email}. Pilih peran sekali. Admin ditetapkan oleh operator.
       {:else}
-        Pilih peran, lalu masuk dengan email dan password. Meja hitung tetap bisa dibuka tanpa akun.
+        Masuk dengan email dan password. Untuk akun baru, pilih peran klien atau jastiper. Meja hitung tetap bisa dibuka tanpa akun.
       {/if}
     </p>
 
     <div class="mt-6 grid gap-3">
-      {#each ROLES as item (item.id)}
+      {#each ROLES.filter((item) => item.id !== "admin" || session.canClaimAdmin) as item (item.id)}
         <button
           type="button"
           class="rounded-2xl border px-4 py-3 text-left shadow-ticket {chosen === item.id ? 'border-primary bg-surface' : 'border-border bg-surface'}"
@@ -131,14 +132,15 @@
     {#if notice}
       <p class="mt-4 text-sm text-accent" role="status">{notice}</p>
     {/if}
+    {#if !session.databaseReady}
+      <p class="mt-4 text-sm text-accent" role="status">Penyimpanan akun belum tersedia. Pendaftaran dan login belum aktif. <a href="/" class="underline">Gunakan meja hitung</a> dengan penyimpanan di perangkat ini.</p>
+    {/if}
 
     {#if session.user}
       <button type="button" class="mt-6 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={!chosen || busy} onclick={pakai}>
         {busy ? "Menyimpan…" : "Pakai peran ini"}
       </button>
     {:else}
-      {#if checkingReady}<p class="mt-4 text-sm text-muted" role="status">Memeriksa layanan akun…</p>
-      {:else if !accountsReady}<p class="mt-4 text-sm text-accent" role="status">Penyimpanan akun belum tersedia. Pendaftaran dan masuk sementara dinonaktifkan. <a href="/" class="underline">Gunakan meja hitung</a> atau <a href="/portal" class="underline">lihat portal contoh</a>.</p>{/if}
       <form class="mt-6 grid gap-4" onsubmit={lanjut}>
         {#if registering}
           <label class="grid gap-1 text-sm">Nama
@@ -152,14 +154,14 @@
           <input class={control} type="password" bind:value={password} autocomplete={registering ? "new-password" : "current-password"} required minlength={registering ? 12 : 1} maxlength="128" />
         </label>
         {#if registering}<p class="text-xs text-muted">Gunakan minimal 12 karakter.</p>{/if}
-        <button type="submit" class="min-h-11 rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={!chosen || busy || !accountsReady}>
+        <button type="submit" class="min-h-11 rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={(registering && !chosen) || busy || !session.databaseReady}>
           {busy ? "Memproses…" : registering ? "Buat akun" : "Masuk"}
         </button>
         <button type="button" class="min-h-11 rounded-full border border-border px-5 text-sm" disabled={busy} onclick={() => { registering = !registering; password = ""; notice = ""; }}>
           {registering ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar"}
         </button>
       </form>
-      {#if !chosen}
+      {#if registering && !chosen}
         <p class="mt-3 text-sm text-muted">Pilih peran dulu, baru lanjut.</p>
       {/if}
     {/if}

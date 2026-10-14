@@ -14,6 +14,8 @@ export const session = $state({
   pending: true,
   user: null as MeUser | null,
   role: null as Role | null,
+  databaseReady: false,
+  canClaimAdmin: false,
 });
 
 let inflight: Promise<void> | null = null;
@@ -27,7 +29,7 @@ export async function authedFetch(url: string, init: RequestInit = {}): Promise<
     if (token) headers.set("authorization", `Bearer ${token}`);
   }
   if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
-  return fetch(url, { ...init, headers, credentials: "same-origin" });
+  return fetch(url, { signal: AbortSignal.timeout(15000), ...init, headers, credentials: "same-origin" });
 }
 
 /** Resolve the session once per page load. Later calls share the in-flight request. */
@@ -45,12 +47,16 @@ export function refreshMe(): Promise<void> {
     try {
       const res = await authedFetch("/api/saya");
       if (!res.ok) throw new Error("sesi");
-      const data = (await res.json()) as { user?: MeUser | null; role?: unknown };
+      const data = (await res.json()) as { user?: MeUser | null; role?: unknown; databaseReady?: boolean; canClaimAdmin?: boolean };
       session.user = data.user ?? null;
       session.role = isRole(data.role) ? data.role : null;
+      session.databaseReady = data.databaseReady === true;
+      session.canClaimAdmin = data.canClaimAdmin === true;
     } catch {
       session.user = null;
       session.role = null;
+      session.databaseReady = false;
+      session.canClaimAdmin = false;
     } finally {
       session.pending = false;
       resolved = true;
