@@ -9,7 +9,7 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Meja trip: kuota bagasi, muatan per kg, harga per kg, opex, capex, laba.
 - Arah `Jakarta → Turki` dan `Turki → Jakarta`.
 - Mode **pergi saja** atau **pulang-pergi**. PP menjumlahkan tiket dan opex kedua kaki. Capex dihitung sekali.
-- Kalkulasi pengunjung tersimpan di perangkat. Trip akun memakai Postgres, dibatasi oleh sesi pengguna, dan dapat dibuka lintas perangkat setelah database produksi aktif.
+- Kalkulasi pengunjung tersimpan di perangkat. Skenario trip akun tersimpan di Convex (`trips`), dibatasi oleh sesi pengguna pada kode aplikasi.
 - Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu dan ditetapkan operator melalui ID akun, bukan dipilih pengunjung pertama.
 - AI BYOK di `/pengaturan`: URL/model custom yang diizinkan operator. API key hanya berada di memori halaman dan diteruskan ke penyedia saat pengguna meminta.
 - Titipan per akun, dan antrean untuk jastiper.
@@ -32,9 +32,9 @@ Meja tidak dikunci login.
 
 ## Tumpukan
 
-SvelteKit, Svelte 5, Bun, Postgres, Tailwind, Better Auth, Vercel.
+SvelteKit, Svelte 5, Bun, Tailwind, Better Auth, Convex, Vercel.
 
-Akun, titipan, dan trip pribadi memakai Postgres. PGLite hanya untuk pengembangan lokal; produksi menolak operasi akun tanpa database permanen. Fungsi Convex lama tetap tersimpan di repo tetapi tidak dipanggil UI dan tidak diterbitkan oleh perubahan ini.
+Meja aktif memakai perangkat (localStorage) untuk pengunjung. Convex menyimpan skenario trip (`trips`), deployment `impressive-wildcat-570`. PGlite dipakai untuk pengembangan lokal saat tidak ada backend.
 
 ## Menjalankan
 
@@ -54,25 +54,20 @@ Jangan buat file `.env`. Rahasia tidak masuk repo.
 
 ## Env di Vercel
 
-Sudah dipasang di production, preview, dan development:
+Ditetapkan operator di project `manef/jastip`:
 
 | Nama | Fungsi |
 | --- | --- |
 | `BETTER_AUTH_URL` | Origin publik situs |
 | `BETTER_AUTH_SECRET` | Menandatangani sesi |
 | `VITE_AUTH_ENABLED` | `true` |
+| `PUBLIC_CONVEX_URL` | URL backend Convex, `https://impressive-wildcat-570.convex.cloud` |
 
-Belum ada, dan masuk sungguhan di situs publik belum tersimpan tanpanya:
+`PUBLIC_CONVEX_URL` dipakai untuk menyambung skenario trip ke Convex. Trip juga tersedia pada `trip_scenarios` lokal; `user_id` selalu berasal dari sesi server. Operator menetapkan `TITIPIN_ADMIN_USER_ID` ke ID akun pemilik setelah akun tersebut dibuat. Pada permintaan berikutnya akun itu dapat menjadi satu-satunya admin; indeks unik tetap menolak admin kedua. Jangan memakai email yang belum diverifikasi sebagai bukti kepemilikan admin.
 
-| Nama | Kenapa belum |
-| --- | --- |
-| `DATABASE_URL` | Neon belum terhubung ke proyek Vercel ini |
+Token Vercel dan Team ID disimpan di `.manef/config.json` (gitignored), tidak pernah di commit.
 
-`PUBLIC_CONVEX_URL` tidak diperlukan oleh meja aktif. Trip tersimpan pada `trip_scenarios` melalui `/api/trip`; `user_id` selalu berasal dari sesi server. Migrasi `0003_trips.sql` berjalan bersama migrasi akun saat build yang memiliki `DATABASE_URL`.
-
-Operator menetapkan `TITIPIN_ADMIN_USER_ID` ke ID akun pemilik setelah akun tersebut dibuat. Pada permintaan berikutnya akun itu dapat menjadi satu-satunya admin; indeks unik tetap menolak admin kedua. Jangan memakai email yang belum diverifikasi sebagai bukti kepemilikan admin.
-
-Login mandiri tidak memakai `GROK_AUTH_ISSUER`, `GROK_AUTH_CLIENT_ID`, atau `GROK_AUTH_CLIENT_SECRET`. Nilai existing di Vercel belum dihapus oleh perubahan lokal ini. Tidak ada konfigurasi email reset/verifikasi; fitur tersebut belum disediakan.
+Login memakai email/password mandiri (tidak ada OAuth broker). Tidak ada konfigurasi email reset/verifikasi; fitur tersebut belum disediakan.
 
 ## AI BYOK
 
@@ -90,9 +85,9 @@ Pengujian BYOK dan auth mandiri:
 node --experimental-strip-types --test src/lib/titip/ai.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts
 ```
 
-`npm test` menjalankan tes aplikasi dan platform; empat tes dokumen skill Grok dilewati hanya bila dokumen tersebut tidak tersedia di repo standalone. `npm run test:trip-api` membuat akun sintetis pada server lokal dan memeriksa batas admin serta isolasi dua akun. Script ini menolak origin selain localhost.
+`npm test` menjalankan tes aplikasi dan platform. `npm run test:trip-api` membuat akun sintetis pada server lokal dan memeriksa batas admin serta isolasi dua akun. Script ini menolak origin selain localhost.
 
-CI memeriksa build, tipe, unit test, API akun lokal, dan render desktop/mobile pada dev serta hasil build. Akun produksi/BYOK sungguhan baru dapat diuji setelah Neon diotorisasi dan `DATABASE_URL` dipasang.
+CI memeriksa build, tipe, unit test, API akun lokal, dan render desktop/mobile pada dev serta hasil build. Akun produksi/BYOK sungguhan diuji terhadap backend yang dikonfigurasi operator.
 
 ## Desain
 

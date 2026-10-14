@@ -42,9 +42,9 @@ Pada benih pergi saja, sisa bagasi 17,7 kg dan laba −Rp5.896.750. Angka itu ti
 
 Data akun disimpan terpusat; kalkulasi pengunjung memiliki salinan perangkat.
 
-**Trip aktif** memakai `trip_scenarios` di Postgres, satu dokumen per ID akun yang berasal dari sesi server. Pengunjung tanpa akun memakai localStorage perangkat. Kalkulasi satu akun tidak memakai dokumen `live` bersama. Fungsi Convex lama dipertahankan sebagai kode historis dan tidak dipanggil UI.
+**Trip aktif** disimpan di Convex (`trips`, deployment `impressive-wildcat-570`), satu dokumen per ID akun yang berasal dari sesi server. Pengunjung tanpa akun memakai localStorage perangkat. Fungsi Convex lama dipertahankan sebagai kode historis.
 
-**Postgres** menyimpan akun Better Auth, tabel `profiles` (peran), dan tabel `titipan`. `user_id` bertipe teks. Setiap permintaan titipan dibatasi oleh sesi, bukan oleh id yang dikirim browser.
+Sumber data resmi proyek ini adalah Convex. Postgres/Neon tidak dipakai.
 
 Portal `/portal` tidak menulis ke keduanya. Sari, Raka, Deniz, dan Manef hanya ada di memori halaman.
 
@@ -57,6 +57,5 @@ Klien dan jastiper dapat memilih peran sekali. Admin harus ditetapkan operator d
 ## Yang sengaja ditunda
 
 - Banyak rute.
-- Convex cloud tidak diperlukan untuk meja aktif.
-- Database produksi, sampai Neon benar-benar menempel ke proyek Vercel dan `DATABASE_URL` terisi saat build.
+- Pemasangan UI trip ke Convex (`PUBLIC_CONVEX_URL` di Vercel).
 - OAuth broker tidak diperlukan oleh login email/password mandiri.

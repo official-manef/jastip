@@ -78,6 +78,19 @@
     font: inherit;
     color: inherit;
   }
+
+  /*
+   * iOS Safari memperbesar (zoom) halaman saat fokus ke input yang font-nya
+   * < 16px. Paksa minimal 16px pada kontrol form di layar sentuh supaya fokus
+   * tidak mengguncang tata letak. Desktop tetap boleh kecil.
+   */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
 }
 
 @layer components {

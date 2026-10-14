@@ -1,18 +1,15 @@
-// Titipin service worker — offline app shell + runtime caching.
+// Titipin service worker — offline app shell + runtime caching + update flow.
 //
-// Strategy:
-//   - navigations: network-first, fall back to the cached app shell when offline
-//   - same-origin assets: stale-while-revalidate
-//   - API calls: never cached (account data must stay live)
-const VERSION = "titipin-v1";
+// Versi naik tiap rilis asset berubah. SW baru TIDAK langsung mengambil alih;
+// ia menunggu pesan SKIP_WAITING dari halaman, supaya app bisa menampilkan toast
+// "versi baru" dan membiarkan pengguna memuat ulang saat siap (bukan paksa).
+const VERSION = "titipin-v2";
 const SHELL = `shell-${VERSION}`;
 const ASSETS = `assets-${VERSION}`;
 const SHELL_URLS = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(SHELL).then((cache) => cache.addAll(SHELL_URLS)).then(() => self.skipWaiting()),
-  );
+  event.waitUntil(caches.open(SHELL).then((cache) => cache.addAll(SHELL_URLS)));
 });
 
 self.addEventListener("activate", (event) => {
@@ -24,6 +21,12 @@ self.addEventListener("activate", (event) => {
       )
       .then(() => self.clients.claim()),
   );
+});
+
+// Halaman meminta SW yang menunggu untuk segera aktif setelah pengguna menekan
+// "Muat ulang". Halaman lalu mendengar `controllerchange` dan me-reload.
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {

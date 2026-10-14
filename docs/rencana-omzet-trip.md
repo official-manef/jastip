@@ -2,6 +2,8 @@
 
 Tanggal audit: 14 Oktober 2026. Status: usulan untuk dibahas bersama Fikran; belum mengubah perilaku aplikasi.
 
+Catatan lanjutan (14 Okt): Postgres/Neon dihapus dari rencana — sumber data memakai Convex. Angka kapasitas & target tetap konfigurasi, bukan konstanta.
+
 Baseline: `main` pada [4f6991d](https://github.com/official-manef/jastip/commit/4f6991dbcd6889a36eb507abd7e6f4ed83b7193a). Commit terakhir berjudul “Tulis README, konteks produk, dan catatan progress.” Dokumentasi terakhir bertanggal 10 Oktober 2026.
 
 ## 1. Hasil pemeriksaan dan bagian yang digunakan kembali

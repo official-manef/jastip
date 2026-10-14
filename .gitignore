@@ -14,3 +14,6 @@ dist
 .env.*
 !.env.example
 *.log
+# Config & catatan kerja manef (berisi rahasia: token Vercel, dll). Hanya template yang masuk repo.
+.manef/*
+!.manef/config.example.json
