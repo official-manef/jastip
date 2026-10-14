@@ -17,6 +17,8 @@
   });
   let source = $state("Memuat kalkulasi…");
   let syncFailed = $state(false);
+  let conflict = $state(false);
+  let version = $state(0);
   let initialized = false;
   let revision = 0;
   let saving = false;
@@ -54,10 +56,21 @@
         source = "Menyimpan ke akun…";
         try {
           const response = await authedFetch("/api/trip", {
-            method: "PUT", body: JSON.stringify(snapshot()),
+            method: "PUT", body: JSON.stringify({ trip: snapshot(), version }),
             signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
           });
+          if (response.status === 409) {
+            const data = await response.json().catch(() => ({}));
+            conflict = true;
+            queued = false;
+            source = "Trip diubah di perangkat lain. Muat ulang untuk menyatukan versi.";
+            if (typeof data.version === "number") version = data.version;
+            return;
+          }
           if (!response.ok) throw new Error("save");
+          const data = await response.json().catch(() => ({}));
+          if (typeof data.version === "number") version = data.version;
+          conflict = false;
           syncFailed = false;
           if (revision === savingRevision) source = "Tersimpan di akun pribadi.";
         } catch {
@@ -97,6 +110,7 @@
             persistLocal();
             source = "Tersimpan di akun pribadi.";
           }
+          if (typeof data.version === "number") version = data.version;
         } catch {
           if (controller.signal.aborted) return;
           syncFailed = true;
@@ -332,6 +346,7 @@
           {source}
         </p>
         {#if syncFailed}<button type="button" class="mt-2 min-h-11 text-sm text-primary underline" onclick={() => void syncAccount()}>Coba simpan ke akun lagi</button>{/if}
+        {#if conflict}<button type="button" class="mt-2 min-h-11 text-sm text-accent underline" onclick={() => window.location.reload()}>Muat ulang trip dari akun</button>{/if}
       </div>
       <div class="flex flex-col items-stretch gap-2 sm:items-end">
         <div class="flex flex-wrap rounded-full border border-border bg-surface p-1" role="group" aria-label="Arah rute">
