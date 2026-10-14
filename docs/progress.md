@@ -2,6 +2,28 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 14 Oktober 2026 (lanjutan 2): asisten AI + function calling
+
+- Model & key AI boleh diset di env server: `AI_API_KEY` (server-only, tanpa prefix
+  `VITE_`), `AI_API_BASE_URL`, `AI_MODEL`, `AI_ALLOWED_HOSTS`. Bila `AI_API_KEY` ada,
+  pengguna langsung bisa chat; BYOK di `/pengaturan` tetap ada dan menimpa key server.
+- Default model diperbaiki dari `"deepseakv4.1 flash"` (typo, ID tak valid) menjadi
+  `ollama/deepseek-v4.1-flash:cloud` — ID persis penyedia conextlab (tools=true).
+- Halaman baru `/asisten`: chat dengan **function calling**. Tool dijalankan di klien
+  (`src/lib/titip/tools.ts`) sehingga perubahan langsung tampil di meja hitung.
+- 15 tool: `ringkasan_trip, set_trip, set_opex, set_capex, tambah_barang, ubah_barang,
+  hapus_barang, reset_arah, daftar_titipan, buat_titipan, ubah_status_titipan,
+  daftar_orang, set_peran, usul_penutup_target, periksa_risiko`. Tool hanya membungkus
+  aksi UI yang sudah ada; aturan peran, admin tunggal, validasi, dan CSRF tetap di server.
+- State trip diangkat ke `src/lib/titip/trip-store.svelte.ts` supaya Desk dan asisten
+  memakai satu sumber; simpan-muat (perangkat + akun) tetap seperti sebelumnya.
+- `/api/ai` mengisi `baseUrl`/`model` dari env bila client tidak mengirim, dan `GET`
+  hanya melaporkan apakah key server ada (tak pernah membocorkan key).
+- Verifikasi: unit test AI 7/7; total tes aplikasi lulus; `svelte-check` 0 error; render
+  smoke `/`, `/asisten`, `/pengaturan`, `/titip`, `/portal` bersih desktop+mobile; uji API
+  dua akun PASS; E2E `/api/ai` mengembalikan `toolCalls:[set_trip]` memakai key env.
+- Catatan: `deepseek-v4.1-flash` = `vision:false`, jadi lampiran gambar/camera belum didukung.
+
 ## 14 Oktober 2026 (lanjutan): PWA shell, Convex, pembersihan
 
 - [PR #7](https://github.com/official-manef/jastip/pull/7): buang seluruh chrome Grok App Builder (plugin/middleware, `public/__grok`, brand-check, preview-bridge, app-data, gate auth). Ganti dengan PWA sendiri: `manifest.webmanifest`, service worker (offline shell), ikon 180/192/512 + maskable, `files.assets=public`.

@@ -1,127 +1,23 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { authedFetch, loadMe, session } from "../lib/titip/session.svelte";
-  import { parseTrip, TRIP_STORAGE_KEY, type TripState } from "../lib/titip/trip-state";
-  import { computeTrip, DIR_META, scenarioFor, type CapexLine, type Dir, type Good, type LinePricing, type PricingModel, type Scenario, type TripMode } from "../lib/titip/calc";
+  import { session } from "../lib/titip/session.svelte";
+  import { desk, initDesk, patch, patchDir, resetDir, retrySync, setCapex, setDir, setGood, setMode, setOpex, setPricing, clearPricing, addGood, removeGood } from "../lib/titip/trip-store.svelte";
+  import { computeTrip, DIR_META, type CapexLine, type Dir, type Good, type LinePricing, type PricingModel, type Scenario, type TripMode } from "../lib/titip/calc";
   import { capacity, computeRevenue, CURRENCIES, ITEM_UNITS, lineWeightKg, targetProgress } from "../lib/titip/pricing";
   import { idr, kg } from "../lib/titip/model";
 
   const control =
     "min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-base outline-none placeholder:text-muted";
 
-  let dir = $state<Dir>("cgk-ist");
-  let mode = $state<TripMode>("one");
-  let byDir = $state<Record<Dir, Scenario>>({
-    "cgk-ist": scenarioFor("cgk-ist"),
-    "ist-cgk": scenarioFor("ist-cgk"),
-  });
-  let source = $state("Memuat kalkulasi…");
-  let syncFailed = $state(false);
-  let conflict = $state(false);
-  let version = $state(0);
-  let initialized = false;
-  let revision = 0;
-  let saving = false;
-  let queued = false;
-  let localSaved = false;
-  const controller = new AbortController();
+  // State trip hidup di trip-store supaya asisten AI bisa mengubahnya juga.
+  const dir = $derived(desk.dir);
+  const mode = $derived(desk.mode);
+  const byDir = $derived(desk.byDir);
+  const source = $derived(desk.source);
+  const syncFailed = $derived(desk.syncFailed);
+  const conflict = $derived(desk.conflict);
 
-  function snapshot(): TripState {
-    return { dir, mode, cgkIst: byDir["cgk-ist"], istCgk: byDir["ist-cgk"] };
-  }
-
-  function restore(trip: TripState) {
-    dir = trip.dir;
-    mode = trip.mode;
-    byDir = { "cgk-ist": trip.cgkIst, "ist-cgk": trip.istCgk };
-  }
-
-  function persistLocal() {
-    try {
-      const key = session.user ? `${TRIP_STORAGE_KEY}:${session.user.id}` : TRIP_STORAGE_KEY;
-      localStorage.setItem(key, JSON.stringify(snapshot()));
-      localSaved = true;
-    } catch { localSaved = false; }
-  }
-
-  async function syncAccount() {
-    if (!session.user || !initialized || controller.signal.aborted) return;
-    queued = true;
-    if (saving) return;
-    saving = true;
-    try {
-      while (queued && !controller.signal.aborted) {
-        queued = false;
-        const savingRevision = revision;
-        source = "Menyimpan ke akun…";
-        try {
-          const response = await authedFetch("/api/trip", {
-            method: "PUT", body: JSON.stringify({ trip: snapshot(), version }),
-            signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
-          });
-          if (response.status === 409) {
-            const data = await response.json().catch(() => ({}));
-            conflict = true;
-            queued = false;
-            source = "Trip diubah di perangkat lain. Muat ulang untuk menyatukan versi.";
-            if (typeof data.version === "number") version = data.version;
-            return;
-          }
-          if (!response.ok) throw new Error("save");
-          const data = await response.json().catch(() => ({}));
-          if (typeof data.version === "number") version = data.version;
-          conflict = false;
-          syncFailed = false;
-          if (revision === savingRevision) source = "Tersimpan di akun pribadi.";
-        } catch {
-          if (controller.signal.aborted) return;
-          syncFailed = true;
-          source = localSaved ? "Tersimpan di perangkat; sinkronisasi akun gagal." : "Belum tersimpan. Coba sinkronisasi lagi.";
-          // A later edit or explicit retry can try again without a retry loop.
-          queued = false;
-        }
-      }
-    } finally { saving = false; }
-  }
-
-  onMount(() => {
-    void (async () => {
-      await loadMe();
-      if (controller.signal.aborted) return;
-      try {
-        const key = session.user ? `${TRIP_STORAGE_KEY}:${session.user.id}` : TRIP_STORAGE_KEY;
-        const trip = parseTrip(JSON.parse(localStorage.getItem(key) || "null"));
-        if (trip && revision === 0) restore(trip);
-      } catch { /* Corrupt or unavailable device storage leaves the calculator usable. */ }
-      persistLocal();
-      source = localSaved ? "Tersimpan di perangkat ini." : "Penyimpanan perangkat tidak tersedia. Kalkulasi belum tersimpan.";
-      if (session.user) {
-        const loadingRevision = revision;
-        try {
-          const response = await authedFetch("/api/trip", {
-            signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
-          });
-          if (!response.ok) throw new Error("load");
-          const data = await response.json();
-          const trip = parseTrip(data.trip);
-          if (controller.signal.aborted) return;
-          if (trip && loadingRevision === 0 && revision === 0) {
-            restore(trip);
-            persistLocal();
-            source = "Tersimpan di akun pribadi.";
-          }
-          if (typeof data.version === "number") version = data.version;
-        } catch {
-          if (controller.signal.aborted) return;
-          syncFailed = true;
-          source = localSaved ? "Tersimpan di perangkat; akun belum dapat dimuat." : "Akun belum dapat dimuat. Kalkulasi belum tersimpan.";
-        }
-      }
-      initialized = true;
-      if (revision > 0) { persistLocal(); void syncAccount(); }
-    })();
-    return () => controller.abort();
-  });
+  onMount(() => { initDesk(); });
 
   let draftName = $state("");
   let draftKg = $state("0,5");
@@ -150,128 +46,6 @@
   function pickTarifLabel(p: LinePricing): string {
     const money = `${fmtTarif(p.rate)}${p.currency ? ` ${p.currency}` : ""}`;
     return p.model === "per_item" ? `${money}/${p.unit || "item"}` : `${money}/kg`;
-  }
-
-  function commit() {
-    revision += 1;
-    if (!initialized) return;
-    persistLocal();
-    source = localSaved ? "Tersimpan di perangkat ini." : "Penyimpanan perangkat tidak tersedia. Kalkulasi belum tersimpan.";
-    void syncAccount();
-  }
-
-  function patch(partial: Partial<Scenario>) {
-    byDir = { ...byDir, [dir]: { ...byDir[dir], ...partial } };
-    commit();
-  }
-
-  function patchDir(target: Dir, partial: Partial<Scenario>) {
-    byDir = { ...byDir, [target]: { ...byDir[target], ...partial } };
-    commit();
-  }
-
-  function setGood(id: string, partial: Partial<Good>) {
-    if (partial.qty !== undefined) partial.qty = Math.min(10_000, Math.max(0, Math.round(partial.qty)));
-    byDir = {
-      ...byDir,
-      [dir]: {
-        ...byDir[dir],
-        goods: byDir[dir].goods.map((g) => (g.id === id ? { ...g, ...partial } : g)),
-      },
-    };
-    commit();
-  }
-
-  function setPricing(id: string, partial: Partial<LinePricing>) {
-    byDir = {
-      ...byDir,
-      [dir]: {
-        ...byDir[dir],
-        goods: byDir[dir].goods.map((g) =>
-          g.id === id ? { ...g, pricing: { model: "per_kg", rate: 0, ...g.pricing, ...partial } } : g,
-        ),
-      },
-    };
-    commit();
-  }
-
-  function clearPricing(id: string) {
-    byDir = {
-      ...byDir,
-      [dir]: {
-        ...byDir[dir],
-        goods: byDir[dir].goods.map((g) => {
-          if (g.id !== id) return g;
-          const { pricing: _drop, ...rest } = g;
-          return rest;
-        }),
-      },
-    };
-    commit();
-  }
-
-  function addGood(good: Good) {
-    byDir = { ...byDir, [dir]: { ...byDir[dir], goods: [...byDir[dir].goods, good] } };
-    commit();
-  }
-
-  function removeGood(id: string) {
-    byDir = {
-      ...byDir,
-      [dir]: { ...byDir[dir], goods: byDir[dir].goods.filter((g) => g.id !== id) },
-    };
-    commit();
-  }
-
-  function setOpex(id: string, amount: number) {
-    if (!Number.isFinite(amount)) return;
-    amount = Math.min(1_000_000_000_000, Math.max(0, amount));
-    byDir = {
-      ...byDir,
-      [dir]: {
-        ...byDir[dir],
-        opex: byDir[dir].opex.map((line) => (line.id === id ? { ...line, amount } : line)),
-      },
-    };
-    commit();
-  }
-
-  function applyCapex(lines: CapexLine[], id: string, partial: Partial<CapexLine>) {
-    return lines.map((line) => (line.id === id ? { ...line, ...partial } : line));
-  }
-
-  function setCapex(id: string, partial: Partial<CapexLine>) {
-    if (partial.price !== undefined) partial.price = Math.min(1_000_000_000_000, Math.max(0, partial.price));
-    if (partial.trips !== undefined) partial.trips = Math.min(10_000, Math.max(1, Math.round(partial.trips)));
-    if (mode === "pp") {
-      byDir = {
-        "cgk-ist": { ...byDir["cgk-ist"], capex: applyCapex(byDir["cgk-ist"].capex, id, partial) },
-        "ist-cgk": { ...byDir["ist-cgk"], capex: applyCapex(byDir["ist-cgk"].capex, id, partial) },
-      };
-    } else {
-      byDir = { ...byDir, [dir]: { ...byDir[dir], capex: applyCapex(byDir[dir].capex, id, partial) } };
-    }
-    commit();
-  }
-
-  function setMode(next: TripMode) {
-    mode = next;
-    if (next === "pp") {
-      const capex = byDir[dir].capex;
-      byDir = {
-        "cgk-ist": { ...byDir["cgk-ist"], capex },
-        "ist-cgk": { ...byDir["ist-cgk"], capex },
-      };
-    }
-    commit();
-  }
-
-  function resetDir() {
-    const next = scenarioFor(dir);
-    const copy = { ...byDir, [dir]: next };
-    if (mode === "pp") copy[other] = { ...copy[other], capex: next.capex };
-    byDir = copy;
-    commit();
   }
 
   function addDraft() {
@@ -345,13 +119,13 @@
         <p class="mt-1 text-xs text-muted" role="status">
           {source}
         </p>
-        {#if syncFailed}<button type="button" class="mt-2 min-h-11 text-sm text-primary underline" onclick={() => void syncAccount()}>Coba simpan ke akun lagi</button>{/if}
+        {#if syncFailed}<button type="button" class="mt-2 min-h-11 text-sm text-primary underline" onclick={() => retrySync()}>Coba simpan ke akun lagi</button>{/if}
         {#if conflict}<button type="button" class="mt-2 min-h-11 text-sm text-accent underline" onclick={() => window.location.reload()}>Muat ulang trip dari akun</button>{/if}
       </div>
       <div class="flex flex-col items-stretch gap-2 sm:items-end">
         <div class="flex flex-wrap rounded-full border border-border bg-surface p-1" role="group" aria-label="Arah rute">
-          {@render seg(dir === "cgk-ist", "Jakarta → Turki", () => { dir = "cgk-ist"; commit(); })}
-          {@render seg(dir === "ist-cgk", "Turki → Jakarta", () => { dir = "ist-cgk"; commit(); })}
+          {@render seg(dir === "cgk-ist", "Jakarta → Turki", () => setDir("cgk-ist"))}
+          {@render seg(dir === "ist-cgk", "Turki → Jakarta", () => setDir("ist-cgk"))}
         </div>
         <div class="flex flex-wrap rounded-full border border-border bg-surface p-1" role="group" aria-label="Jenis trip">
           {@render seg(mode === "one", "Pergi saja", () => setMode("one"))}

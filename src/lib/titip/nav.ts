@@ -30,6 +30,13 @@ export const NAV_ITEMS: NavItem[] = [
     roles: [],
   },
   {
+    href: "/asisten",
+    label: "Asisten",
+    hint: "Chat & ubah lewat tool",
+    icon: "M12 3v2m0 14v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M3 12h2m14 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8",
+    roles: ["klien", "jastiper", "admin"],
+  },
+  {
     href: "/titip",
     label: "Titipan",
     hint: "Permintaan titipan",
