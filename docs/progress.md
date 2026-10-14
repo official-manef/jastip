@@ -4,6 +4,14 @@ Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
 ## 14 Oktober 2026: persistensi dan akses akun
 
+Rilis perbaikan sudah digabung melalui [PR #3](https://github.com/official-manef/jastip/pull/3), commit `0f533edac3a3087d6c57f85dedff80915f4faee3`. Deployment produksi Vercel `dpl_2mkQDMfNZx26Qd2ErGeHQMVjVtN6` berstatus READY/PROMOTED.
+
+[CI #38585204905](https://github.com/official-manef/jastip/actions/runs/38585204905) lulus. Screenshot desktop 1280×800 dan mobile 390×844 dari dev serta hasil build sudah diperiksa: tidak ada overflow, console error, page error, atau perbedaan baseline. Bukti tersedia pada artifact `jastip-render-evidence` di run tersebut.
+
+Verifikasi produksi: perubahan mode PP dan jumlah kopi 4 menjadi 5 bertahan setelah refresh; status menampilkan lokasi penyimpanan perangkat. Skenario contoh kemudian dikembalikan ke default. Halaman `/masuk` menampilkan database belum tersedia, tombol login nonaktif, dan tidak menampilkan pilihan admin kepada pengunjung umum.
+
+Draft [PR #1](https://github.com/official-manef/jastip/pull/1) tentang tarif campuran/multi-trip masih belum diimplementasikan. Dokumennya mencatat keputusan Fikran yang belum tersedia: mata uang jasa, kapan omzet diakui, definisi kapasitas 65 kg, pembayaran/refund, serta cakupan target USD 1.200 pada pergi atau PP. Rilis ini tidak menetapkan nilai atau aturan tersebut secara sepihak. Status proyek keseluruhan tetap belum selesai karena database produksi dan rancangan bisnis tersebut.
+
 - Pengunjung menyimpan kalkulasi di perangkat; status lokasi simpan ditampilkan dengan jelas.
 - Trip akun memakai Postgres melalui `/api/trip`, satu skenario per sesi pengguna. UI tidak lagi memanggil dokumen Convex bersama yang dapat ditulis tanpa autentikasi.
 - Penulisan akun berjalan berurutan; respons pemuatan yang terlambat tidak menimpa perubahan input pengguna. Gagal sinkronisasi menyisakan salinan lokal dan tombol mencoba kembali.
