@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
   import { authedFetch, loadMe, session } from "../lib/titip/session.svelte";
   import { parseTrip, TRIP_STORAGE_KEY, type TripState } from "../lib/titip/trip-state";
-  import { computeTrip, DIR_META, scenarioFor, type CapexLine, type Dir, type Good, type Scenario, type TripMode } from "../lib/titip/calc";
+  import { computeTrip, DIR_META, scenarioFor, type CapexLine, type Dir, type Good, type LinePricing, type PricingModel, type Scenario, type TripMode } from "../lib/titip/calc";
+  import { capacity, computeRevenue, lineWeightKg, targetProgress } from "../lib/titip/pricing";
   import { idr, kg } from "../lib/titip/model";
 
   const control =
@@ -16,6 +17,8 @@
   });
   let source = $state("Memuat kalkulasi…");
   let syncFailed = $state(false);
+  let conflict = $state(false);
+  let version = $state(0);
   let initialized = false;
   let revision = 0;
   let saving = false;
@@ -53,10 +56,21 @@
         source = "Menyimpan ke akun…";
         try {
           const response = await authedFetch("/api/trip", {
-            method: "PUT", body: JSON.stringify(snapshot()),
+            method: "PUT", body: JSON.stringify({ trip: snapshot(), version }),
             signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
           });
+          if (response.status === 409) {
+            const data = await response.json().catch(() => ({}));
+            conflict = true;
+            queued = false;
+            source = "Trip diubah di perangkat lain. Muat ulang untuk menyatukan versi.";
+            if (typeof data.version === "number") version = data.version;
+            return;
+          }
           if (!response.ok) throw new Error("save");
+          const data = await response.json().catch(() => ({}));
+          if (typeof data.version === "number") version = data.version;
+          conflict = false;
           syncFailed = false;
           if (revision === savingRevision) source = "Tersimpan di akun pribadi.";
         } catch {
@@ -96,6 +110,7 @@
             persistLocal();
             source = "Tersimpan di akun pribadi.";
           }
+          if (typeof data.version === "number") version = data.version;
         } catch {
           if (controller.signal.aborted) return;
           syncFailed = true;
@@ -117,9 +132,25 @@
   const meta = $derived(DIR_META[dir]);
   const other = $derived<Dir>(dir === "cgk-ist" ? "ist-cgk" : "cgk-ist");
   const n = $derived(computeTrip(mode, dir, byDir));
+  const rev = $derived(computeRevenue(scenario.goods, scenario.hargaPerKg, meta.shop === "TRY" ? "TRY" : "IDR"));
+  const progres = $derived(targetProgress(rev.service, scenario.target ?? 0));
+  const kapasitas = $derived(capacity(n.bersih, rev.totalKg));
+  const punyaTarif = $derived(rev.hasPricing);
+  const tarifKosong = $derived(rev.rows.filter((r) => (scenario.goods.find((g) => g.id === r.id)?.pricing?.rate ?? 0) <= 0).length);
+  const asumsi = $derived(tarifKosong > 0 || rev.needsRate);
+  const rowById = $derived(new Map(rev.rows.map((r) => [r.id, r])));
   const tiketHere = $derived(scenario.opex.find((line) => line.id === "tiket")?.label ?? "Tiket");
   const tiketThere = $derived(byDir[other].opex.find((line) => line.id === "tiket")?.label ?? "Tiket lawan");
   const over = $derived(n.sisa < 0);
+
+  function fmtTarif(rate: number): string {
+    return Number.isInteger(rate) ? rate.toLocaleString("id-ID") : String(rate);
+  }
+
+  function pickTarifLabel(p: LinePricing): string {
+    const money = `${fmtTarif(p.rate)}${p.currency ? ` ${p.currency}` : ""}`;
+    return p.model === "per_item" ? `${money}/${p.unit || "item"}` : `${money}/kg`;
+  }
 
   function commit() {
     revision += 1;
@@ -146,6 +177,34 @@
       [dir]: {
         ...byDir[dir],
         goods: byDir[dir].goods.map((g) => (g.id === id ? { ...g, ...partial } : g)),
+      },
+    };
+    commit();
+  }
+
+  function setPricing(id: string, partial: Partial<LinePricing>) {
+    byDir = {
+      ...byDir,
+      [dir]: {
+        ...byDir[dir],
+        goods: byDir[dir].goods.map((g) =>
+          g.id === id ? { ...g, pricing: { model: "per_kg", rate: 0, ...g.pricing, ...partial } } : g,
+        ),
+      },
+    };
+    commit();
+  }
+
+  function clearPricing(id: string) {
+    byDir = {
+      ...byDir,
+      [dir]: {
+        ...byDir[dir],
+        goods: byDir[dir].goods.map((g) => {
+          if (g.id !== id) return g;
+          const { pricing: _drop, ...rest } = g;
+          return rest;
+        }),
       },
     };
     commit();
@@ -287,6 +346,7 @@
           {source}
         </p>
         {#if syncFailed}<button type="button" class="mt-2 min-h-11 text-sm text-primary underline" onclick={() => void syncAccount()}>Coba simpan ke akun lagi</button>{/if}
+        {#if conflict}<button type="button" class="mt-2 min-h-11 text-sm text-accent underline" onclick={() => window.location.reload()}>Muat ulang trip dari akun</button>{/if}
       </div>
       <div class="flex flex-col items-stretch gap-2 sm:items-end">
         <div class="flex flex-wrap rounded-full border border-border bg-surface p-1" role="group" aria-label="Arah rute">
@@ -315,23 +375,83 @@
     <section class="rounded-3xl border border-border bg-surface p-4">
       <div class="flex items-baseline justify-between gap-3">
         <h2 class="text-2xl">Muatan</h2>
-        <p class="text-sm text-muted tabular-nums">{kg(n.terpakai)} terpakai</p>
+        <p class="text-sm text-muted tabular-nums">
+          {kg(n.terpakai)} terpakai · {idr(n.pendapatan)} jasa
+        </p>
       </div>
       <ul class="mt-3 divide-y divide-line">
         {#each scenario.goods as g (g.id)}
-          <li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3">
-            <div class="min-w-0">
-              <p class="truncate font-medium">{g.name}</p>
-              <p class="text-xs text-muted tabular-nums">
-                {kg(g.kg)} × {g.qty} = {kg(g.kg * g.qty)}
-                · beli {meta.shop === "TRY" ? `₺${g.beli}` : idr(g.beli)}
-              </p>
+          {@const r = rowById.get(g.id)}
+          {@const tarif = g.pricing}
+          <li class="py-3">
+            <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+              <div class="min-w-0">
+                <p class="truncate font-medium">{g.name}</p>
+                <p class="text-xs text-muted tabular-nums">
+                  {kg(g.kg)} × {g.qty} = {kg(lineWeightKg(g))}
+                  · beli {meta.shop === "TRY" ? `₺${g.beli}` : idr(g.beli)}
+                  {#if r && tarif}
+                    · <span class="text-primary">{pickTarifLabel(tarif)} = {fmtTarif(r.service)}</span>
+                  {:else}
+                    · <span class="text-muted">tarif global {idr(r?.rate ?? scenario.hargaPerKg)}/kg</span>
+                  {/if}
+                </p>
+              </div>
+              <div class="flex items-center gap-1">
+                <button type="button" aria-label="Kurangi" class="grid size-11 place-items-center rounded-full border border-border text-lg" onclick={() => setGood(g.id, { qty: Math.max(0, g.qty - 1) })}>−</button>
+                <span class="w-6 text-center text-sm tabular-nums">{g.qty}</span>
+                <button type="button" aria-label="Tambah" class="grid size-11 place-items-center rounded-full border border-border text-lg" onclick={() => setGood(g.id, { qty: g.qty + 1 })}>+</button>
+                <button type="button" class="min-h-11 px-2 text-sm text-muted" onclick={() => removeGood(g.id)}>Hapus</button>
+              </div>
             </div>
-            <div class="flex items-center gap-1">
-              <button type="button" aria-label="Kurangi" class="grid size-11 place-items-center rounded-full border border-border text-lg" onclick={() => setGood(g.id, { qty: Math.max(0, g.qty - 1) })}>−</button>
-              <span class="w-6 text-center text-sm tabular-nums">{g.qty}</span>
-              <button type="button" aria-label="Tambah" class="grid size-11 place-items-center rounded-full border border-border text-lg" onclick={() => setGood(g.id, { qty: g.qty + 1 })}>+</button>
-              <button type="button" class="min-h-11 px-2 text-sm text-muted" onclick={() => removeGood(g.id)}>Hapus</button>
+            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <div class="flex rounded-full border border-border bg-bg p-0.5" role="group" aria-label="Model tarif {g.name}">
+                <button type="button" aria-pressed={!tarif} class="min-h-8 rounded-full px-2 {!tarif ? 'bg-primary text-primary-fg' : 'text-muted'}" onclick={() => clearPricing(g.id)}>Global</button>
+                <button type="button" aria-pressed={tarif?.model === "per_kg"} class="min-h-8 rounded-full px-2 {tarif?.model === 'per_kg' ? 'bg-primary text-primary-fg' : 'text-muted'}" onclick={() => setPricing(g.id, { model: "per_kg" })}>Per kg</button>
+                <button type="button" aria-pressed={tarif?.model === "per_item"} class="min-h-8 rounded-full px-2 {tarif?.model === 'per_item' ? 'bg-primary text-primary-fg' : 'text-muted'}" onclick={() => setPricing(g.id, { model: "per_item" })}>Per item</button>
+              </div>
+              {#if tarif}
+                <label class="flex items-center gap-1 text-muted">
+                  Tarif
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={tarif.rate}
+                    class="{control} w-24 py-1 text-xs tabular-nums"
+                    aria-label="Tarif {g.name}"
+                    oninput={(e) => setPricing(g.id, { rate: Math.max(0, Number(e.currentTarget.value)) })}
+                  />
+                </label>
+                {#if tarif.model === "per_item"}
+                  <label class="flex items-center gap-1 text-muted">
+                    Satuan
+                    <input
+                      type="text"
+                      value={tarif.unit ?? ""}
+                      placeholder="slop"
+                      maxlength="24"
+                      class="{control} w-20 py-1 text-xs"
+                      aria-label="Satuan {g.name}"
+                      oninput={(e) => setPricing(g.id, { unit: e.currentTarget.value.trim() || undefined })}
+                    />
+                  </label>
+                {/if}
+                <label class="flex items-center gap-1 text-muted">
+                  Mata uang
+                  <input
+                    type="text"
+                    value={tarif.currency ?? meta.shop}
+                    maxlength="12"
+                    class="{control} w-16 py-1 text-xs uppercase"
+                    aria-label="Mata uang {g.name}"
+                    oninput={(e) => setPricing(g.id, { currency: e.currentTarget.value.trim().toUpperCase() || undefined })}
+                  />
+                </label>
+                {#if (tarif.rate ?? 0) <= 0}
+                  <span class="text-accent">tarif belum ditetapkan</span>
+                {/if}
+              {/if}
             </div>
           </li>
         {/each}
@@ -454,6 +574,54 @@
         Pakai harga saran
       </button>
 
+      <h3 class="mt-5 text-lg">Omzet & target</h3>
+      <dl class="mt-2 space-y-2 text-sm">
+        {@render row("Omzet jasa", `${fmtTarif(rev.service)}${rev.currencies.length === 1 ? ` ${rev.currencies[0]}` : ""}`, punyaTarif ? "dari tarif per baris" : "tarif global / kg")}
+        {@render row("Berat baris", kg(rev.totalKg), "presisi per baris")}
+        {#if progres.set}
+          {@render row("Target", `${fmtTarif(scenario.target ?? 0)} ${scenario.hargaCurrency ?? "USD"}`, `${progres.persen}% tercapai`)}
+          {@render row(progres.achieved ? "Lebih target" : "Butuh lagi", fmtTarif(progres.achieved ? progres.lebih : progres.butuh))}
+        {:else}
+          {@render row("Target", "belum diatur")}
+        {/if}
+      </dl>
+      <div class="meter mt-3" aria-hidden="true">
+        <span style="width: {Math.min(100, Math.max(0, Math.round(progres.persen)))}%"></span>
+      </div>
+      <label class="mt-3 block text-sm">
+        <span class="mb-1 flex justify-between">
+          <span>Target omzet jasa</span>
+          <span class="tabular-nums">{fmtTarif(scenario.target ?? 0)} {scenario.hargaCurrency ?? "USD"}</span>
+        </span>
+        <input
+          type="number"
+          min="0"
+          step="50"
+          value={scenario.target ?? 0}
+          class="{control} tabular-nums"
+          aria-label="Target omzet jasa"
+          oninput={(e) => patch({ target: Math.max(0, Number(e.currentTarget.value)) })}
+        />
+      </label>
+      <label class="mt-2 block text-sm">
+        <span class="mb-1 flex justify-between">
+          <span>Mata uang target</span>
+        </span>
+        <input
+          type="text"
+          value={scenario.hargaCurrency ?? meta.shop}
+          maxlength="12"
+          class="{control} uppercase"
+          aria-label="Mata uang target"
+          oninput={(e) => patch({ hargaCurrency: e.currentTarget.value.trim().toUpperCase() || undefined })}
+        />
+      </label>
+      {#if asumsi}
+        <p class="mt-2 text-xs text-accent" role="status">
+          Proyeksi potensi & impas memakai tarif asumsi global; {tarifKosong > 0 ? `${tarifKosong} baris belum bertarif` : "baris bercampur mata uang tanpa kurs"}. Bukan laporan final.
+        </p>
+      {/if}
+
       <h3 class="mt-5 text-lg">Opex & capex</h3>
       <dl class="mt-2 space-y-2 text-sm">
         {@render row(tiketHere, idr(n.tiket))}
@@ -472,7 +640,7 @@
           <span class="font-display text-3xl leading-none tabular-nums {n.laba < 0 ? 'text-accent' : 'text-primary'}">{idr(n.laba)}</span>
         </div>
         <p class="mt-2 text-xs text-muted">
-          {idr(n.pendapatan)} jasa{mode === "pp" ? " dua kaki" : ""} − {idr(n.beban)} beban. Impas di {kg(n.breakEvenKg)}. Sisa kuota kaki ini masih senilai {idr(n.potensi)}.
+          {idr(n.pendapatan)} jasa{mode === "pp" ? " dua kaki" : ""} − {idr(n.beban)} beban. Impas di {kg(n.breakEvenKg)}. Sisa kuota kaki ini {asumsi ? "berpotensi" : ""} {idr(n.potensi)}.
         </p>
       </div>
     </div>

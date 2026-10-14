@@ -3,6 +3,12 @@ import { scenarioFor, type Dir, type Scenario, type TripMode } from "./calc.ts";
 
 const amount = z.number().finite().min(0).max(1_000_000_000_000);
 const identity = { id: z.string().min(1).max(80), label: z.string().min(1).max(120) };
+const pricingSchema = z.object({
+  model: z.enum(["per_kg", "per_item"]),
+  rate: amount,
+  currency: z.string().min(1).max(12).optional(),
+  unit: z.string().min(1).max(24).optional(),
+});
 const scenarioSchema = z.object({
   bags: z.number().int().min(0).max(3),
   kgPerBag: z.number().finite().min(0).max(100),
@@ -10,6 +16,8 @@ const scenarioSchema = z.object({
   tare: z.number().finite().min(0).max(100),
   overPerKg: amount,
   hargaPerKg: amount,
+  target: amount.optional(),
+  hargaCurrency: z.string().min(1).max(12).optional(),
   margin: z.number().finite().min(0).max(1000),
   ujiKg: z.number().finite().positive().max(100),
   kursTry: z.number().finite().positive().max(1_000_000),
@@ -17,6 +25,8 @@ const scenarioSchema = z.object({
     id: identity.id, name: z.string().min(2).max(80),
     kg: z.number().finite().positive().max(100),
     qty: z.number().int().min(0).max(10_000), beli: amount,
+    pricing: pricingSchema.optional(),
+    beliCurrency: z.string().min(1).max(12).optional(),
   })).max(200),
   opex: z.array(z.object({ ...identity, amount })).max(50),
   capex: z.array(z.object({ ...identity, price: amount, trips: z.number().int().min(1).max(10_000) })).max(50),
