@@ -10,6 +10,8 @@
     "dev": "node scripts/run-vite.mjs dev --host 0.0.0.0 --port 8080",
     "build": "node scripts/run-vite.mjs build && npm run db:migrate",
     "db:migrate": "node scripts/migrate.mjs",
+    "convex:deploy": "convex deploy --cmd-url-env-var-name PUBLIC_CONVEX_URL",
+    "convex:dev": "convex dev",
     "build:dev": "node scripts/run-vite.mjs build --mode development",
     "preview": "node scripts/run-vite.mjs preview",
     "preview:restart": "node scripts/preview.mjs restart",
