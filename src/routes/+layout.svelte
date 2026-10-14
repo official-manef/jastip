@@ -3,17 +3,16 @@
   import { onMount } from "svelte";
   import Akun from "../lib/titip/Akun.svelte";
   import { session, loadMe } from "../lib/titip/session.svelte";
-  import { installPreviewHostBridge } from "../lib/preview-host-bridge";
   import "../styles.css";
 
   let { children } = $props();
 
   onMount(() => {
     void loadMe();
-    return installPreviewHostBridge({
-      navigate: (path) => history.pushState({}, "", path),
-      getRoutePaths: () => ["/", "/portal", "/masuk", "/titip", "/admin", "/pengaturan"],
-    });
+    // Register the app's own service worker (offline shell + installable PWA).
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
   });
 
   const links = $derived.by(() => {

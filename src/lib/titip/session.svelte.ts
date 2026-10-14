@@ -23,11 +23,6 @@ let resolved = false;
 
 export async function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
-  if (browser) {
-    const { getBearerToken } = await import("../auth/client");
-    const token = getBearerToken();
-    if (token) headers.set("authorization", `Bearer ${token}`);
-  }
   if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
   return fetch(url, { signal: AbortSignal.timeout(15000), ...init, headers, credentials: "same-origin" });
 }

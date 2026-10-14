@@ -1,0 +1,26 @@
+{
+  "name": "Titipin — Jastip Jakarta ↔ Turki",
+  "short_name": "Titipin",
+  "description": "Kalkulator bagasi jastip Jakarta ↔ Turki. Hitung kuota, tarif, omzet, dan laba.",
+  "lang": "id",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3ede3",
+  "theme_color": "#0f6e56",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Meja hitung", "short_name": "Meja", "url": "/" },
+    { "name": "Titipan", "short_name": "Titipan", "url": "/titip" }
+  ]
+}
