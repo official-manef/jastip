@@ -15,7 +15,7 @@
     "preview:restart": "node scripts/preview.mjs restart",
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/titip/ai.test.ts src/lib/titip/pricing.test.ts src/lib/titip/trips.test.ts src/lib/titip/trip-state.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/titip/ai.test.ts src/lib/titip/pricing.test.ts src/lib/titip/runtime.test.ts src/lib/titip/trips.test.ts src/lib/titip/trip-state.test.ts",
     "test:trip-api": "node --experimental-strip-types scripts/trip-api-smoke.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."

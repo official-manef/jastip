@@ -10,7 +10,7 @@ export const handle: Handle = async ({ event, resolve }) => {
         headers: { "cache-control": "no-store" },
       });
     }
-    if (!(path === "/api/ai" && event.request.method === "GET")) {
+    if (!(["/api/ai", "/api/readiness"].includes(path) && event.request.method === "GET")) {
       return Response.json({ error: "database-unavailable" }, { status: 503, headers: { "cache-control": "no-store" } });
     }
   }
