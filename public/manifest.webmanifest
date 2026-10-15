@@ -1,7 +1,7 @@
 {
-  "name": "Titipin — Jastip Jakarta ↔ Turki",
+  "name": "Titipin — Kalkulator bagasi jastip multi-negara",
   "short_name": "Titipin",
-  "description": "Kalkulator bagasi jastip Jakarta ↔ Turki. Hitung kuota, tarif, omzet, dan laba.",
+  "description": "Kalkulator bagasi jastip multi-negara: susun rute berkaki, isi muatan, lihat laba. Daftar gratis untuk menyimpan trip di cloud.",
   "lang": "id",
   "dir": "ltr",
   "id": "/",

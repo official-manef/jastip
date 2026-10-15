@@ -21,9 +21,43 @@
   const bersih = $derived(Math.max(0, now.scenario.bags * now.scenario.kgPerBag + now.scenario.cabin - now.scenario.tare));
   const sisa = $derived(Math.round((bersih - rev.totalKg) * 10) / 10);
   const over = $derived(sisa < 0);
+
+  /**
+   * Tiga langkah pakai: tanpa akun → akun gratis → langganan. Ini ajakan
+   * (copy), bukan gating: belum ada pembayaran, fitur "segera" ditandai jujur.
+   */
+  const paket = [
+    {
+      nama: "Gratis",
+      harga: "Rp0",
+      satuan: "",
+      ket: "Tanpa akun",
+      fitur: ["Meja hitung multi-kaki", "Katalog 10 negara + transit", "Simpan otomatis di perangkat"],
+      cta: { label: "Buka meja hitung", href: "/meja" },
+      utama: false,
+    },
+    {
+      nama: "Akun",
+      harga: "Rp0",
+      satuan: "",
+      ket: "Daftar gratis",
+      fitur: ["Semua di Gratis", "Trip tersimpan di cloud, lintas perangkat", "Portal & titipan per akun", "Asisten AI (pakai key sendiri)"],
+      cta: { label: "Daftar akun", href: "/masuk" },
+      utama: true,
+    },
+    {
+      nama: "Langganan",
+      harga: "Rp99rb",
+      satuan: "/bulan",
+      ket: "Segera",
+      fitur: ["Semua di Akun", "Trip & riwayat tak terbatas", "Proyeksi target omzet", "Ekspor CSV (segera)", "Asisten AI tanpa key sendiri (segera)"],
+      cta: { label: "Daftar dulu", href: "/masuk" },
+      utama: false,
+    },
+  ];
 </script>
 
-<svelte:head><title>Titipin. Kalkulator bagasi Jakarta ↔ Turki</title></svelte:head>
+<svelte:head><title>Titipin. Kalkulator bagasi jastip multi-negara</title></svelte:head>
 
 <section class="text-center">
   <h1 class="mx-auto max-w-[26rem] text-balance text-[clamp(2.25rem,6vw,3.5rem)] leading-[1.02]" data-rise style="--i: 0">
@@ -33,9 +67,12 @@
     Untuk jastiper multi-negara. Susun rute, isi muatan tiap kaki, dan biaya terbang; sisanya dihitung langsung.
   </p>
   <div class="mt-7 flex flex-wrap items-center justify-center gap-3" data-rise style="--i: 2">
-    <a class="btn" href="/meja">Buka meja hitung</a>
-    <a class="link text-body" href="/masuk">Daftar akun</a>
+    <a class="btn" href="/masuk">Daftar gratis</a>
+    <a class="link text-body" href="/meja">Coba meja hitung</a>
   </div>
+  <p class="mx-auto mt-3 max-w-[38ch] text-small text-muted" data-rise style="--i: 3">
+    Akun menyimpan trip di cloud, lintas perangkat. Meja hitung tetap bisa dipakai tanpa akun.
+  </p>
 </section>
 
 <!-- Instrumen hidup: satu-satunya hal besar di layar, angka asli dari meja. -->
@@ -113,6 +150,36 @@
   </div>
 </section>
 
+<section class="mt-14" data-reveal aria-labelledby="paket">
+  <h2 id="paket" class="text-center" data-reveal>Tiga langkah, mulai gratis</h2>
+  <p class="mx-auto mt-3 max-w-[46ch] text-center text-body text-muted" data-reveal>
+    Pakai meja hitung tanpa akun. Daftar untuk menyimpan trip di cloud. Langganan untuk fitur lanjutan.
+  </p>
+
+  <ul class="mx-auto mt-8 grid max-w-[52rem] gap-4 sm:grid-cols-3">
+    {#each paket as p (p.nama)}
+      <li class="flex flex-col rounded p-5 {p.utama ? 'panel-deep' : 'panel'}" data-reveal>
+        <div class="flex items-baseline justify-between gap-2">
+          <h3 class="text-lead">{p.nama}</h3>
+          {#if p.ket}<span class="text-small text-muted">{p.ket}</span>{/if}
+        </div>
+        <p class="num mt-4 text-head">
+          {p.harga}{#if p.satuan}<span class="text-body text-muted">{p.satuan}</span>{/if}
+        </p>
+        <ul class="mt-4 flex-1 space-y-2 text-small text-muted">
+          {#each p.fitur as f (f)}
+            <li>{f}</li>
+          {/each}
+        </ul>
+        <a class="mt-6 {p.utama ? 'btn' : 'btn-quiet'} text-center" href={p.cta.href}>{p.cta.label}</a>
+      </li>
+    {/each}
+  </ul>
+  <p class="mx-auto mt-4 max-w-[46ch] text-center text-small text-muted" data-reveal>
+    Harga contoh, bisa berubah. Fitur bertanda "segera" belum aktif.
+  </p>
+</section>
+
 <section class="mt-14" data-reveal aria-labelledby="untuk">
   <h2 id="untuk" class="text-center" data-reveal>Untuk siapa</h2>
   <dl class="mx-auto mt-6 grid max-w-[46rem] gap-6 text-center sm:grid-cols-3">
@@ -129,7 +196,8 @@
       <dd class="mt-1 text-small text-muted">Satu orang, ditetapkan operator. Atur peran akun.</dd>
     </div>
   </dl>
-  <div class="mt-8 text-center">
-    <a class="btn" href="/meja">Mulai hitung</a>
+  <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+    <a class="btn" href="/masuk">Daftar gratis</a>
+    <a class="link text-body" href="/meja">Buka meja hitung</a>
   </div>
 </section>

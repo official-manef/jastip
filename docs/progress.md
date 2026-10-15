@@ -2,6 +2,18 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 15 Oktober 2026 (lanjutan 5): landing mengajak daftar
+
+- Beranda `/` sekarang mengajak tiga langkah: **Gratis** (meja hitung tanpa akun) → **Akun**
+  (daftar gratis: trip di cloud, portal, titipan, asisten BYOK) → **Langganan** Rp99rb/bln
+  (segara: trip & riwayat tak terbatas, proyeksi target omzet, ekspor CSV, asisten tanpa BYOK).
+- Seksi baru `#paket` (tiga kartu; kartu Akun disorot `panel-deep`) + dua CTA "Daftar gratis"
+  di hero dan penutup. Fitur "segera" ditandai jujur; harga contoh, belum ada gating/pembayaran.
+- Salinan basi diperbarui: judul/meta/patch PWA "Jakarta ↔ Turki" → "jastip multi-negara"
+  (`+layout.svelte`, `+page.svelte`, `public/manifest.webmanifest`).
+- Verifikasi: `svelte-check` 0 error; 61 tes lulus; build sukses; smoke dev + produksi bersih
+  desktop+mobile; kartu paket diperiksa secara visual di 1280×800 dan 390×844.
+
 ## 15 Oktober 2026 (lanjutan 4): asisten jadi BYOK murni
 
 - Key server dihapus. Sebelumnya `/api/ai` membaca `AI_API_KEY`/`AI_API_BASE_URL`/`AI_MODEL`/

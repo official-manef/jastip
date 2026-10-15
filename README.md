@@ -16,6 +16,7 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Asisten AI di `/asisten` dengan **function calling**: bisa menyusun kaki, ganti destinasi, isi muatan, dan ubah peran.
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
+- Beranda mengajak tiga langkah: **Gratis** (meja hitung tanpa akun) → **Akun** (daftar gratis) → **Langganan** (`/` seksi `#paket`). Harga contoh; belum ada gating atau pembayaran.
 - PWA: `manifest.webmanifest` (start_url `/meja`, ikon maskable, screenshot manifest), service worker offline shell + toast "versi baru". Dua shell layout: beranda/masuk tanpa sidebar dan terpusat; halaman app memakai rail sidebar.
 
 Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [docs/progress.md](docs/progress.md). Bahasa visual ada di [DESIGN.md](DESIGN.md). Perbandingan dengan template starter ada di [docs/bandingkan-template.md](docs/bandingkan-template.md).
@@ -38,11 +39,11 @@ Sumber: `src/lib/titip/destinasi.ts` (katalog), `src/lib/titip/kaki.ts` (tipe + 
 
 | Path | Untuk siapa | Isi | Shell |
 | --- | --- | --- | --- |
-| `/` | Semua | Beranda publik: instrumen hidup, rute, peran | Publik (tanpa sidebar, konten terpusat) |
+| `/` | Semua | Beranda publik: instrumen hidup, rute, paket (Gratis/Akun/Langganan), peran | Publik (tanpa sidebar, konten terpusat) |
 | `/meja` | Semua | Meja hitung multi-kaki | App (sidebar) |
 | `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin), Deniz (klien lain) | App |
 | `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru | Publik |
-| `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan BYOK (opsional bila key server ada) | App |
+| `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan API key (BYOK) | App |
 | `/titip` | Klien, jastiper, admin | Permintaan titipan | App |
 | `/asisten` | Klien, jastiper, admin | Chat AI dengan function calling | App |
 | `/admin` | Admin | Daftar orang dan peran | App |
@@ -54,7 +55,7 @@ tidak memakai sidebar dan menaruh kontennya di tengah layar. Meja tidak dikunci 
 
 SvelteKit, Svelte 5, Bun, Tailwind, Better Auth, Convex, Vercel.
 
-Meja aktif memakai perangkat (localStorage) untuk pengunjung. Convex menyimpan skenario trip (`trips`), deployment `impressive-wildcat-570`. PGlite dipakai untuk pengembangan lokal saat tidak ada backend.
+Meja aktif memakai perangkat (localStorage) untuk pengunjung. Convex menyimpan data akun (profiles, titipan, tripScenarios), deployment `impressive-wildcat-570`.
 
 ## Menjalankan
 

@@ -42,10 +42,10 @@
 </script>
 
 <svelte:head>
-  <title>Titipin. Kalkulator bagasi Jakarta ↔ Turki</title>
+  <title>Titipin. Kalkulator bagasi & laba jastip multi-negara</title>
   <meta
     name="description"
-    content="Titipin. Kalkulator bagasi jastip Jakarta ↔ Turki. Pergi saja atau pulang-pergi."
+    content="Titipin. Kalkulator bagasi jastip multi-negara: susun rute berkaki, isi muatan tiap kaki, lihat laba. Daftar gratis untuk menyimpan trip di cloud."
   />
 </svelte:head>
 
@@ -97,7 +97,7 @@
         class="mx-auto flex w-full max-w-[46rem] flex-wrap items-baseline justify-between gap-3 text-small text-muted"
       >
         <p class="max-w-none">
-          Titipin. Satu koridor: Jakarta ↔ Turki.
+          Titipin. Rute berkaki, sepuluh negara.
         </p>
         <p class="max-w-none">
           Foto rute: Wikimedia Commons, CC BY-SA
