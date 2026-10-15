@@ -81,7 +81,7 @@
   $effect(() => { void loadAiSettings(); });
 </script>
 
-<section class="flex h-[calc(100dvh-9rem)] max-w-[42rem] flex-col">
+<section class="mx-auto flex h-[calc(100dvh-12rem)] max-w-[52rem] flex-col">
   <header data-rise style="--i: 0">
     <h1>Tanya & ubah</h1>
     <p class="mt-3 text-body">

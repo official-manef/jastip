@@ -2,6 +2,23 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 15 Oktober 2026 (lanjutan): dua shell, PWA, landing terpusat
+
+- Beranda `/` jadi landing publik sungguhan: tanpa sidebar, konten terpusat (x dan y), instrumen
+  meja hidup di layar pertama. Meja hitung pindah ke `/meja` (masih tanpa login).
+- Dua shell dalam satu `+layout.svelte`: halaman app (`/meja /portal /titip /asisten /pengaturan
+  /admin`) memakai rail sidebar; `/` dan `/masuk` memakai shell publik terpusat. Tiap halaman app
+  tak lagi memasang `max-w-*` sendiri (layout yang mengatur), jadi tak ada lagi konten mepet kiri.
+- Konten app melebar ke `max-w-[68rem]` dan di-`mx-auto`; assistant `h-[calc(100dvh-12rem)]`.
+- PWA diperbaiki: `start_url` `/meja`, `background_color`/`theme_color` `#eeecea`, ikon maskable
+  192/512 baru (aman 80%), `screenshots` manifest (wide + narrow), `display_override`,
+  shortcut Meja/Titipan/Asisten. Generator `scripts/brand-assets.mjs`.
+- Navigasi: wordmark app menuju `/meja`; label aktif tampil di bar mobile; drawer tinggi penuh.
+- Verifikasi: `svelte-check` 0 error; 57 tes lulus; gate tasteskill 0 FAIL 0 WARN di ketujuh halaman
+  (allow rule khusus landing untuk layar app); build produksi lulus; smoke dev vs produksi identik.
+- Catatan: pendaftaran akun di produksi masih 503 karena `DATABASE_URL` belum diset di Vercel
+  (readiness `accountsReady:false`). Jalur DB dialihkan ke Convex oleh sesi lain.
+
 ## 15 Oktober 2026: arah visual baru (antislop) + motion
 
 - Arah visual lama (krem `#F3EDE3` + terracotta + Fraunces/Outfit) diganti total memakai skill

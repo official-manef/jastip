@@ -24,6 +24,13 @@ Satu ground, satu ink, satu accent, satu field.
 
 Permukaan dipisahkan oleh **satu langkah tone**, bukan garis atau bayangan.
 
+## Dua shell
+
+- **Publik** (`/`, `/masuk`): tanpa sidebar. Header tipis (wordmark kiri, Masuk kanan), konten
+  diletakkan di tengah layar (grid `place-items-center`) dan dibatasi `max-w-[46rem]`.
+- **App** (`/meja`, `/portal`, `/titip`, `/asisten`, `/pengaturan`, `/admin`): rail sidebar tetap
+  (>=lg) + bar/drawer (mobile). Area kerja memakai sisa lebar penuh, konten `max-w-[68rem]` di tengah.
+
 ## Tipe
 
 Satu keluarga: **Clash Grotesk** (Fontshare). Lima ukuran: small, body 17–19px, lead, head, display.

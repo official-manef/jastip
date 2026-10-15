@@ -86,7 +86,7 @@
   }
 </script>
 
-<section class="max-w-[34rem]">
+<section>
   {#if session.pending}
     <p class="text-body text-muted" role="status">Memeriksa akun…</p>
   {:else if session.user && session.role}
@@ -138,7 +138,7 @@
       {#if !session.databaseReady}
         <p class="mt-4 text-body text-accent" role="status">
           Penyimpanan akun belum tersedia. Pendaftaran dan login belum aktif.
-          <a href="/" class="link">Gunakan meja hitung</a> dengan penyimpanan di perangkat ini.
+          <a href="/meja" class="link">Gunakan meja hitung</a> dengan penyimpanan di perangkat ini.
         </p>
       {/if}
 

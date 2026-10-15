@@ -16,7 +16,7 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    href: "/",
+    href: "/meja",
     label: "Meja",
     hint: "Kalkulator bagasi & tarif",
     icon: "M4 6h16M4 12h16M4 18h10",
@@ -65,5 +65,5 @@ export function navFor(role: Role | null): NavItem[] {
 }
 
 export function isActive(href: string, pathname: string): boolean {
-  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

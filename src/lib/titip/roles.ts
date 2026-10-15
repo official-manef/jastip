@@ -29,6 +29,6 @@ export function roleLabel(role: Role | null): string {
 export function homeFor(role: Role | null): string {
   if (role === "klien") return "/titip";
   if (role === "admin") return "/admin";
-  if (role === "jastiper") return "/";
+  if (role === "jastiper") return "/meja";
   return "/masuk";
 }

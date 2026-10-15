@@ -14,22 +14,27 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Asisten AI di `/asisten` dengan **function calling**: bisa langsung mengubah meja hitung, titipan, dan peran. Model & key dari env server; BYOK opsional di `/pengaturan`.
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
+- PWA: `manifest.webmanifest` (start_url `/meja`, ikon maskable, screenshot manifest), service worker
+  offline shell + toast "versi baru". Dua shell layout: beranda/masuk tanpa sidebar dan terpusat;
+  halaman app memakai rail sidebar.
 
 Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [docs/progress.md](docs/progress.md). Bahasa visual ada di [DESIGN.md](DESIGN.md).
 
 ## Halaman
 
-| Path | Untuk siapa | Isi |
-| --- | --- | --- |
-| `/` | Semua, rumah jastiper | Meja hitung |
-| `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin), Deniz (klien lain) |
-| `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru |
-| `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan BYOK (opsional bila key server ada) |
-| `/titip` | Klien, jastiper, admin | Permintaan titipan |
-| `/asisten` | Klien, jastiper, admin | Chat AI dengan function calling |
-| `/admin` | Admin | Daftar orang dan peran |
+| Path | Untuk siapa | Isi | Shell |
+| --- | --- | --- | --- |
+| `/` | Semua | Beranda publik: instrumen hidup, rute, peran | Publik (tanpa sidebar, konten terpusat) |
+| `/meja` | Semua | Meja hitung | App (sidebar) |
+| `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin), Deniz (klien lain) | App |
+| `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru | Publik |
+| `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan BYOK (opsional bila key server ada) | App |
+| `/titip` | Klien, jastiper, admin | Permintaan titipan | App |
+| `/asisten` | Klien, jastiper, admin | Chat AI dengan function calling | App |
+| `/admin` | Admin | Daftar orang dan peran | App |
 
-Meja tidak dikunci login.
+Dua shell di satu layout: halaman app memakai rail sidebar + area kerja penuh; beranda dan masuk
+tidak memakai sidebar dan menaruh kontennya di tengah layar. Meja tidak dikunci login.
 
 ## Tumpukan
 

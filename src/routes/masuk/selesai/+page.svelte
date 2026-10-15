@@ -48,7 +48,7 @@
   });
 </script>
 
-<section class="max-w-[34rem]">
+<section>
   <h1>Hampir selesai</h1>
   <p class="mt-4 text-lead" role="status">{notice}</p>
   {#if notice !== "Menyimpan peran…"}

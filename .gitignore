@@ -23,3 +23,4 @@ dist
 !.manef/config.example.json
 # MCP klien lokal.
 .mcp.json
+.env*

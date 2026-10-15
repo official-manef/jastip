@@ -5,22 +5,28 @@
   "lang": "id",
   "dir": "ltr",
   "id": "/",
-  "start_url": "/",
+  "start_url": "/meja",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#f3ede3",
-  "theme_color": "#0f6e56",
+  "background_color": "#eeecea",
+  "theme_color": "#eeecea",
   "categories": ["business", "productivity", "finance"],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
   ],
+  "screenshots": [
+    { "src": "/shot-meja.png", "sizes": "1280x800", "type": "image/png", "form_factor": "wide", "label": "Meja hitung trip" },
+    { "src": "/shot-meja-mobile.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow", "label": "Meja hitung di ponsel" }
+  ],
   "shortcuts": [
-    { "name": "Meja hitung", "short_name": "Meja", "url": "/" },
-    { "name": "Titipan", "short_name": "Titipan", "url": "/titip" }
+    { "name": "Meja hitung", "short_name": "Meja", "url": "/meja" },
+    { "name": "Titipan", "short_name": "Titipan", "url": "/titip" },
+    { "name": "Asisten", "short_name": "Asisten", "url": "/asisten" }
   ]
 }

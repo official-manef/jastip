@@ -180,7 +180,7 @@
         <dd class="num mt-1 text-lead">{antrian.length}</dd>
       </div>
     </dl>
-    <p class="mt-3 text-body text-muted">CGK → IST, pergi saja. Angka mengikuti meja hitung. <a class="link" href="/">Buka meja</a>.</p>
+    <p class="mt-3 text-body text-muted">CGK → IST, pergi saja. Angka mengikuti meja hitung. <a class="link" href="/meja">Buka meja</a>.</p>
 
     <ul class="mt-5 flex flex-col gap-3">
       {#each rows as row (row.id)}

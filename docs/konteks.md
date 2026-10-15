@@ -14,7 +14,10 @@ Bukan katalog banyak kota. Kalau rute bertambah, itu keputusan terpisah. Sekaran
 
 Peran klien/jastiper terkunci setelah dipilih. Akun tidak bisa menaikkan dirinya sendiri. Operator dapat menetapkan satu ID akun sebagai admin; admin kedua ditolak, baik lewat klaim maupun lewat panel.
 
-Rumah setelah masuk: klien `/titip`, jastiper `/`, admin `/admin`.
+Rumah setelah masuk: klien `/titip`, jastiper `/meja`, admin `/admin`.
+
+Dua shell layout: beranda `/` (publik, terpusat) dan `/meja` (app, sidebar). Meja hitung tak
+dikunci login.
 
 Bahasa visual (palet, tipe, aturan rumah, gerak) ada di [DESIGN.md](../DESIGN.md).
 

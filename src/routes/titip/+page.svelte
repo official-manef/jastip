@@ -111,7 +111,7 @@
   }
 </script>
 
-<section class="max-w-[42rem]">
+<section>
   {#if session.pending || loading}
     <p class="text-body text-muted" role="status">Memuat titipan…</p>
   {:else if !session.user}

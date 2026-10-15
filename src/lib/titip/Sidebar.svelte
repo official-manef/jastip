@@ -13,7 +13,7 @@
   class="sticky top-0 hidden min-h-dvh w-60 shrink-0 flex-col bg-surface px-3 py-5 lg:flex"
   aria-label="Navigasi utama"
 >
-  <a href="/" class="mb-6 flex items-baseline gap-2 px-2" aria-label="titipin, beranda">
+  <a href="/meja" class="mb-6 flex items-baseline gap-2 px-2" aria-label="titipin, meja hitung">
     <span class="font-display text-xl font-medium leading-none tracking-tight">titipin</span>
     <span class="text-small text-muted">CGK ↔ IST</span>
   </a>

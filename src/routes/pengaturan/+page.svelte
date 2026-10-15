@@ -55,7 +55,7 @@
   }
 </script>
 
-<section class="max-w-[40rem]">
+<section>
   <header data-rise style="--i: 0">
     <h1>AI & model</h1>
     <p class="mt-4 text-lead">

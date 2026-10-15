@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
-   * Mobile top bar + drawer. Under `lg` only. The bar is plain: wordmark left,
-   * one Menu button right; the drawer lists nav entries as rows.
+   * Mobile bar + full-height drawer. Under `lg` only; the desktop rail
+   * (`Sidebar.svelte`) is the other half of the same nav list.
    */
   import { page } from "$app/state";
   import Akun from "./Akun.svelte";
@@ -10,6 +10,7 @@
 
   const items = $derived(navFor(session.role));
   const here = $derived(page.url.pathname);
+  const active = $derived(items.find((item) => isActive(item.href, here)));
 
   let open = $state(false);
 
@@ -21,31 +22,41 @@
 <svelte:window onkeydown={onKey} />
 
 <nav
-  class="sticky top-0 z-40 flex items-center justify-between bg-bg px-4 py-3 lg:hidden"
+  class="sticky top-0 z-40 flex items-center justify-between gap-3 bg-bg px-4 py-3 lg:hidden"
   aria-label="Navigasi"
 >
-  <a href="/" class="font-display text-xl font-medium leading-none tracking-tight">titipin</a>
-  <button
-    type="button"
-    onclick={() => (open = !open)}
-    aria-expanded={open}
-    aria-haspopup="dialog"
-    class="btn-quiet min-h-9 px-3 text-small"
-  >
-    {open ? "Tutup" : "Menu"}
-  </button>
+  <a href="/meja" class="font-display text-xl font-medium leading-none tracking-tight">titipin</a>
+  <div class="flex items-center gap-2">
+    {#if active}
+      <span class="rounded bg-surface px-3 py-1.5 text-small text-fg">{active.label}</span>
+    {/if}
+    <button
+      type="button"
+      onclick={() => (open = !open)}
+      aria-expanded={open}
+      aria-haspopup="dialog"
+      class="btn-quiet min-h-10 px-3 text-small"
+    >
+      Menu
+    </button>
+  </div>
 </nav>
 
 {#if open}
   <div class="fixed inset-0 z-40 bg-fg/40 lg:hidden" role="presentation" onclick={() => (open = false)}
   ></div>
   <div
-    class="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-lg bg-bg px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden"
+    class="fixed inset-y-0 right-0 z-50 flex w-[min(20rem,86vw)] flex-col bg-bg px-4 py-5 lg:hidden"
     role="dialog"
     aria-label="Menu"
     aria-modal="true"
   >
-    <nav class="flex flex-col gap-0.5">
+    <div class="mb-4 flex items-center justify-between">
+      <span class="font-display text-xl font-medium leading-none tracking-tight">titipin</span>
+      <button type="button" class="btn-quiet min-h-10 px-3 text-small" onclick={() => (open = false)}>Tutup</button>
+    </div>
+
+    <nav class="flex flex-1 flex-col gap-0.5">
       {#each items as item (item.href)}
         <a
           href={item.href}
@@ -67,10 +78,11 @@
           >
             <path d={item.icon} />
           </svg>
-          {item.label} <span class="text-small text-muted">{item.hint}</span>
+          {item.label}
         </a>
       {/each}
     </nav>
+
     <div class="mt-4">
       <Akun />
     </div>
