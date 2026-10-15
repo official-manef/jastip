@@ -2,6 +2,23 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 15 Oktober 2026: akun pindah ke Convex (buang Postgres/Neon/PGlite)
+
+- Auth + data akun kini di **Convex** via komponen resmi `@convex-dev/better-auth`
+  (Better Auth tetap dipakai, `database` = Convex) + binding SvelteKit
+  `@mmailaender/convex-better-auth-svelte`. Lihat [PR #11](https://github.com/official-manef/jastip/pull/11).
+- Backend Convex: `convex.config`, `auth.config`, `auth`, `http`; tabel `profiles`,
+  `titipan`, `tripScenarios`. Fungsi `accounts`/`titipan`/`tripScenarios` menegakkan
+  peran, admin tunggal, validasi, dan isolasi per akun.
+- SvelteKit mem-proxy `/api/auth/*` ke Convex HTTP actions; route app memakai
+  `ConvexHttpClient` di server dengan token dari cookie Better Auth (otomatis).
+- Hapus `pg`, `@electric-sql/pglite`, `kysely`, `migrations/*.sql`, migrator, dan
+  `src/lib/db.ts`; `databaseReady()` selalu true sehingga produksi tidak lagi 503.
+- Env: `PUBLIC_CONVEX_URL` (Vercel) + `SITE_URL`/`BETTER_AUTH_SECRET` (Convex).
+- Verifikasi: typecheck 0 error (986 file); 77 unit test lulus; e2e sign-up/login/
+  peran/titipan/trip/konflik/admin/AI lewat Convex; smoke render dev + build produksi
+  bersih desktop+mobile; `npm run build` sukses.
+
 ## 15 Oktober 2026 (lanjutan): dua shell, PWA, landing terpusat
 
 - Beranda `/` jadi landing publik sungguhan: tanpa sidebar, konten terpusat (x dan y), instrumen
