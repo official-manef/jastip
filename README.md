@@ -58,22 +58,33 @@ npm run build
 
 Jangan buat file `.env`. Rahasia tidak masuk repo.
 
+## Arsitektur data
+
+Auth akun dan data aplikasi semuanya di **Convex** (komponen resmi `@convex-dev/better-auth`). Better Auth tetap dipakai (email/password), tetapi `database`-nya adalah Convex — tidak ada Postgres/Neon.
+
+- Tabel auth (users/sessions/accounts) hidup di komponen `betterAuth`; tabel app: `profiles`, `titipan`, `tripScenarios`, `trips`.
+- SvelteKit mem-proxy `/api/auth/*` ke Convex HTTP actions (`*.convex.site`).
+- Route app (`/api/saya,peran,admin,titipan,trip,trips`) memakai `ConvexHttpClient` di server; token dari cookie Better Auth dibaca otomatis via `withServerConvexToken` di `hooks.server.ts`. Isi logika ada di `src/convex/*` (`accounts.ts`, `titipan.ts`, `tripScenarios.ts`).
+- Auth client di browser (`src/lib/auth/client.ts`) memakai plugin `convexClient()` untuk menukar sesi jadi JWT Convex.
+
 ## Env di Vercel
 
 Ditetapkan operator di project `manef/jastip`:
 
 | Nama | Fungsi |
 | --- | --- |
-| `BETTER_AUTH_URL` | Origin publik situs |
-| `BETTER_AUTH_SECRET` | Menandatangani sesi |
-| `VITE_AUTH_ENABLED` | `true` |
-| `PUBLIC_CONVEX_URL` | URL backend Convex, `https://impressive-wildcat-570.convex.cloud` |
+| `PUBLIC_CONVEX_URL` | URL backend Convex, mis. `https://impressive-wildcat-570.convex.cloud` |
+| `AI_API_KEY` | Key server untuk asisten (BYOK opsional) |
+| `AI_MODEL` | ID model default, mis. `ollama/deepseek-v4.1-flash:cloud` |
+| `TITIPIN_ADMIN_USER_ID` | ID akun admin tunggal (opsional) |
 
-`PUBLIC_CONVEX_URL` dipakai untuk menyambung skenario trip ke Convex. Trip juga tersedia pada `trip_scenarios` lokal; `user_id` selalu berasal dari sesi server. Operator menetapkan `TITIPIN_ADMIN_USER_ID` ke ID akun pemilik setelah akun tersebut dibuat. Pada permintaan berikutnya akun itu dapat menjadi satu-satunya admin; indeks unik tetap menolak admin kedua. Jangan memakai email yang belum diverifikasi sebagai bukti kepemilikan admin.
+Di **Convex** (bukan Vercel): `npx convex env set SITE_URL https://situs-anda` dan `BETTER_AUTH_SECRET`. `TITIPIN_ADMIN_USER_ID` dibaca fungsi Convex, jadi set juga di sana bila dipakai.
+
+Operator menetapkan `TITIPIN_ADMIN_USER_ID` ke ID akun pemilik setelah akun dibuat; admin tetap satu dan admin terakhir tidak bisa diturunkan. Jangan memakai email yang belum diverifikasi sebagai bukti kepemilikan admin.
 
 Token Vercel dan Team ID disimpan di `.manef/config.json` (gitignored), tidak pernah di commit.
 
-Login memakai email/password mandiri (tidak ada OAuth broker). Tidak ada konfigurasi email reset/verifikasi; fitur tersebut belum disediakan.
+Login memakai email/password mandiri (tidak ada OAuth broker). Belum ada reset password/verifikasi email.
 
 ## AI
 
@@ -90,15 +101,16 @@ Setelan default ada di **env server** (mode "env saja"): kalau `AI_API_KEY` diis
 
 Catatan: model ini `vision=false`, jadi lampiran gambar/camera belum didukung.
 
-Pengujian AI dan auth mandiri:
+Pengujian AI dan auth:
 
 ```bash
-node --experimental-strip-types --test src/lib/titip/ai.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts
+npm test
+npm run test:trip-api
 ```
 
-`npm test` menjalankan tes aplikasi dan platform. `npm run test:trip-api` membuat akun sintetis pada server lokal dan memeriksa batas admin serta isolasi dua akun. Script ini menolak origin selain localhost.
+`npm test` menjalankan tes aplikasi. `npm run test:trip-api` membuat akun sintetis pada server lokal (lewat Convex) dan memeriksa batas admin serta isolasi dua akun. Script ini menolak origin selain localhost.
 
-CI memeriksa build, tipe, unit test, API akun lokal, dan render desktop/mobile pada dev serta hasil build. Akun produksi/BYOK sungguhan diuji terhadap backend yang dikonfigurasi operator.
+CI memeriksa build, tipe, unit test, API akun lokal, dan render desktop/mobile pada dev serta hasil build. Akun produksi diuji terhadap backend Convex yang dikonfigurasi operator.
 
 ## Desain
 

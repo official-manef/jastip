@@ -2,10 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { canClaimAdmin, databaseReady } from "./runtime.ts";
 
-test("production with no DATABASE_URL is not account-ready", () => {
-  assert.equal(databaseReady({ VERCEL: "1" }), false);
-  assert.equal(databaseReady({ NODE_ENV: "production", DATABASE_URL: " " }), false);
-  assert.equal(databaseReady({ NODE_ENV: "production", DATABASE_URL: "postgres://configured" }), true);
+test("accounts are always ready now that auth lives in Convex", () => {
+  assert.equal(databaseReady({ VERCEL: "1" }), true);
+  assert.equal(databaseReady({ NODE_ENV: "production" }), true);
   assert.equal(databaseReady({ NODE_ENV: "development" }), true);
 });
 

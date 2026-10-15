@@ -6,7 +6,13 @@
   import UpdateToast from "../lib/titip/UpdateToast.svelte";
   import { initLoopPause, initReveal } from "../lib/titip/motion";
   import { loadMe } from "../lib/titip/session.svelte";
+  import { createSvelteAuthClient } from "@mmailaender/convex-better-auth-svelte/svelte";
+  import { authClient } from "../lib/auth/client";
+  import { convexUrl } from "../lib/convex-url";
   import "../styles.css";
+
+  // Wire Better Auth <-> Convex client (setAuth) sekali per app.
+  createSvelteAuthClient({ authClient, convexUrl });
 
   let { children } = $props();
 

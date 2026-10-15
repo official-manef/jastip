@@ -26,10 +26,9 @@ test("stored state rejects corrupt data and unbounded numeric inputs", () => {
   assert.equal("userId" in parseTrip({ ...seedTrip(), userId: "other-person" })!, false);
 });
 
-test("production never accepts in-memory account storage", () => {
-  assert.equal(databaseReady({ VERCEL: "1" }), false);
-  assert.equal(databaseReady({ NODE_ENV: "production", DATABASE_URL: " " }), false);
-  assert.equal(databaseReady({ NODE_ENV: "production", DATABASE_URL: "postgres://configured" }), true);
+test("accounts are always ready now that auth lives in Convex", () => {
+  assert.equal(databaseReady({ VERCEL: "1" }), true);
+  assert.equal(databaseReady({ NODE_ENV: "production" }), true);
   assert.equal(databaseReady({ NODE_ENV: "development" }), true);
 });
 

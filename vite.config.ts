@@ -1,62 +1,22 @@
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
 import type { Plugin } from "vite";
 import { defineConfig } from "vite";
 import adapter from "@sveltejs/adapter-vercel";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
-import { isMigrationFile } from "./scripts/migration-plan.mjs";
-
-/** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
-function hasGlobbedMigrations(root: string): boolean {
-  try {
-    return readdirSync(join(root, "migrations")).some(isMigrationFile);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Finish PGLite bootstrap during dev-server setup (before traffic). Vite awaits
- * async `configureServer` hooks. Production: `src/lib/db` kicks `ensureDbReady`
- * on import.
- *
- * Vite awaiting the hook puts this on time-to-first-render, so an app with no
- * migrations — no schema to apply — skips it entirely rather than paying for a
- * PGLite instance it never queries.
- */
-function pgliteBootstrapPlugin(): Plugin {
-  return {
-    name: "app-builder:pglite-bootstrap",
-    apply: "serve",
-    async configureServer(server) {
-      if (!hasGlobbedMigrations(server.config.root)) return;
-      try {
-        const mod = (await server.ssrLoadModule("/src/lib/db.ts")) as {
-          ensureDbReady?: () => Promise<void>;
-        };
-        if (typeof mod.ensureDbReady === "function") {
-          await mod.ensureDbReady();
-        }
-      } catch (err) {
-        console.error("[app-builder] DB bootstrap failed:", err);
-        throw err;
-      }
-    },
-  };
-}
 
 /** App routes that must hit SvelteKit, not the Convex backend. */
 function bypassLocalApi(req: { url?: string }): string | undefined {
   const path = (req.url ?? "").split("?", 1)[0] ?? "";
   const local =
     path === "/api/ai" ||
+    path.startsWith("/api/ai/") ||
     path === "/api/trip" ||
     path.startsWith("/api/trip/") ||
     path === "/api/trips" ||
     path.startsWith("/api/trips/") ||
     path === "/api/readiness" ||
+    path.startsWith("/api/readiness/") ||
     path === "/api/auth" ||
     path.startsWith("/api/auth/") ||
     path === "/api/saya" ||
@@ -79,6 +39,10 @@ const convexProxy = {
   },
 };
 
+// A no-op plugin kept as the array's first element; the app needs no Vite-time
+// side effects now that auth + data live in Convex.
+const appBuilderPlugin = (): Plugin => ({ name: "app-builder:noop" });
+
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 export default defineConfig(async () => ({
   server: {
@@ -94,8 +58,10 @@ export default defineConfig(async () => ({
     proxy: convexProxy,
   },
   resolve: { tsconfigPaths: true },
+  // Ekspos `PUBLIC_*` (mis. PUBLIC_CONVEX_URL) ke `import.meta.env` di klien.
+  envPrefix: ["VITE_", "PUBLIC_"],
   plugins: [
-    pgliteBootstrapPlugin(),
+    appBuilderPlugin(),
     tailwindcss(),
     ...(await sveltekit({
       adapter: adapter({ runtime: "bun1.x" }),

@@ -1,19 +1,5 @@
-import { auth } from "../../../../lib/auth/server";
-import { databaseReady } from "../../../../lib/titip/runtime";
+import { createSvelteKitHandler } from "@mmailaender/convex-better-auth-svelte/sveltekit";
+import { convexSiteUrl } from "../../../../lib/convex-url";
 
-const handle = ({ request }: { request: Request }) => {
-  if (!databaseReady(process.env)) {
-    return Response.json(
-      { error: "database-unavailable" },
-      { status: 503, headers: { "cache-control": "no-store" } },
-    );
-  }
-  return auth.handler(request);
-};
-
-export const GET = handle;
-export const POST = handle;
-export const PUT = handle;
-export const PATCH = handle;
-export const DELETE = handle;
-export const OPTIONS = handle;
+/** Proxy semua request auth SvelteKit ke Convex HTTP actions (`*.convex.site`). */
+export const { GET, POST } = createSvelteKitHandler({ convexSiteUrl: convexSiteUrl() });

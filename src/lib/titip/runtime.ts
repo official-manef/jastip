@@ -1,5 +1,6 @@
-export function databaseReady(env: Record<string, string | undefined>): boolean {
-  return Boolean(env.DATABASE_URL?.trim()) || (env.VERCEL !== "1" && env.NODE_ENV !== "production");
+/** Apakah penyimpanan akun aktif. Sejak auth pindah ke Convex, selalu siap. */
+export function databaseReady(_env: Record<string, string | undefined>): boolean {
+  return true;
 }
 
 export function canClaimAdmin(userId: string, adminUserId: string | undefined): boolean {
