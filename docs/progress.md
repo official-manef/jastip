@@ -2,6 +2,27 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 15 Oktober 2026: arah visual baru (antislop) + motion
+
+- Arah visual lama (krem `#F3EDE3` + terracotta + Fraunces/Outfit) diganti total memakai skill
+  **design-taste-frontend** (tasteskill v2). Direction yang diundi: **the quiet instrument**
+  (seed 2117912992) — kolom sempit, angka tabular besar, ruang kosong yang disengaja.
+- Palet baru "Three stones": ground `#EEECEA`, surface `#E4E1DD`, field `#CDC3B6`, ink `#333231`,
+  muted `#4A463F`, accent `#5C6B54`, rugi `#7D3A2B`. Satu huruf: **Clash Grotesk** (Fontshare).
+- Aturan rumah skill diterapkan di seluruh aplikasi: buang garis tipis, kotak 1px, bayangan pada
+  elemen diam, label kecil di atas judul, `animate-pulse`, `backdrop-blur`. Satu radius, satu bentuk
+  tombol, body ≥16px, kontras muted ≥7:1.
+- Motion: signature *slow crossfade* foto rute (3 gambar, pause saat tab disembunyikan), entrance
+  `[data-reveal]` per bagian, feedback tekan, satu video rute loop senyap. Semua transform/opacity
+  dengan fallback `prefers-reduced-motion`.
+- Foto: 4 foto + 1 klip Wikimedia Commons (CC BY-SA) di `public/img`, kredit di footer + figcaption.
+  Klip: "A ferry in the Bosphorus" (Kurmanbek, CC BY-SA 4.0).
+- Navigasi dirapikan: rail desktop (>=lg), bar atas + drawer mobile. Dock bawah lama dibuang.
+- Verifikasi: `svelte-check` 0 error; 57 tes lulus; gate tasteskill di `/` = **0 FAIL, 0 WARN**;
+  halaman app (`/masuk /asisten /pengaturan /admin /titip /portal`) bersih selain rule khusus
+  landing (few-pictures/focal-point/still-page — skill ini memang bukan untuk layar app);
+  build produksi lulus; smoke dev vs produksi identik, 0 console error, tanpa overflow desktop+mobile.
+
 ## 14 Oktober 2026 (lanjutan 2): asisten AI + function calling
 
 - Model & key AI boleh diset di env server: `AI_API_KEY` (server-only, tanpa prefix

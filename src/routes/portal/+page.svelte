@@ -1,10 +1,11 @@
 <script lang="ts">
   import { idr, kg } from "../../lib/titip/model";
   import { contohTrip, PORTAL_MASUK, salinOrang, salinTitipan, type ContohOrang, type ContohTitipan } from "../../lib/titip/contoh";
+  import Ringkas from "../../lib/titip/Ringkas.svelte";
   import { roleLabel, type Role } from "../../lib/titip/roles";
   import { ARAH, arahLabel, STATUSES, statusLabel, type Arah, type TitipanStatus } from "../../lib/titip/titipan";
 
-  const field = "min-h-11 w-full rounded-lg border border-border bg-bg px-3 text-base outline-none placeholder:text-muted";
+  const field = "field";
   const trip = contohTrip();
 
   let orang = $state<ContohOrang[]>(salinOrang());
@@ -79,118 +80,121 @@
   }
 </script>
 
-<section class="rise">
-  <div class="flex flex-wrap items-end justify-between gap-4">
-    <div>
-      <p class="text-sm font-medium tracking-wide text-primary uppercase">Portal contoh</p>
-      <h1 class="mt-1 font-display text-4xl italic">Tiga meja, satu rute</h1>
+<section>
+  <header class="max-w-[40rem]" data-rise style="--i: 0">
+    <h1>Tiga meja, satu rute</h1>
+    <p class="mt-4 text-lead">
+      Dashboard contoh supaya alur terlihat tanpa akun sungguhan. Semua nama dan angka di halaman ini pura-pura.
+    </p>
+    <p class="mt-2 text-small text-muted">Tidak masuk akun mana pun dan hilang kalau halaman dimuat ulang.</p>
+    <div class="mt-6" data-reveal>
+      <Ringkas />
     </div>
-    <p class="max-w-xs text-sm text-muted">Data ini pura-pura. Tidak masuk akun sungguhan dan hilang kalau halaman dimuat ulang.</p>
-  </div>
+  </header>
 
-  <div class="mt-6 grid gap-3 sm:grid-cols-3" role="tablist" aria-label="Masuk sebagai contoh">
+  <div class="mt-8 flex flex-wrap gap-1 rounded bg-surface p-1" role="tablist" aria-label="Masuk sebagai contoh" data-reveal>
     {#each PORTAL_MASUK as id (id)}
       {@const orangIni = orang.find((item) => item.id === id)}
       <button
         type="button"
         role="tab"
         aria-selected={siapa === id}
-        class="ticket min-h-11 px-4 py-4 text-left transition-opacity duration-150 {siapa === id ? 'opacity-100' : 'opacity-70'}"
+        class="min-h-11 rounded px-4 text-left text-body {siapa === id ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}"
         onclick={() => pilih(id)}
       >
-        <span class="block font-display text-2xl italic leading-none">{orangIni?.name}</span>
-        <span class="mt-2 block text-sm text-muted">{roleLabel(orangIni?.role ?? null)} · {orangIni?.city}</span>
+        <span class="block">{orangIni?.name}</span>
+        <span class="block text-small {siapa === id ? 'text-primary-fg/80' : 'text-muted'}">{roleLabel(orangIni?.role ?? null)} · {orangIni?.city}</span>
       </button>
     {/each}
   </div>
 
   {#if notice}
-    <p class="mt-4 text-sm text-accent" role="status">{notice}</p>
+    <p class="mt-4 text-body text-accent" role="status">{notice}</p>
   {/if}
 
   {#if aku.role === "klien"}
-    <div class="mt-8 grid gap-3 sm:grid-cols-3">
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Titipan saya</p>
-        <p class="num mt-1 font-display text-3xl">{milikku.length}</p>
+    <dl class="mt-8 grid gap-3 sm:grid-cols-3">
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Titipan saya</dt>
+        <dd class="num mt-1 text-lead">{milikku.length}</dd>
       </div>
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Berat</p>
-        <p class="num mt-1 font-display text-3xl">{kg(kgSaya)}</p>
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Berat</dt>
+        <dd class="num mt-1 text-lead">{kg(kgSaya)}</dd>
       </div>
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Masih jalan</p>
-        <p class="num mt-1 font-display text-3xl">{milikku.filter((row) => row.status !== "selesai").length}</p>
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Masih jalan</dt>
+        <dd class="num mt-1 text-lead">{milikku.filter((row) => row.status !== "selesai").length}</dd>
       </div>
-    </div>
+    </dl>
 
-    <form class="ticket mt-4 grid gap-3 p-4 sm:grid-cols-2" onsubmit={tambah}>
-      <label class="block text-sm sm:col-span-2">
-        Arah
-        <select class="{field} mt-1" bind:value={arah}>
+    <form class="panel mt-4 grid gap-3 p-4 sm:grid-cols-2" onsubmit={tambah}>
+      <label class="block sm:col-span-2">
+        <span class="mb-2 block text-small text-muted">Arah</span>
+        <select class={field} bind:value={arah}>
           {#each ARAH as item (item.id)}
             <option value={item.id}>{item.label}</option>
           {/each}
         </select>
       </label>
-      <label class="block text-sm">
-        Barang
-        <input class="{field} mt-1" bind:value={nama} placeholder="Nama barang" />
+      <label class="block">
+        <span class="mb-2 block text-small text-muted">Barang</span>
+        <input class={field} bind:value={nama} placeholder="Nama barang" />
       </label>
-      <label class="block text-sm">
-        Kg
-        <input class="{field} num mt-1" bind:value={berat} inputmode="decimal" />
+      <label class="block">
+        <span class="mb-2 block text-small text-muted">Kg</span>
+        <input class="{field} num" bind:value={berat} inputmode="decimal" />
       </label>
-      <label class="block text-sm sm:col-span-2">
-        Catatan
-        <input class="{field} mt-1" bind:value={catatan} placeholder="Opsional" />
+      <label class="block sm:col-span-2">
+        <span class="mb-2 block text-small text-muted">Catatan</span>
+        <input class={field} bind:value={catatan} placeholder="Opsional" />
       </label>
-      <button type="submit" class="min-h-11 rounded-lg bg-primary px-4 text-sm font-medium text-primary-fg sm:col-span-2">Tambah contoh</button>
+      <button type="submit" class="btn sm:col-span-2">Tambah contoh</button>
     </form>
 
-    <ul class="ticket mt-4 divide-y divide-dashed divide-line">
+    <ul class="mt-4 flex flex-col gap-2">
       {#each milikku as row (row.id)}
-        <li class="flex flex-wrap items-baseline justify-between gap-2 px-4 py-4">
+        <li class="panel flex flex-wrap items-baseline justify-between gap-2 p-4">
           <div>
-            <p class="font-medium">{row.nama}</p>
-            <p class="text-sm text-muted">{arahLabel(row.arah)}{row.catatan ? ` · ${row.catatan}` : ""}</p>
+            <p class="text-body">{row.nama}</p>
+            <p class="text-small text-muted">{arahLabel(row.arah)}{row.catatan ? ` · ${row.catatan}` : ""}</p>
           </div>
-          <p class="num text-sm">{kg(row.kg)} · {statusLabel(row.status)}</p>
+          <p class="num text-small">{kg(row.kg)} · {statusLabel(row.status)}</p>
         </li>
       {:else}
-        <li class="px-4 py-6 text-sm text-muted">Belum ada titipan.</li>
+        <li class="panel p-6 text-body text-muted">Belum ada titipan.</li>
       {/each}
     </ul>
   {:else if aku.role === "jastiper"}
-    <div class="mt-8 grid gap-3 sm:grid-cols-3">
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Sisa bagasi</p>
-        <p class="num mt-1 font-display text-3xl">{kg(trip.sisa)}</p>
+    <dl class="mt-8 grid gap-3 sm:grid-cols-3">
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Sisa bagasi</dt>
+        <dd class="num mt-1 text-lead">{kg(trip.sisa)}</dd>
       </div>
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Laba trip contoh</p>
-        <p class="num mt-1 font-display text-3xl {trip.laba < 0 ? 'text-accent' : ''}">{idr(trip.laba)}</p>
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Laba trip contoh</dt>
+        <dd class="num mt-1 text-lead {trip.laba < 0 ? 'text-accent' : ''}">{idr(trip.laba)}</dd>
       </div>
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Antrian</p>
-        <p class="num mt-1 font-display text-3xl">{antrian.length}</p>
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Antrian</dt>
+        <dd class="num mt-1 text-lead">{antrian.length}</dd>
       </div>
-    </div>
-    <p class="mt-3 text-sm text-muted">CGK → IST, pergi saja. Angka mengikuti meja hitung. <a class="text-primary" href="/">Buka meja</a>.</p>
+    </dl>
+    <p class="mt-3 text-body text-muted">CGK → IST, pergi saja. Angka mengikuti meja hitung. <a class="link" href="/">Buka meja</a>.</p>
 
-    <ul class="ticket mt-4">
+    <ul class="mt-5 flex flex-col gap-3">
       {#each rows as row (row.id)}
-        <li class="hairline px-4 py-4 first:border-t-0">
+        <li class="panel p-4">
           <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <p class="font-medium">{row.nama}</p>
-            <p class="num text-sm text-muted">{kg(row.kg)}</p>
+            <p class="text-body">{row.nama}</p>
+            <p class="num text-small text-muted">{kg(row.kg)}</p>
           </div>
-          <p class="mt-1 text-sm text-muted">{namaOrang(row.orangId)} · {arahLabel(row.arah)}</p>
-          <div class="mt-3 flex flex-wrap gap-2">
+          <p class="mt-1 text-small text-muted">{namaOrang(row.orangId)} · {arahLabel(row.arah)}</p>
+          <div class="mt-3 flex flex-wrap gap-1">
             {#each STATUSES as item (item.id)}
               <button
                 type="button"
-                class="min-h-11 rounded-lg px-3 text-sm {row.status === item.id ? 'bg-primary text-primary-fg' : 'text-muted'}"
+                class="min-h-11 rounded px-3 text-body {row.status === item.id ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}"
                 onclick={() => ubahStatus(row.id, item.id)}
               >
                 {item.label}
@@ -201,32 +205,32 @@
       {/each}
     </ul>
   {:else}
-    <div class="mt-8 grid gap-3 sm:grid-cols-3">
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Orang</p>
-        <p class="num mt-1 font-display text-3xl">{orang.length}</p>
+    <dl class="mt-8 grid gap-3 sm:grid-cols-3">
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Orang</dt>
+        <dd class="num mt-1 text-lead">{orang.length}</dd>
       </div>
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Klien</p>
-        <p class="num mt-1 font-display text-3xl">{orang.filter((item) => item.role === "klien").length}</p>
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Klien</dt>
+        <dd class="num mt-1 text-lead">{orang.filter((item) => item.role === "klien").length}</dd>
       </div>
-      <div class="ticket px-4 py-4">
-        <p class="text-sm text-muted">Titipan</p>
-        <p class="num mt-1 font-display text-3xl">{rows.length}</p>
+      <div class="panel p-4">
+        <dt class="text-small text-muted">Titipan</dt>
+        <dd class="num mt-1 text-lead">{rows.length}</dd>
       </div>
-    </div>
+    </dl>
 
-    <ul class="ticket mt-4">
+    <ul class="mt-5 flex flex-col gap-3">
       {#each orang as item (item.id)}
-        <li class="hairline flex flex-wrap items-center justify-between gap-3 px-4 py-4 first:border-t-0">
+        <li class="panel flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
-            <p class="font-medium">{item.name}</p>
-            <p class="text-sm text-muted">{item.email} · {item.city}</p>
+            <p class="text-body">{item.name}</p>
+            <p class="text-small text-muted">{item.email} · {item.city}</p>
           </div>
-          <label class="text-sm">
+          <label>
             <span class="sr-only">Peran {item.name}</span>
             <select
-              class="min-h-11 rounded-lg border border-border bg-bg px-3"
+              class={field}
               value={item.role}
               onchange={(event) => {
                 const value = event.currentTarget.value;

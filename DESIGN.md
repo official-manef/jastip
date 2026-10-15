@@ -1,13 +1,47 @@
 # Titipin
 
-Reading this as: kalkulator bagasi untuk klien dan jastiper Jakarta ↔ Turki, dengan bahasa visual waybill; ENERGY 1 / RHYTHM 2 / MOTION 1.
+Reading this as: kalkulator bagasi untuk klien dan jastiper Jakarta ↔ Turki, dengan bahasa visual
+waybill; ENERGY 1 / RHYTHM 2 / MOTION 1.
 
-- Krem dan tinta mempertahankan identitas kertas pengiriman dan membuat angka mudah dibaca.
-- Jade menandai aksi dan pilihan aktif; terracotta menandai kerugian atau kesalahan yang perlu ditindaklanjuti.
-- Fraunces memberi identitas judul; Outfit menjaga label formulir dan angka tetap terbaca.
-- Panel hasil terpisah dari input supaya biaya dan kuota dapat dibandingkan saat pengguna mengubah muatan.
-- Jarak antar kelompok mengikuti jenis biaya: bagasi, barang, opex, dan capex tidak bercampur.
-- Sudut input, panel, dan tombol mengikuti komponen existing; tidak ditambah ilustrasi atau dekorasi baru.
-- Fokus keyboard menggunakan outline jade existing; pesan simpan memakai status teks karena yang penting adalah lokasi penyimpanan.
-- Angka awal adalah skenario contoh, bukan harga pasar atau klaim omzet. Portal diberi label contoh secara eksplisit.
-- Tema terang mengikuti brief kertas krem yang sudah disepakati. Tidak menambah pergantian tema dalam perbaikan persistensi.
+Art direction diambil dari skill **design-taste-frontend** (tasteskill v2), direction
+`quiet-instrument` (seed 2117912992): alat presisi yang bicara pelan. Kolom sempit, angka tabular
+besar, banyak ruang kosong yang disengaja.
+
+## Palet — "Three stones"
+
+Satu ground, satu ink, satu accent, satu field.
+
+| Peran | Nilai | Dipakai untuk |
+| --- | --- | --- |
+| Ground | `#eeecea` | Latar halaman |
+| Surface | `#e4e1dd` | Panel, input, tombol sekunder |
+| Field | `#cdc3b6` | Panel dalam (readout, meter) |
+| Ink | `#333231` | Teks utama |
+| Muted | `#4a463f` | Teks sekunder (kontras ≥7:1 di ground) |
+| Accent | `#5c6b54` | Tombol utama, pilihan aktif, meter |
+| Accent-ink | `#ffffff` | Teks di accent |
+| Rugi | `#7d3a2b` | Angka minus (laba negatif, kelebihan bagasi, error) |
+
+Permukaan dipisahkan oleh **satu langkah tone**, bukan garis atau bayangan.
+
+## Tipe
+
+Satu keluarga: **Clash Grotesk** (Fontshare). Lima ukuran: small, body 17–19px, lead, head, display.
+Display dipakai sekali per layar (readout sisa kuota). Tracking −0.03em pada display, tabular untuk
+angka.
+
+## Aturan rumah yang dipegang
+
+- Tanpa garis tipis, tanpa kotak 1px, tanpa bayangan pada elemen diam, tanpa gradasi, tanpa glass,
+  tanpa emoji, tanpa label kecil di atas judul.
+- Satu radius untuk seluruh halaman (`--radius: 4px`), satu bentuk tombol.
+- Angka awal adalah skenario contoh, bukan harga pasar atau klaim omzet. Portal diberi label contoh.
+- Foto rute berasal dari Wikimedia Commons (CC BY-SA), bukan hasil produk Titipin, dan diberi kredit.
+
+## Gerak
+
+- **Signature move:** foto atmosfer rute berganti pelan (*slow crossfade*, 3 gambar) — berhenti saat
+  tab disembunyikan.
+- Entrance per bagian (`[data-reveal]`, stagger), feedback tekan pada tombol.
+- Satu video rute sebagai loop senyap dengan poster.
+- Semua gerak transform/opacity, dengan fallback `prefers-reduced-motion`.

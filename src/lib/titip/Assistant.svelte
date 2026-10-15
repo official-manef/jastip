@@ -1,14 +1,17 @@
 <script lang="ts">
   /**
-   * Asisten TITIPIN: chat + function calling. Tool dijalankan di klien (`tools.ts`)
+   * Asisten Titipin: chat + function calling. Tool dijalankan di klien (`tools.ts`)
    * sehingga perubahan langsung tampil di meja hitung dan halaman lain.
    */
   import { authedFetch, session } from "./session.svelte";
   import { aiError, aiSettings, loadAiSettings } from "./ai-settings.svelte";
+  import Ringkas from "./Ringkas.svelte";
   import { TOOL_DEFS, runTool, summarize } from "./tools";
   import type { AiMessage, AiToolCall } from "./ai";
 
   type Bubble = { role: "user" | "assistant"; content: string; note?: string };
+
+  const field = "field";
 
   let bubbles = $state<Bubble[]>([]);
   let input = $state("");
@@ -78,41 +81,43 @@
   $effect(() => { void loadAiSettings(); });
 </script>
 
-<section class="mx-auto flex h-[calc(100dvh-9rem)] max-w-3xl flex-col">
-  <header class="flex items-baseline justify-between gap-3">
-    <div>
-      <p class="text-sm font-medium tracking-wide text-primary uppercase">Asisten</p>
-      <h1 class="mt-1 font-display text-4xl italic">Tanya & ubah</h1>
+<section class="flex h-[calc(100dvh-9rem)] max-w-[42rem] flex-col">
+  <header data-rise style="--i: 0">
+    <h1>Tanya & ubah</h1>
+    <p class="mt-3 text-body">
+      Asisten bisa langsung mengubah meja hitung, titipan, dan peran lewat tool. Saran omzet = proyeksi.
+      {#if aiSettings.serverKey === "env"}
+        Key server aktif.
+      {:else}
+        <a class="link" href="/pengaturan">Isi API key</a> dulu.
+      {/if}
+    </p>
+    <div class="mt-4" data-reveal>
+      <Ringkas compact />
     </div>
-    {#if aiSettings.serverKey === "env"}
-      <span class="rounded-full border border-border px-3 py-1 text-xs text-muted">key server</span>
-    {:else}
-      <a href="/pengaturan" class="text-xs text-primary underline">isi API key</a>
-    {/if}
   </header>
-  <p class="mt-2 text-sm text-muted">Asisten bisa langsung mengubah meja hitung, titipan, dan peran lewat tool. Saran omzet = proyeksi.</p>
 
-  <ul class="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
+  <ul class="mt-6 flex-1 space-y-3 overflow-y-auto pr-1" data-reveal>
     {#each bubbles as bub, i (i)}
       <li class="flex {bub.role === 'user' ? 'justify-end' : 'justify-start'}">
-        <div class="max-w-[85%] rounded-2xl px-4 py-3 text-sm {bub.role === 'user' ? 'bg-primary text-primary-fg' : 'border border-border bg-surface'}">
+        <div class="max-w-[85%] rounded p-4 text-body {bub.role === 'user' ? 'bg-primary text-primary-fg' : 'bg-surface'}">
           {#if bub.content}<p class="whitespace-pre-wrap break-words">{bub.content}</p>{/if}
-          {#if bub.note}<p class="mt-1 text-xs {bub.role === 'user' ? '' : 'text-muted'}">{bub.note}</p>{/if}
+          {#if bub.note}<p class="mt-2 text-small {bub.role === 'user' ? '' : 'text-muted'}">{bub.note}</p>{/if}
         </div>
       </li>
     {:else}
-      <li class="rounded-2xl border border-dashed border-line bg-surface px-4 py-8 text-center text-sm text-muted">
+      <li class="panel p-6 text-body text-muted">
         Coba: “set harga per kg jadi 350rb”, “tambah barang Kopi 1 kg 4 pcs tarif 300rb/kg”, “buat titipan serum 0,3 kg ke Turki”.
       </li>
     {/each}
-    {#if busy}<li class="text-sm text-muted" role="status">Asisten bekerja…</li>{/if}
+    {#if busy}<li class="text-body text-muted" role="status">Asisten bekerja…</li>{/if}
   </ul>
 
-  {#if notice}<p class="mt-2 text-sm text-accent" role="status">{notice}</p>{/if}
+  {#if notice}<p class="mt-3 text-body text-accent" role="status">{notice}</p>{/if}
   {#if !session.pending && !session.user}
-    <a href="/masuk" class="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg">Masuk untuk memakai asisten</a>
+    <a href="/masuk" class="btn mt-4">Masuk untuk memakai asisten</a>
   {:else}
-    <form class="mt-3 flex items-end gap-2" onsubmit={kirim}>
+    <form class="mt-4 flex items-end gap-2" onsubmit={kirim}>
       <label class="sr-only" for="asisten-input">Pertanyaan</label>
       <textarea
         id="asisten-input"
@@ -120,9 +125,9 @@
         maxlength="4000"
         bind:value={input}
         placeholder="Tulis permintaan…"
-        class="min-h-11 flex-1 resize-none rounded-2xl border border-border bg-bg px-3 py-2 text-base outline-none focus:border-primary"
+        class="{field} flex-1 resize-none py-3"
       ></textarea>
-      <button type="submit" class="inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={!canSend || !input.trim()}>
+      <button type="submit" class="btn disabled:opacity-50" disabled={!canSend || !input.trim()}>
         {busy ? "…" : "Kirim"}
       </button>
     </form>

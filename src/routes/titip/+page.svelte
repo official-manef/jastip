@@ -5,7 +5,7 @@
   import { authedFetch, loadMe, session } from "../../lib/titip/session.svelte";
   import { ARAH, arahLabel, isArah, STATUSES, statusLabel, type TitipanRow, type TitipanStatus } from "../../lib/titip/titipan";
 
-  const field = "min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-base outline-none placeholder:text-muted";
+  const field = "field";
 
   let rows = $state<TitipanRow[]>([]);
   let loading = $state(true);
@@ -111,91 +111,88 @@
   }
 </script>
 
-<section class="mx-auto max-w-3xl">
+<section class="max-w-[42rem]">
   {#if session.pending || loading}
-    <div class="h-9 w-40 animate-pulse rounded-lg bg-line" aria-hidden="true"></div>
-    <div class="mt-4 h-36 animate-pulse rounded-2xl bg-line" aria-hidden="true"></div>
-    <p class="sr-only">Memuat titipan</p>
+    <p class="text-body text-muted" role="status">Memuat titipan…</p>
   {:else if !session.user}
-    <h1 class="font-display text-4xl italic">Titipan</h1>
-    <p class="mt-3 text-muted">Masuk dulu untuk menitip atau melihat permintaan.</p>
-    <a href="/masuk" class="mt-6 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg">Masuk</a>
+    <h1>Titipan</h1>
+    <p class="mt-4 text-lead">Masuk dulu untuk menitip atau melihat permintaan.</p>
+    <a href="/masuk" class="btn mt-6">Masuk</a>
   {:else if !session.role}
-    <h1 class="font-display text-4xl italic">Titipan</h1>
-    <p class="mt-3 text-muted">Pilih peran dulu. Klien menitip, jastiper yang membawa.</p>
-    <a href="/masuk" class="mt-6 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg">Pilih peran</a>
+    <h1>Titipan</h1>
+    <p class="mt-4 text-lead">Pilih peran dulu. Klien menitip, jastiper yang membawa.</p>
+    <a href="/masuk" class="btn mt-6">Pilih peran</a>
   {:else}
-    <p class="text-sm font-medium tracking-wide text-primary uppercase">{session.role === "klien" ? "Permintaanmu" : "Semua titipan"}</p>
-    <h1 class="mt-1 font-display text-4xl italic">Titipan</h1>
-    <p class="mt-3 text-muted">
-      {#if session.role === "klien"}
-        Catat barang yang mau dibawa. Jastiper yang mengubah status.
-      {:else if session.role === "jastiper"}
-        Permintaan klien di rute Jakarta ↔ Turki. Tandai saat barang dibawa atau selesai.
-      {:else}
-        Kamu bisa menitip untuk uji, dan mengubah status seperti jastiper.
-      {/if}
-    </p>
+    <header class="max-w-[40rem]" data-rise style="--i: 0">
+      <h1>{session.role === "klien" ? "Titipanmu" : "Semua titipan"}</h1>
+      <p class="mt-4 text-lead">
+        {#if session.role === "klien"}
+          Catat barang yang mau dibawa. Jastiper yang mengubah status.
+        {:else if session.role === "jastiper"}
+          Permintaan klien di rute Jakarta ↔ Turki. Tandai saat barang dibawa atau selesai.
+        {:else}
+          Kamu bisa menitip untuk uji, dan mengubah status seperti jastiper.
+        {/if}
+      </p>
+    </header>
 
     {#if canAsk}
-      <form class="mt-6 rounded-2xl border border-border bg-surface p-4 shadow-ticket" onsubmit={kirim}>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <label class="block text-sm">
-            <span class="mb-1 block text-muted">Arah</span>
-            <select class={field} bind:value={arah}>
-              {#each ARAH as item (item.id)}
-                <option value={item.id}>{item.label}</option>
-              {/each}
-            </select>
-          </label>
-          <label class="block text-sm">
-            <span class="mb-1 block text-muted">Berat (kg)</span>
-            <input class={field} inputmode="decimal" bind:value={berat} />
-          </label>
-          <label class="block text-sm sm:col-span-2">
-            <span class="mb-1 block text-muted">Barang</span>
-            <input class={field} maxlength="80" placeholder="Misalnya krim wajah" bind:value={nama} />
-          </label>
-          <label class="block text-sm sm:col-span-2">
-            <span class="mb-1 block text-muted">Catatan</span>
-            <input class={field} maxlength="240" placeholder="Opsional" bind:value={catatan} />
-          </label>
-        </div>
-        <button type="submit" class="mt-4 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg disabled:opacity-50" disabled={busy}>
+      <form class="panel mt-8 grid gap-3 p-4 sm:grid-cols-2" onsubmit={kirim} data-reveal>
+        <label class="block">
+          <span class="mb-2 block text-small text-muted">Arah</span>
+          <select class={field} bind:value={arah}>
+            {#each ARAH as item (item.id)}
+              <option value={item.id}>{item.label}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-small text-muted">Berat (kg)</span>
+          <input class="{field} num" inputmode="decimal" bind:value={berat} />
+        </label>
+        <label class="block sm:col-span-2">
+          <span class="mb-2 block text-small text-muted">Barang</span>
+          <input class={field} maxlength="80" placeholder="Misalnya krim wajah" bind:value={nama} />
+        </label>
+        <label class="block sm:col-span-2">
+          <span class="mb-2 block text-small text-muted">Catatan</span>
+          <input class={field} maxlength="240" placeholder="Opsional" bind:value={catatan} />
+        </label>
+        <button type="submit" class="btn disabled:opacity-50 sm:col-span-2" disabled={busy}>
           {busy ? "Mengirim…" : "Titip"}
         </button>
       </form>
     {/if}
 
     {#if notice}
-      <p class="mt-4 text-sm text-accent" role="status">{notice}</p>
+      <p class="mt-4 text-body text-accent" role="status">{notice}</p>
     {/if}
 
     {#if rows.length === 0}
-      <p class="mt-6 rounded-2xl border border-dashed border-line bg-surface px-4 py-8 text-center text-muted">Belum ada titipan.</p>
+      <p class="panel mt-6 p-6 text-body text-muted">Belum ada titipan.</p>
     {:else}
-      <ul class="mt-6 grid gap-3">
+      <ul class="mt-6 flex flex-col gap-3" data-reveal>
         {#each rows as row (row.id)}
-          <li class="rounded-2xl border border-border bg-surface p-4 shadow-ticket">
+          <li class="panel p-4">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 class="font-display text-2xl italic">{row.nama}</h2>
-              <p class="text-sm text-muted">{kg(row.kg)}</p>
+              <h2 class="text-lead">{row.nama}</h2>
+              <p class="num text-small text-muted">{kg(row.kg)}</p>
             </div>
-            <p class="mt-1 text-sm text-muted">
+            <p class="mt-1 text-small text-muted">
               {isArah(row.arah) ? arahLabel(row.arah) : row.arah}
               {#if session.role !== "klien"}
                 · {row.pemilik}
               {/if}
             </p>
             {#if row.catatan}
-              <p class="mt-2 text-sm">{row.catatan}</p>
+              <p class="mt-2 text-body">{row.catatan}</p>
             {/if}
             {#if canCarry}
-              <div class="mt-3 flex flex-wrap gap-1">
+              <div class="mt-4 flex flex-wrap gap-1">
                 {#each STATUSES as item (item.id)}
                   <button
                     type="button"
-                    class="min-h-11 rounded-full px-3 text-sm {row.status === item.id ? 'bg-primary text-primary-fg' : 'text-muted'}"
+                    class="min-h-11 rounded px-3 text-body {row.status === item.id ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}"
                     onclick={() => ubah(row.id, item.id)}
                   >
                     {item.label}
@@ -203,15 +200,15 @@
                 {/each}
               </div>
             {:else}
-              <p class="mt-3 text-sm font-medium text-primary">{statusLabel(row.status)}</p>
+              <p class="mt-4 text-body">{statusLabel(row.status)}</p>
             {/if}
           </li>
         {/each}
       </ul>
     {/if}
 
-    <p class="mt-6 text-sm text-muted">
-      <a class="underline decoration-line underline-offset-4" href={homeFor(session.role)}>Kembali</a>
+    <p class="mt-8 text-body">
+      <a class="link" href={homeFor(session.role)}>Kembali</a>
     </p>
   {/if}
 </section>

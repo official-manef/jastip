@@ -2,8 +2,10 @@
   import { onMount } from "svelte";
   import { DEFAULT_AI_BASE_URL, DEFAULT_AI_MODEL } from "../../lib/titip/ai";
   import { aiError, aiSettings, loadAiSettings, saveAiSettings } from "../../lib/titip/ai-settings.svelte";
+  import Ringkas from "../../lib/titip/Ringkas.svelte";
   import { authedFetch, loadMe, session } from "../../lib/titip/session.svelte";
-  const control = "min-h-11 w-full rounded-xl border border-border bg-bg px-3 text-base outline-none focus:border-primary";
+
+  const field = "field";
   let prompt = $state("");
   let models = $state<string[]>([]);
   let answer = $state("");
@@ -53,58 +55,67 @@
   }
 </script>
 
-<section class="mx-auto max-w-2xl">
-  <p class="text-sm font-medium tracking-wide text-primary uppercase">Pengaturan</p>
-  <h1 class="mt-1 font-display text-4xl italic">AI & model</h1>
-  <p class="mt-3 text-muted">
-    Operasikan penyedia lewat server. Kalau admin sudah menaruh <code>AI_API_KEY</code> di env, kamu bisa langsung pakai asisten tanpa mengisi key.
-  </p>
+<section class="max-w-[40rem]">
+  <header data-rise style="--i: 0">
+    <h1>AI & model</h1>
+    <p class="mt-4 text-lead">
+      Operasikan penyedia lewat server. Kalau admin sudah menaruh <code>AI_API_KEY</code> di env, kamu bisa langsung pakai asisten tanpa mengisi key.
+    </p>
+  </header>
 
   {#if aiSettings.serverKey === "env"}
-    <p class="mt-4 rounded-2xl border border-border bg-surface px-4 py-3 text-sm">
-      <span class="font-medium text-primary">Key server aktif.</span>
-      Key Anda opsional — mengisi key sendiri akan memakai kuota penyedia Anda, bukan key server.
+    <p class="panel mt-6 p-4 text-body">
+      <span class="text-fg">Key server aktif.</span>
+      Kamu bisa langsung chat. Isi key sendiri kalau mau memakai kuota penyedia Anda.
     </p>
   {:else}
-    <p class="mt-4 rounded-2xl border border-dashed border-line bg-surface px-4 py-3 text-sm text-muted">
+    <p class="panel mt-6 p-4 text-body text-muted">
       Server belum punya <code>AI_API_KEY</code>. Isi key Anda di bawah (BYOK) supaya asisten bisa jalan.
     </p>
   {/if}
 
-  <div class="mt-6 grid gap-4 rounded-2xl border border-border bg-surface p-5 shadow-ticket">
-    <label class="grid gap-1 text-sm">API base URL
-      <input class={control} type="url" bind:value={aiSettings.baseUrl} onchange={() => models = []} autocomplete="off" maxlength="2048" />
+  <div class="mt-6" data-reveal>
+    <Ringkas compact />
+  </div>
+
+  <div class="panel mt-6 grid gap-4 p-5" data-reveal>
+    <label class="block">
+      <span class="mb-2 block text-small text-muted">API base URL</span>
+      <input class={field} type="url" bind:value={aiSettings.baseUrl} onchange={() => models = []} autocomplete="off" maxlength="2048" />
     </label>
-    <label class="grid gap-1 text-sm">ID model
-      <input class={control} bind:value={aiSettings.model} list="ai-models" maxlength="200" placeholder={DEFAULT_AI_MODEL} />
+    <label class="block">
+      <span class="mb-2 block text-small text-muted">ID model</span>
+      <input class={field} bind:value={aiSettings.model} list="ai-models" maxlength="200" placeholder={DEFAULT_AI_MODEL} />
       <datalist id="ai-models">{#each models as id}<option value={id}></option>{/each}</datalist>
     </label>
-    <p class="text-xs text-muted">Default {DEFAULT_AI_MODEL} (tools aktif, tanpa vision). Ambil daftar model untuk memastikan ID persis.</p>
-    <button type="button" class="min-h-11 rounded-full border border-border px-4 text-sm" onclick={save}>Simpan URL dan model</button>
+    <p class="text-small text-muted">Default {DEFAULT_AI_MODEL} (tools aktif, tanpa vision). Ambil daftar model untuk memastikan ID persis.</p>
+    <button type="button" class="btn-quiet" onclick={save}>Simpan URL dan model</button>
 
-    <label class="grid gap-1 text-sm">API key Anda {#if aiSettings.serverKey === "env"}<span class="text-xs text-muted">(opsional)</span>{/if}
-      <input class={control} type="password" bind:value={aiSettings.apiKey} autocomplete="off" spellcheck="false" maxlength="4096" />
+    <label class="block">
+      <span class="mb-2 block text-small text-muted">API key Anda {#if aiSettings.serverKey === "env"}(opsional){/if}</span>
+      <input class={field} type="password" bind:value={aiSettings.apiKey} autocomplete="off" spellcheck="false" maxlength="4096" />
     </label>
-    <p class="text-xs text-muted">Key diteruskan melalui server ke penyedia pilihan Anda, tidak disimpan aplikasi. Biaya mengikuti akun penyedia.</p>
+    <p class="text-small text-muted">Key diteruskan melalui server ke penyedia pilihan Anda, tidak disimpan aplikasi. Biaya mengikuti akun penyedia.</p>
     {#if !session.pending && !session.user}
-      <a href="/masuk" class="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-4 text-sm text-primary-fg">Masuk untuk memakai AI</a>
+      <a href="/masuk" class="btn">Masuk untuk memakai AI</a>
     {/if}
     <div class="flex flex-wrap gap-2">
-      <button type="button" class="min-h-11 rounded-full bg-primary px-4 text-sm text-primary-fg disabled:opacity-50" disabled={busy || !session.user} onclick={() => send("models")}>{busy ? "Memproses…" : "Ambil daftar model"}</button>
-      <button type="button" class="min-h-11 rounded-full border border-border px-4 text-sm" onclick={() => { aiSettings.apiKey = ""; answer = ""; notice = "API key dibersihkan dari halaman ini."; }}>Hapus key dari halaman</button>
+      <button type="button" class="btn disabled:opacity-50" disabled={busy || !session.user} onclick={() => send("models")}>{busy ? "Memproses…" : "Ambil daftar model"}</button>
+      <button type="button" class="btn-quiet" onclick={() => { aiSettings.apiKey = ""; answer = ""; notice = "API key dibersihkan dari halaman ini."; }}>Hapus key dari halaman</button>
     </div>
   </div>
 
-  <div class="mt-5 grid gap-3 rounded-2xl border border-border bg-surface p-5">
-    <h2 class="font-display text-2xl italic">Uji cepat</h2>
-    <p class="text-xs text-muted">Untuk mengubah data, pakai halaman <a class="text-primary underline" href="/asisten">Asisten</a> (function calling). Di sini hanya uji jawaban.</p>
-    <label class="grid gap-1 text-sm">Pertanyaan
-      <textarea class={control + " py-3"} rows="4" bind:value={prompt} maxlength="4000" placeholder="Apa yang perlu disiapkan untuk trip saya?"></textarea>
+  <div class="panel mt-6 grid gap-4 p-5" data-reveal>
+    <h2>Uji cepat</h2>
+    <p class="text-small text-muted">Untuk mengubah data, pakai halaman <a class="link" href="/asisten">Asisten</a> (function calling). Di sini hanya uji jawaban.</p>
+    <label class="block">
+      <span class="mb-2 block text-small text-muted">Pertanyaan</span>
+      <textarea class="{field} py-3" rows="4" bind:value={prompt} maxlength="4000" placeholder="Apa yang perlu disiapkan untuk trip saya?"></textarea>
     </label>
-    <button type="button" class="min-h-11 rounded-full bg-primary px-4 text-sm text-primary-fg disabled:opacity-50" disabled={busy || !aiSettings.model || !prompt.trim() || !session.user} onclick={() => send("chat")}>{busy ? "Memproses…" : "Kirim pertanyaan"}</button>
-    {#if answer}<p class="whitespace-pre-wrap break-words text-sm" aria-live="polite">{answer}</p>{/if}
+    <button type="button" class="btn disabled:opacity-50" disabled={busy || !aiSettings.model || !prompt.trim() || !session.user} onclick={() => send("chat")}>{busy ? "Memproses…" : "Kirim pertanyaan"}</button>
+    {#if answer}<p class="whitespace-pre-wrap break-words text-body" aria-live="polite">{answer}</p>{/if}
   </div>
 
-  {#if notice}<p class="mt-4 text-sm text-accent" role="status">{notice}</p>{/if}
-  <p class="mt-6 text-xs text-muted">Base URL default: {DEFAULT_AI_BASE_URL}</p>
+  {#if notice}<p class="mt-4 text-body text-accent" role="status">{notice}</p>{/if}
+  <p class="mt-6 text-small text-muted">Base URL default: {DEFAULT_AI_BASE_URL}</p>
 </section>

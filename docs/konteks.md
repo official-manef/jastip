@@ -16,6 +16,8 @@ Peran klien/jastiper terkunci setelah dipilih. Akun tidak bisa menaikkan dirinya
 
 Rumah setelah masuk: klien `/titip`, jastiper `/`, admin `/admin`.
 
+Bahasa visual (palet, tipe, aturan rumah, gerak) ada di [DESIGN.md](../DESIGN.md).
+
 ## Hitung trip
 
 Sumber angkanya `src/lib/titip/calc.ts`. Meja memakainya langsung. Convex menyimpan skenario yang sama.

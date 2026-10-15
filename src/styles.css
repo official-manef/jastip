@@ -4,19 +4,53 @@
 @source "./routes";
 @source "./lib/titip";
 
+/*
+ * Direction: the quiet instrument (tasteskill v2, seed 2117912992).
+ * Palette "Three stones": one ground, one ink, one accent, one darker field.
+ * Type: one family (Clash Grotesk), five sizes.
+ * House rules kept here: no thin rules, no outlined boxes, no shadows at rest,
+ * no gradients, no glass, no cream, no emoji.
+ */
 @theme {
-  --color-bg: #f3ede3;
-  --color-surface: #fffdf8;
-  --color-fg: #1c1917;
-  --color-muted: #5c554c;
-  --color-primary: #0f6e56;
-  --color-primary-fg: #f3fbf7;
-  --color-accent: #b8431c;
-  --color-border: #e4d9cb;
-  --color-line: #d9cdb8;
-  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", georgia, "Times New Roman", serif;
-  --shadow-ticket: 0 1px 0 rgb(28 25 23 / 0.04), 0 16px 40px rgb(28 25 23 / 0.06);
+  --color-bg: #eeecea;
+  --color-surface: #e4e1dd;
+  --color-field: #cdc3b6;
+  --color-fg: #333231;
+  --color-muted: #4a463f;
+  --color-primary: #5c6b54;
+  --color-primary-fg: #ffffff;
+  --color-accent: #7d3a2b;
+  --color-line: #d6d2cd;
+
+  --font-sans: "Clash Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Clash Grotesk", ui-sans-serif, system-ui, sans-serif;
+
+  --step-small: clamp(1rem, 0.97rem + 0.1vw, 1rem);
+  --step-body: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  --step-lead: clamp(1.25rem, 1.1rem + 0.7vw, 1.625rem);
+  --step-head: clamp(1.75rem, 1.4rem + 1.6vw, 2.5rem);
+  --step-display: clamp(3rem, 1.8rem + 4.6vw, 4.75rem);
+
+  /* Five size steps, exposed as Tailwind utilities (text-small … text-display). */
+  --text-small: var(--step-small);
+  --text-body: var(--step-body);
+  --text-lead: var(--step-lead);
+  --text-head: var(--step-head);
+  --text-display: var(--step-display);
+
+  /* One radius for the whole page, one button shape. */
+  --radius: 4px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --t-press: 140ms;
+  --t-hover: 180ms;
+  --t-ui: 240ms;
+  --t-reveal: 800ms;
+
+  --margin: clamp(1.25rem, 4vw, 2.5rem);
+  --section: clamp(3.5rem, 7vw, 6rem);
 }
 
 @layer base {
@@ -24,6 +58,7 @@
     color-scheme: light;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
@@ -31,8 +66,9 @@
     background: var(--color-bg);
     color: var(--color-fg);
     font-family: var(--font-sans);
-    font-size: 16px;
+    font-size: var(--step-body);
     line-height: 1.5;
+    font-kerning: normal;
     overflow-x: clip;
   }
 
@@ -41,12 +77,22 @@
   h3 {
     font-family: var(--font-display);
     text-wrap: balance;
-    font-weight: 560;
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+
+  h1 {
+    font-size: var(--step-head);
+  }
+
+  h2 {
+    font-size: var(--step-lead);
   }
 
   p {
     text-wrap: pretty;
+    max-width: 62ch;
   }
 
   button:not(:disabled),
@@ -60,12 +106,12 @@
 
   :focus-visible {
     outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+    outline-offset: 3px;
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--color-primary) 28%, white);
-    color: var(--color-fg);
+    background: var(--color-primary);
+    color: var(--color-primary-fg);
   }
 
   input[type="range"] {
@@ -81,8 +127,7 @@
 
   /*
    * iOS Safari memperbesar (zoom) halaman saat fokus ke input yang font-nya
-   * < 16px. Paksa minimal 16px pada kontrol form di layar sentuh supaya fokus
-   * tidak mengguncang tata letak. Desktop tetap boleh kecil.
+   * < 16px. Paksa minimal 16px pada kontrol form di layar sentuh.
    */
   @media (pointer: coarse) {
     input,
@@ -94,11 +139,92 @@
 }
 
 @layer components {
+  /* A surface is a fill one tone off the ground, never a line or a shadow. */
+  .panel {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+  }
+
+  .panel-deep {
+    background: var(--color-field);
+    border-radius: var(--radius);
+  }
+
+  .field {
+    min-height: 2.75rem;
+    width: 100%;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--color-bg);
+    padding-inline: 0.75rem;
+    font-size: max(1rem, var(--step-body));
+    outline: none;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding-inline: 1.15rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--color-primary);
+    color: var(--color-primary-fg);
+    font-weight: 500;
+    transition:
+      transform var(--t-press) var(--ease-out),
+      background-color var(--t-hover) ease;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
+  }
+
+  .btn-quiet {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding-inline: 1.15rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    font-weight: 500;
+    transition: background-color var(--t-hover) ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover {
+      background: color-mix(in srgb, var(--color-primary) 86%, black);
+    }
+
+    .btn-quiet:hover {
+      background: var(--color-field);
+    }
+  }
+
+  .link {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-thickness: 0.07em;
+    text-underline-offset: 0.2em;
+    text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+    transition: text-decoration-color var(--t-hover) ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .link:hover {
+      text-decoration-color: currentColor;
+    }
+  }
+
   .meter {
-    height: 0.375rem;
+    height: 0.5rem;
     overflow: hidden;
     border-radius: 999px;
-    background: var(--color-bg);
+    background: var(--color-field);
   }
 
   .meter > span {
@@ -106,46 +232,111 @@
     height: 100%;
     border-radius: inherit;
     background: var(--color-primary);
-    transition: width 200ms ease-out;
-  }
-
-  .rise {
-    animation: rise 420ms cubic-bezier(0.2, 0, 0, 1) both;
+    transition: width var(--t-reveal) var(--ease-out);
   }
 
   .num {
     font-variant-numeric: tabular-nums;
   }
 
-  .ticket {
-    border-radius: 1.5rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-    box-shadow: var(--shadow-ticket);
-  }
-
-  .hairline {
-    border-top: 1px dashed var(--color-line);
+  /* The one large thing on a screen: the instrument reading. */
+  .readout {
+    font-size: var(--step-display);
+    line-height: 0.95;
+    font-weight: 500;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
   }
 }
 
-@keyframes rise {
-  from {
+/* ---------- motion layer (content stays visible without JavaScript) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-rise] {
     opacity: 0;
-    transform: translateY(10px);
-    filter: blur(4px);
+    transform: translateY(18px);
+    animation: ad-rise var(--t-reveal) var(--ease-out) forwards;
+    animation-delay: calc(var(--i, 0) * 80ms + 100ms);
   }
+
+  .js [data-reveal] {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 700ms var(--ease-out),
+      transform 800ms var(--ease-out);
+  }
+
+  .js [data-reveal].is-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* The signature move: atmosphere photographs crossfade like light shifting. */
+  .js .crossfade > * {
+    animation: ad-crossfade 18s var(--ease-soft) infinite;
+    opacity: 0;
+  }
+
+  .js .crossfade > *:nth-child(1) {
+    animation-delay: 0s;
+  }
+
+  .js .crossfade > *:nth-child(2) {
+    animation-delay: 6s;
+  }
+
+  .js .crossfade > *:nth-child(3) {
+    animation-delay: 12s;
+  }
+
+  .js .drift {
+    animation: ad-drift linear both;
+    animation-timeline: view();
+    animation-range: entry 0% exit 100%;
+  }
+}
+
+@keyframes ad-rise {
   to {
     opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
+    transform: none;
+  }
+}
+
+@keyframes ad-crossfade {
+  0%,
+  4% {
+    opacity: 0;
+  }
+  10%,
+  30% {
+    opacity: 1;
+  }
+  36%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ad-drift {
+  from {
+    transform: translateY(-3%);
+  }
+  to {
+    transform: translateY(3%);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rise,
+  .crossfade > *:not(:first-child) {
+    display: none;
+  }
+
+  .crossfade > *:first-child {
+    opacity: 1;
+  }
+
   .meter > span {
-    animation: none;
     transition: none;
   }
 }

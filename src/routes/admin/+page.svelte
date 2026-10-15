@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Ringkas from "../../lib/titip/Ringkas.svelte";
   import { ROLES, roleLabel, type Role } from "../../lib/titip/roles";
   import { authedFetch, loadMe, session } from "../../lib/titip/session.svelte";
 
@@ -77,60 +78,66 @@
   }
 </script>
 
-<section class="mx-auto max-w-3xl">
+<section class="max-w-[42rem]">
   {#if session.pending || loading}
-    <div class="h-9 w-40 animate-pulse rounded-lg bg-line" aria-hidden="true"></div>
-    <div class="mt-4 h-28 animate-pulse rounded-2xl bg-line" aria-hidden="true"></div>
-    <p class="sr-only">Memuat orang</p>
+    <p class="text-body text-muted" role="status">Memuat orang…</p>
   {:else if !session.user}
-    <h1 class="font-display text-4xl italic">Orang</h1>
-    <p class="mt-3 text-muted">Masuk sebagai admin untuk mengatur peran.</p>
-    <a href="/masuk" class="mt-6 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg">Masuk</a>
+    <h1>Orang</h1>
+    <p class="mt-4 text-lead">Masuk sebagai admin untuk mengatur peran.</p>
+    <a href="/masuk" class="btn mt-6">Masuk</a>
   {:else if session.role !== "admin"}
-    <h1 class="font-display text-4xl italic">Orang</h1>
-    <p class="mt-3 text-muted">Halaman ini hanya untuk admin, yaitu pengembang.</p>
-    <a href="/" class="mt-6 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg">Ke meja</a>
+    <h1>Orang</h1>
+    <p class="mt-4 text-lead">Halaman ini hanya untuk admin, yaitu pengembang.</p>
+    <a href="/" class="btn mt-6">Ke meja</a>
   {:else}
-    <p class="text-sm font-medium tracking-wide text-primary uppercase">Pengembang</p>
-    <h1 class="mt-1 font-display text-4xl italic">Orang</h1>
-    <p class="mt-3 text-muted">Ubah peran klien dan jastiper. Admin tetap satu, dan tidak bisa diturunkan kalau dia satu-satunya.</p>
+    <header class="max-w-[40rem]" data-rise style="--i: 0">
+      <h1>Orang</h1>
+      <p class="mt-4 text-lead">
+        Ubah peran klien dan jastiper. Admin tetap satu, dan tidak bisa diturunkan kalau dia satu-satunya.
+      </p>
+    </header>
+
+    <div class="mt-6" data-reveal>
+      <Ringkas compact />
+    </div>
 
     {#if notice}
-      <p class="mt-4 text-sm text-accent" role="status">{notice}</p>
+      <p class="mt-4 text-body text-accent" role="status">{notice}</p>
     {/if}
 
     {#if people.length === 0}
-      <p class="mt-6 rounded-2xl border border-dashed border-line bg-surface px-4 py-8 text-center text-muted">Belum ada akun lain.</p>
+      <p class="panel mt-6 p-6 text-body text-muted">Belum ada akun lain.</p>
     {:else}
-      <ul class="mt-6 grid gap-3">
+      <ul class="mt-6 flex flex-col gap-3" data-reveal>
         {#each people as person (person.id)}
-          <li class="rounded-2xl border border-border bg-surface p-4 shadow-ticket">
-            <div class="flex flex-wrap items-start justify-between gap-3">
+          <li class="panel p-4">
+            <div class="flex flex-wrap items-start justify-between gap-4">
               <div class="min-w-0">
-                <h2 class="truncate font-display text-2xl italic">{person.name || person.email}</h2>
-                <p class="truncate text-sm text-muted">{person.email}</p>
-                <p class="mt-1 text-sm">Sekarang: {roleLabel(person.role)}</p>
+                <h2 class="truncate text-lead">{person.name || person.email}</h2>
+                <p class="truncate text-small text-muted">{person.email}</p>
+                <p class="mt-2 text-body">Sekarang: {roleLabel(person.role)}</p>
               </div>
               <div class="flex flex-wrap items-center gap-2">
-                <label class="sr-only" for={"peran-" + person.id}>Peran {person.name}</label>
-                <select
-                  id={"peran-" + person.id}
-                  class="min-h-11 rounded-xl border border-border bg-bg px-3 text-sm"
-                  value={draft[person.id] ?? "klien"}
-                  onchange={(event) => pilih(person.id, event.currentTarget.value)}
-                >
-                  {#each ROLES as item (item.id)}
-                    <option
-                      value={item.id}
-                      disabled={(item.id === "admin" && person.role !== "admin") || (person.role === "admin" && satuAdmin && item.id !== "admin")}
-                    >
-                      {item.label}
-                    </option>
-                  {/each}
-                </select>
+                <label>
+                  <span class="sr-only">Peran {person.name}</span>
+                  <select
+                    class="field w-40"
+                    value={draft[person.id] ?? "klien"}
+                    onchange={(event) => pilih(person.id, event.currentTarget.value)}
+                  >
+                    {#each ROLES as item (item.id)}
+                      <option
+                        value={item.id}
+                        disabled={(item.id === "admin" && person.role !== "admin") || (person.role === "admin" && satuAdmin && item.id !== "admin")}
+                      >
+                        {item.label}
+                      </option>
+                    {/each}
+                  </select>
+                </label>
                 <button
                   type="button"
-                  class="inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-sm font-medium text-primary-fg disabled:opacity-50"
+                  class="btn disabled:opacity-50"
                   disabled={saving === person.id}
                   onclick={() => simpan(person)}
                 >

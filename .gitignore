@@ -14,6 +14,12 @@ dist
 .env.*
 !.env.example
 *.log
+# tasteskill working files (direction sheet, inspect screenshots) — alat lokal, bukan produk.
+.taste-skill
+# Sumber gambar mentah dari assets.mjs; salinan yang disajikan hidup di public/img.
+/assets
 # Config & catatan kerja manef (berisi rahasia: token Vercel, dll). Hanya template yang masuk repo.
 .manef/*
 !.manef/config.example.json
+# MCP klien lokal.
+.mcp.json

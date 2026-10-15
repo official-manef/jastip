@@ -1,8 +1,7 @@
 <script lang="ts">
   /**
-   * Toast "versi baru tersedia". Muncul saat service worker baru terpasang dan
-   * menunggu. Menekan tombol mengirim SKIP_WAITING, lalu reload sekali setelah
-   * SW mengambil alih — membersihkan cache lama tanpa memaksa reload diam-diam.
+   * Toast "versi baru tersedia" + status offline. Muncul sebagai overlay
+   * (fixed), jadi boleh punya latar solid; tanpa blur.
    */
   import { onMount } from "svelte";
 
@@ -31,7 +30,6 @@
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
 
-    // SW baru selesai install (halaman mungkin perlu di-reload agar terlihat).
     const reg = navigator.serviceWorker.ready;
     reg.then((r) => r.addEventListener("updatefound", update));
 
@@ -50,23 +48,16 @@
 </script>
 
 {#if offline}
-  <div class="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 lg:bottom-6" role="status">
-    <p class="rounded-full bg-fg px-4 py-2 text-sm text-bg shadow-ticket">Mode offline — perubahan tetap tersimpan di perangkat.</p>
-  </div>
+  <p class="fixed inset-x-4 bottom-4 z-50 rounded bg-fg px-4 py-3 text-body text-bg" role="status">
+    Mode offline. Perubahan tetap tersimpan di perangkat.
+  </p>
 {/if}
 
 {#if waiting}
-  <div class="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 lg:bottom-6">
-    <div class="flex items-center gap-3 rounded-2xl border border-border bg-surface px-3 py-2 shadow-ticket" role="status">
-      <span class="text-sm">Versi baru tersedia.</span>
-      <button
-        type="button"
-        class="min-h-9 rounded-full bg-primary px-3 text-sm font-medium text-primary-fg"
-        disabled={reloading}
-        onclick={applyUpdate}
-      >
-        {reloading ? "Memuat…" : "Muat ulang"}
-      </button>
-    </div>
+  <div class="fixed inset-x-4 bottom-4 z-50 flex flex-wrap items-center justify-between gap-3 rounded bg-fg px-4 py-3 text-bg" role="status">
+    <span class="text-body">Versi baru tersedia.</span>
+    <button type="button" class="btn px-4" disabled={reloading} onclick={applyUpdate}>
+      {reloading ? "Memuat…" : "Muat ulang"}
+    </button>
   </div>
 {/if}

@@ -48,11 +48,10 @@
   });
 </script>
 
-<section class="mx-auto max-w-lg">
-  <p class="text-sm font-medium tracking-wide text-primary uppercase">Akun</p>
-  <h1 class="mt-1 font-display text-4xl italic">Hampir selesai</h1>
-  <p class="mt-3 text-muted" role="status">{notice}</p>
+<section class="max-w-[34rem]">
+  <h1>Hampir selesai</h1>
+  <p class="mt-4 text-lead" role="status">{notice}</p>
   {#if notice !== "Menyimpan peran…"}
-    <a href="/masuk" class="mt-6 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-fg">Pilih lagi</a>
+    <a href="/masuk" class="btn mt-6">Pilih lagi</a>
   {/if}
 </section>

@@ -15,17 +15,18 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
 
-Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [docs/progress.md](docs/progress.md).
+Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [docs/progress.md](docs/progress.md). Bahasa visual ada di [DESIGN.md](DESIGN.md).
 
 ## Halaman
 
 | Path | Untuk siapa | Isi |
 | --- | --- | --- |
 | `/` | Semua, rumah jastiper | Meja hitung |
-| `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin) |
+| `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin), Deniz (klien lain) |
 | `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru |
 | `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan BYOK (opsional bila key server ada) |
 | `/titip` | Klien, jastiper, admin | Permintaan titipan |
+| `/asisten` | Klien, jastiper, admin | Chat AI dengan function calling |
 | `/admin` | Admin | Daftar orang dan peran |
 
 Meja tidak dikunci login.
@@ -96,7 +97,13 @@ CI memeriksa build, tipe, unit test, API akun lokal, dan render desktop/mobile p
 
 ## Desain
 
-Kertas krem `#F3EDE3`, tinta `#1C1917`, jade `#0F6E56`, terracotta `#B8431C`. Huruf Fraunces dan Outfit. Nada waybill, bukan dashboard ungu.
+Art direction: **the quiet instrument** (tasteskill v2, seed 2117912992). Palet "Three stones":
+ground `#EEECEA`, surface `#E4E1DD`, field `#CDC3B6`, ink `#333231`, muted `#4A463F`, accent jade
+`#5C6B54`, rugi `#7D3A2B`. Satu huruf: **Clash Grotesk** (Fontshare). Permukaan dipisah oleh tone,
+bukan garis atau bayangan. Rincian di [DESIGN.md](DESIGN.md).
+
+Foto rute di meja berasal dari Wikimedia Commons (CC BY-SA), bukan hasil produk Titipin; kredit ada di
+footer dan figcaption.
 
 ## Repo
 
