@@ -12,7 +12,6 @@ jobs:
     env:
       # Auth + data akun kini di Convex; URL deployment wajib ada saat dev/uji.
       PUBLIC_CONVEX_URL: "https://impressive-wildcat-570.convex.cloud"
-      AI_API_KEY: "ci-placeholder-not-used"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

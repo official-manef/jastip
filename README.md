@@ -88,9 +88,9 @@ Ditetapkan operator di project `manef/jastip`:
 | Nama | Fungsi |
 | --- | --- |
 | `PUBLIC_CONVEX_URL` | URL backend Convex, mis. `https://impressive-wildcat-570.convex.cloud` |
-| `AI_API_KEY` | Key server untuk asisten (BYOK opsional) |
-| `AI_MODEL` | ID model default, mis. `ollama/deepseek-v4.1-flash:cloud` |
 | `TITIPIN_ADMIN_USER_ID` | ID akun admin tunggal (opsional) |
+
+Asisten AI mode **BYOK**: tidak ada key server, pengguna mengisi key penyedia sendiri di `/pengaturan`. Tidak ada env AI di Vercel.
 
 Di **Convex** (bukan Vercel): `npx convex env set SITE_URL https://situs-anda` dan `BETTER_AUTH_SECRET`. `TITIPIN_ADMIN_USER_ID` dibaca fungsi Convex, jadi set juga di sana bila dipakai.
 
@@ -102,18 +102,15 @@ Login memakai email/password mandiri (tidak ada OAuth broker). Belum ada reset p
 
 ## AI
 
-Setelan default ada di **env server** (mode "env saja"): kalau `AI_API_KEY` diisi, pengguna bisa langsung chat tanpa mengisi key. Key pengguna (BYOK) tetap didukung lewat `/pengaturan` dan menimpa key server bila diisi.
+Asisten AI memakai **BYOK murni**: tidak ada key server. Pengguna mengisi URL penyedia, ID model, dan API key sendiri di `/pengaturan`; key tidak disimpan ke database, localStorage, atau sessionStorage.
 
-- `AI_API_KEY`: key server (server-only, tanpa prefix `VITE_`). Kosong = wajib BYOK.
-- `AI_API_BASE_URL`: default `https://token.conextlab.ai/v1`.
-- `AI_MODEL`: default `ollama/deepseek-v4.1-flash:cloud` (tools aktif, tanpa vision). Tombol **Ambil daftar model** mengambil `/models`.
-- `AI_ALLOWED_HOSTS`: daftar host HTTPS yang diizinkan, dipisahkan koma; default host base URL.
-- Key pengguna tidak disimpan ke database, localStorage, atau sessionStorage. Preferensi URL/model dapat disimpan eksplisit di perangkat.
-- Endpoint harus kompatibel OpenAI `/models` dan `/chat/completions`. Request AI butuh sesi login, tidak mengikuti redirect, dan dibatasi output 2.048 token.
+- Endpoint harus HTTPS publik (localhost/jaringan privat ditolak), kompatibel OpenAI `/models` dan `/chat/completions`.
+- Request AI butuh sesi login, tidak mengikuti redirect, dan dibatasi output 2.048 token.
+- Preferensi URL/model dapat disimpan eksplisit di perangkat.
 
-**Function calling** (`src/lib/titip/tools.ts`) membungkus aksi UI yang sudah ada, dijalankan di klien lewat store trip dan `/api/*`. Aturan peran, admin tunggal, validasi, dan batas tetap ditegakkan server. Tool: `ringkasan_trip`, `set_trip`, `set_opex`, `set_capex`, `tambah_barang`, `ubah_barang`, `hapus_barang`, `reset_arah`, `daftar_titipan`, `buat_titipan`, `ubah_status_titipan`, `daftar_orang`, `set_peran`, `usul_penutup_target`, `periksa_risiko`.
+**Function calling** (`src/lib/titip/tools.ts`) membungkus aksi UI yang sudah ada, dijalankan di klien lewat store trip dan `/api/*`. Aturan peran, admin tunggal, validasi, dan batas tetap ditegakkan server. Tool: `ringkasan_trip`, `set_trip`, `set_nama_trip`, `set_opex`, `set_capex`, `tambah_barang`, `ubah_barang`, `hapus_barang`, `pilih_kaki`, `tambah_kaki`, `sisip_transit`, `hapus_kaki`, `set_kaki`, `reset_kaki`, `daftar_titipan`, `buat_titipan`, `ubah_status_titipan`, `daftar_orang`, `set_peran`, `usul_penutup_target`, `periksa_risiko`.
 
-Catatan: model ini `vision=false`, jadi lampiran gambar/camera belum didukung.
+Catatan: dukungan lampiran gambar/camera tergantung model yang dipilih pengguna.
 
 Pengujian AI dan auth:
 

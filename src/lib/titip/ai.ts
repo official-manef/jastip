@@ -1,7 +1,3 @@
-export const DEFAULT_AI_BASE_URL = "https://token.conextlab.ai/v1";
-/** ID persis dari daftar model penyedia (tools=true, vision=false). */
-export const DEFAULT_AI_MODEL = "ollama/deepseek-v4.1-flash:cloud";
-
 /** Definisi tool dalam format OpenAI `tools`. */
 export type AiToolDef = {
   type: "function";
@@ -24,7 +20,6 @@ export type AiMessage = {
 
 export type AiRequest = {
   baseUrl: string;
-  /** Boleh kosong: server memakai `AI_API_KEY` dari env. */
   apiKey: string;
   model: string;
   operation: "models" | "chat";
@@ -32,10 +27,21 @@ export type AiRequest = {
   tools: AiToolDef[];
 };
 
-export function providerUrl(baseUrl: string, allowedHosts: string[]): URL {
+/** Host yang tidak boleh jadi tujuan (SSRF): loopback, jaringan privat, metadata. */
+const PRIVATE_HOST = /^(localhost|.*\.localhost|.*\.internal|.*\.local)$|^127\.|^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\.|^169\.254\.|^0\.|^\[|^::1$/i;
+
+/**
+ * Validasi URL penyedia (BYOK). Hanya HTTPS, tanpa kredensial/query/hash, port
+ * 443, dan bukan host privat. Host dibebaskan karena key milik pengguna sendiri.
+ *
+ * ponytail: cek host berbasis string, belum resolve DNS. Cukup untuk BYOK
+ * (key milik pemanggil). Kalau nanti ada key bersama, resolve IP dulu lalu cek
+ * rentang privat (cegah DNS rebinding).
+ */
+export function providerUrl(baseUrl: string): URL {
   const url = new URL(baseUrl.trim());
   if (url.protocol !== "https:" || url.username || url.password || url.hash || url.search ||
-      (url.port && url.port !== "443") || !allowedHosts.includes(url.hostname)) {
+      (url.port && url.port !== "443") || PRIVATE_HOST.test(url.hostname) || !url.hostname.includes(".")) {
     throw new Error("provider-not-allowed");
   }
   url.pathname = url.pathname.replace(/\/+$/, "") + "/";
@@ -96,9 +102,10 @@ function parseTools(raw: unknown): AiToolDef[] {
 
 export function parseAiRequest(body: Record<string, unknown>): AiRequest {
   const text = (key: string) => typeof body[key] === "string" ? (body[key] as string).trim() : "";
-  const baseUrl = text("baseUrl") || DEFAULT_AI_BASE_URL;
+  const baseUrl = text("baseUrl");
   const apiKey = text("apiKey");
-  const model = text("model") || DEFAULT_AI_MODEL;
+  const model = text("model");
+  if (!baseUrl) throw new Error("invalid-request");
   if (baseUrl.length > 2048 || apiKey.length > 4096 || /[\r\n]/.test(apiKey)) throw new Error("invalid-request");
   if (body.operation === "models") {
     return { baseUrl, apiKey, model, operation: "models", messages: [], tools: [] };
@@ -119,11 +126,10 @@ export type AiChatResult = { content: string; toolCalls: AiToolCall[] };
 
 export async function callProvider(
   input: AiRequest,
-  allowedHosts: string[],
   apiKey: string,
   fetcher: typeof fetch = fetch,
 ): Promise<AiChatResult | { models: string[] }> {
-  const base = providerUrl(input.baseUrl, allowedHosts);
+  const base = providerUrl(input.baseUrl);
   const url = new URL(input.operation === "models" ? "models" : "chat/completions", base);
   const response = await fetcher(url, {
     method: input.operation === "models" ? "GET" : "POST",
@@ -169,7 +175,7 @@ export async function callProvider(
 }
 
 export const SYSTEM_PROMPT = [
-  "Anda asisten TITIPIN (jastip Jakarta ↔ Turki). Jawab dalam bahasa Indonesia, ringkas.",
+  "Anda asisten TITIPIN (jastip multi-negara, trip disusun sebagai daftar kaki). Jawab dalam bahasa Indonesia, ringkas.",
   "Anda punya tool untuk mengubah data aplikasi langsung. JIKA pengguna meminta perubahan, panggil tool — jangan hanya menjelaskan.",
   "Setelah tool dipanggil, ringkas apa yang berubah.",
   "Saran omzet dari tool adalah PROYEKSI, bukan omzet diakui atau pesanan.",

@@ -86,11 +86,7 @@
     <h1>Tanya & ubah</h1>
     <p class="mt-3 text-body">
       Asisten bisa langsung mengubah meja hitung, titipan, dan peran lewat tool. Saran omzet = proyeksi.
-      {#if aiSettings.serverKey === "env"}
-        Key server aktif.
-      {:else}
-        <a class="link" href="/pengaturan">Isi API key</a> dulu.
-      {/if}
+      <a class="link" href="/pengaturan">Atur API key</a> dulu (mode BYOK).
     </p>
     <div class="mt-4" data-reveal>
       <Ringkas compact />

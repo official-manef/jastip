@@ -2,6 +2,23 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 15 Oktober 2026 (lanjutan 4): asisten jadi BYOK murni
+
+- Key server dihapus. Sebelumnya `/api/ai` membaca `AI_API_KEY`/`AI_API_BASE_URL`/`AI_MODEL`/
+  `AI_ALLOWED_HOSTS` dari env dan mengirim key operator; `/pengaturan` menampilkan "Key server aktif".
+  Sekarang **tidak ada key server**: pengguna mengisi URL penyedia, ID model, dan API key sendiri.
+- `src/lib/titip/ai.ts`: buang `DEFAULT_AI_BASE_URL`/`DEFAULT_AI_MODEL`; `providerUrl` tak lagi
+  pakai allowlist host (key milik pengguna), ganti dengan penolakan host privat/loopback (SSRF):
+  `localhost`, `*.local`, `*.internal`, `127.`, `10.`, `192.168.`, `172.16–31.`, `169.254.`, `0.`,
+  `::1`, dan host tanpa titik. `callProvider(input, apiKey, fetch)`.
+- `src/routes/api/ai/+server.ts`: buang `GET` (dulu membocorkan `serverKey:"env"`), buang `config()`,
+  tolak request tanpa `baseUrl`/`model`/`apiKey`.
+- `ai-settings.svelte.ts`: hapus `serverKey`, tak lagi fetch `/api/ai`; URL/model kosong sampai diisi.
+- UI: `/pengaturan` dan `/asisten` menyebut mode BYOK, bukan "key server aktif".
+- Env Vercel: `AI_API_KEY`, `AI_MODEL` dihapus dari produksi. `.env.example` + CI dibersihkan.
+- Verifikasi: `svelte-check` 0 error; 61 tes lulus (7 tes AI ditulis ulang); build sukses; smoke dev
+  + produksi bersih desktop+mobile. `/api/ai` GET kini 404/405, POST tanpa key → `tanpa-key`.
+
 ## 15 Oktober 2026 (lanjutan 3): trip berkaki bebas + katalog 10 negara
 
 - Model trip jadi **daftar kaki** (`trip.kaki`), bukan lagi `dir`/`mode` tetap. Kaki bebas berurutan;

@@ -1,29 +1,17 @@
 import { bodyOf, json, rejectedCrossSite } from "../../../lib/titip/accounts.server";
 import { convexServer } from "../../../lib/titip/convex.server";
-import { callProvider, DEFAULT_AI_BASE_URL, DEFAULT_AI_MODEL, parseAiRequest } from "../../../lib/titip/ai";
+import { callProvider, parseAiRequest } from "../../../lib/titip/ai";
 import { api } from "../../../convex/_generated/api";
 
-/** Sumber konfigurasi AI: env operator. `AI_API_KEY` = key server (dipakai kalau BYOK kosong). */
-function config() {
-  const baseUrl = process.env.AI_API_BASE_URL?.trim() || DEFAULT_AI_BASE_URL;
-  const model = process.env.AI_MODEL?.trim() || DEFAULT_AI_MODEL;
-  const serverKey = process.env.AI_API_KEY?.trim() || "";
-  // Operator-approved destinations keep keys out of arbitrary/private servers.
-  const allowedHosts = (process.env.AI_ALLOWED_HOSTS || new URL(baseUrl).hostname)
-    .split(",").map(host => host.trim().toLowerCase()).filter(Boolean);
-  return { baseUrl, model, serverKey, allowedHosts };
-}
+/**
+ * Asisten AI mode BYOK: key selalu dari pengguna, tidak ada key server.
+ * Server hanya memvalidasi origin, sesi, dan URL penyedia (HTTPS publik).
+ */
 
 function reply(body: unknown, status = 200) {
   const response = json(body, status);
   response.headers.set("cache-control", "no-store");
   return response;
-}
-
-export function GET() {
-  const { baseUrl, model, serverKey } = config();
-  // Never leak the key; only whether the server has one.
-  return reply({ baseUrl, model, serverKey: serverKey ? "env" : "" });
 }
 
 export async function POST({ request }: { request: Request }) {
@@ -35,15 +23,10 @@ export async function POST({ request }: { request: Request }) {
   if (!me.user) return reply({ error: "masuk" }, 401);
   if (Number(request.headers.get("content-length")) > 262144) return reply({ error: "isian" }, 413);
   try {
-    const conf = config();
     const body = await bodyOf(request);
-    // Env adalah sumber kebenaran: client boleh tidak mengirim baseUrl/model.
-    if (!body.baseUrl) body.baseUrl = conf.baseUrl;
-    if (!body.model) body.model = conf.model;
     const input = parseAiRequest(body);
-    const apiKey = input.apiKey || conf.serverKey;
-    if (!apiKey) return reply({ error: "tanpa-key" }, 400);
-    const result = await callProvider(input, conf.allowedHosts, apiKey);
+    if (!input.apiKey) return reply({ error: "tanpa-key" }, 400);
+    const result = await callProvider(input, input.apiKey);
     return reply(result);
   } catch (error) {
     const code = error instanceof Error ? error.message : "provider-error";
