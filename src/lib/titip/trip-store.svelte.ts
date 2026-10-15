@@ -2,20 +2,20 @@
  * Satu sumber state trip (meja hitung). Dipakai bersama oleh Desk.svelte dan
  * asisten AI (tools), supaya perubahan dari chat langsung terlihat di meja.
  * Modul ini juga pemilik simpan-muat: localStorage perangkat + akun (`/api/trip`).
+ *
+ * Model: trip = daftar kaki berurutan (`desk.kaki`). `aktif` = index kaki yang
+ * sedang dibuka di meja.
  */
 import { browser } from "$app/env";
 import { authedFetch, loadMe, session } from "./session.svelte";
-import { parseTrip, TRIP_STORAGE_KEY, type TripState } from "./trip-state";
-import { scenarioFor, type CapexLine, type Dir, type Good, type Scenario, type TripMode } from "./calc";
-
-function initialByDir(): Record<Dir, Scenario> {
-  return { "cgk-ist": scenarioFor("cgk-ist"), "ist-cgk": scenarioFor("ist-cgk") };
-}
+import { parseTrip, seedTrip, TRIP_STORAGE_KEY, type TripStateV2 } from "./trip-state";
+import { newKaki, type Kaki } from "./kaki";
+import type { CapexLine, Good, Scenario } from "./calc";
 
 export const desk = $state({
-  dir: "cgk-ist" as Dir,
-  mode: "one" as TripMode,
-  byDir: initialByDir(),
+  nama: seedTrip().nama,
+  kaki: seedTrip().kaki as Kaki[],
+  aktif: 0,
   source: "Memuat kalkulasi…",
   syncFailed: false,
   conflict: false,
@@ -30,14 +30,19 @@ let queued = false;
 let localSaved = false;
 const controller = new AbortController();
 
-export function snapshot(): TripState {
-  return { dir: desk.dir, mode: desk.mode, cgkIst: desk.byDir["cgk-ist"], istCgk: desk.byDir["ist-cgk"] };
+/** Index kaki aktif, dijaga dalam rentang daftar. */
+function activeIndex(): number {
+  return Math.min(Math.max(0, desk.aktif), Math.max(0, desk.kaki.length - 1));
 }
 
-export function restore(trip: TripState) {
-  desk.dir = trip.dir;
-  desk.mode = trip.mode;
-  desk.byDir = { "cgk-ist": trip.cgkIst, "ist-cgk": trip.istCgk };
+export function snapshot(): TripStateV2 {
+  return { v: 2, nama: desk.nama, kaki: desk.kaki };
+}
+
+export function restore(trip: TripStateV2) {
+  desk.nama = trip.nama;
+  desk.kaki = trip.kaki;
+  desk.aktif = Math.min(desk.aktif, trip.kaki.length - 1);
 }
 
 function persistLocal() {
@@ -140,37 +145,127 @@ export function initDesk() {
   })();
 }
 
-/* ---------- Mutasi (dipakai Desk.svelte dan tools asisten) ---------- */
+/* ---------- Kaki ---------- */
 
-export function patchDir(target: Dir, partial: Partial<Scenario>) {
-  desk.byDir = { ...desk.byDir, [target]: { ...desk.byDir[target], ...partial } };
+export function aktifIdx(): number {
+  return activeIndex();
+}
+
+export function kakiAktif(): Kaki {
+  return desk.kaki[activeIndex()];
+}
+
+/** Patch skenario kaki pada index tertentu. */
+export function patchKaki(index: number, partial: Partial<Scenario>) {
+  const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
+  desk.kaki = desk.kaki.map((k, idx) => (idx === i ? { ...k, scenario: { ...k.scenario, ...partial } } : k));
   commit();
 }
 
+/** Patch skenario kaki aktif. */
 export function patch(partial: Partial<Scenario>) {
-  patchDir(desk.dir, partial);
+  patchKaki(activeIndex(), partial);
 }
+
+export function setAktif(index: number) {
+  desk.aktif = Math.min(Math.max(0, index), Math.max(0, desk.kaki.length - 1));
+  commit();
+}
+
+/** Ganti destinasi kaki aktif; skenario diset ulang mengikuti destinasi. */
+export function setDestinasi(index: number, kode: string, jenis?: Kaki["jenis"]) {
+  const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
+  const current = desk.kaki[i];
+  const next = newKaki(kode, jenis ?? current.jenis);
+  desk.kaki = desk.kaki.map((k, idx) => (idx === i ? { ...next, id: current.id } : k));
+  commit();
+}
+
+export function setJenis(index: number, jenis: Kaki["jenis"]) {
+  const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
+  const kaki = desk.kaki[i];
+  desk.kaki = desk.kaki.map((k, idx) => (idx === i
+    ? { ...k, jenis, lama: jenis === "transit" ? Math.min(k.lama || 6, 24) || 6 : k.lama || 5, scenario: scenarioUntukJenis(k, jenis) }
+    : k));
+  commit();
+}
+
+function scenarioUntukJenis(kaki: Kaki, jenis: Kaki["jenis"]): Scenario {
+  const segar = newKaki(kaki.destinasi, jenis).scenario;
+  // Pertahankan barang & opex yang sudah diisi; hanya kuota & label tiket yang menyesuaikan.
+  return {
+    ...segar,
+    goods: kaki.scenario.goods,
+    capex: kaki.scenario.capex,
+    opex: segar.opex.map((line) => {
+      const lama = kaki.scenario.opex.find((o) => o.id === line.id);
+      return lama ? { ...line, amount: lama.amount } : line;
+    }),
+  };
+}
+
+export function setLama(index: number, lama: number) {
+  const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
+  const max = desk.kaki[i].jenis === "transit" ? 72 : 365;
+  desk.kaki = desk.kaki.map((k, idx) => (idx === i ? { ...k, lama: Math.min(max, Math.max(0, lama)) } : k));
+  commit();
+}
+
+/** Tambah kaki baru di akhir (default destinasi Jepang bila tak diberi). */
+export function tambahKaki(kode = "jepang", jenis: Kaki["jenis"] = "utama") {
+  if (desk.kaki.length >= 24) return;
+  desk.kaki = [...desk.kaki, newKaki(kode, jenis)];
+  desk.aktif = desk.kaki.length - 1;
+  commit();
+}
+
+/** Sisipkan kaki setelah index tertentu (untuk transit di tengah rute). */
+export function sisipKaki(index: number, kode = "singapura", jenis: Kaki["jenis"] = "transit") {
+  if (desk.kaki.length >= 24) return;
+  const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
+  const next = [...desk.kaki];
+  next.splice(i + 1, 0, newKaki(kode, jenis));
+  desk.kaki = next;
+  desk.aktif = i + 1;
+  commit();
+}
+
+/** Hapus kaki; minimal satu kaki harus tersisa. */
+export function hapusKaki(index: number) {
+  if (desk.kaki.length <= 1) return;
+  const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
+  desk.kaki = desk.kaki.filter((_, idx) => idx !== i);
+  desk.aktif = Math.min(desk.aktif, desk.kaki.length - 1);
+  commit();
+}
+
+export function setNama(nama: string) {
+  desk.nama = nama.slice(0, 80);
+  commit();
+}
+
+/* ---------- Mutasi isi kaki aktif (dipakai Desk.svelte dan tools asisten) ---------- */
 
 export function setGood(id: string, partial: Partial<Good>) {
   if (partial.qty !== undefined) partial.qty = Math.min(10_000, Math.max(0, Math.round(partial.qty)));
-  patch({ goods: desk.byDir[desk.dir].goods.map((g) => (g.id === id ? { ...g, ...partial } : g)) });
+  patch({ goods: kakiAktif().scenario.goods.map((g) => (g.id === id ? { ...g, ...partial } : g)) });
 }
 
 export function addGood(good: Good) {
-  patch({ goods: [...desk.byDir[desk.dir].goods, good] });
+  patch({ goods: [...kakiAktif().scenario.goods, good] });
 }
 
 export function removeGood(id: string) {
-  patch({ goods: desk.byDir[desk.dir].goods.filter((g) => g.id !== id) });
+  patch({ goods: kakiAktif().scenario.goods.filter((g) => g.id !== id) });
 }
 
 export function setPricing(id: string, partial: Partial<NonNullable<Good["pricing"]>>) {
-  patch({ goods: desk.byDir[desk.dir].goods.map((g) =>
+  patch({ goods: kakiAktif().scenario.goods.map((g) =>
     g.id === id ? { ...g, pricing: { model: "per_kg", rate: 0, ...g.pricing, ...partial } } : g) });
 }
 
 export function clearPricing(id: string) {
-  patch({ goods: desk.byDir[desk.dir].goods.map((g) => {
+  patch({ goods: kakiAktif().scenario.goods.map((g) => {
     if (g.id !== id) return g;
     const { pricing: _drop, ...rest } = g;
     return rest;
@@ -180,46 +275,22 @@ export function clearPricing(id: string) {
 export function setOpex(id: string, amount: number) {
   if (!Number.isFinite(amount)) return;
   const clamped = Math.min(1_000_000_000_000, Math.max(0, amount));
-  patch({ opex: desk.byDir[desk.dir].opex.map((line) => (line.id === id ? { ...line, amount: clamped } : line)) });
+  patch({ opex: kakiAktif().scenario.opex.map((line) => (line.id === id ? { ...line, amount: clamped } : line)) });
 }
 
 export function setCapex(id: string, partial: Partial<CapexLine>) {
   if (partial.price !== undefined) partial.price = Math.min(1_000_000_000_000, Math.max(0, partial.price));
   if (partial.trips !== undefined) partial.trips = Math.min(10_000, Math.max(1, Math.round(partial.trips)));
   const apply = (lines: CapexLine[]) => lines.map((line) => (line.id === id ? { ...line, ...partial } : line));
-  if (desk.mode === "pp") {
-    desk.byDir = {
-      "cgk-ist": { ...desk.byDir["cgk-ist"], capex: apply(desk.byDir["cgk-ist"].capex) },
-      "ist-cgk": { ...desk.byDir["ist-cgk"], capex: apply(desk.byDir["ist-cgk"].capex) },
-    };
-    commit();
-  } else {
-    patch({ capex: apply(desk.byDir[desk.dir].capex) });
-  }
-}
-
-export function setMode(next: TripMode) {
-  desk.mode = next;
-  if (next === "pp") {
-    const capex = desk.byDir[desk.dir].capex;
-    desk.byDir = {
-      "cgk-ist": { ...desk.byDir["cgk-ist"], capex },
-      "ist-cgk": { ...desk.byDir["ist-cgk"], capex },
-    };
-  }
+  // Capex (koper, timbangan) dipakai bersama seluruh kaki — samakan di semua kaki.
+  desk.kaki = desk.kaki.map((k) => ({ ...k, scenario: { ...k.scenario, capex: apply(k.scenario.capex) } }));
   commit();
 }
 
-export function setDir(next: Dir) {
-  desk.dir = next;
-  commit();
-}
-
-export function resetDir() {
-  const next = scenarioFor(desk.dir);
-  const other: Dir = desk.dir === "cgk-ist" ? "ist-cgk" : "cgk-ist";
-  const copy = { ...desk.byDir, [desk.dir]: next };
-  if (desk.mode === "pp") copy[other] = { ...copy[other], capex: next.capex };
-  desk.byDir = copy;
+/** Kembalikan kaki aktif ke skenario contoh destinasi/jenis-nya. */
+export function resetKaki() {
+  const k = kakiAktif();
+  const segar = newKaki(k.destinasi, k.jenis).scenario;
+  desk.kaki = desk.kaki.map((x, idx) => (x.id === k.id && idx === activeIndex() ? { ...x, scenario: segar } : x));
   commit();
 }

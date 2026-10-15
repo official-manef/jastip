@@ -206,3 +206,102 @@ export function tripRevenue(
     needsRate: legs.some((l) => l.revenue.needsRate),
   };
 }
+
+/* ---------- Total lintas kaki bebas (model multi-destinasi) ---------- */
+
+export type KakiRevenue = {
+  id: string;
+  destinasi: string;
+  jenis: "utama" | "transit";
+  currency: string;
+  service: number;
+  totalKg: number;
+  hasPricing: boolean;
+  needsRate: boolean;
+};
+
+export type TripLintas = {
+  perKaki: KakiRevenue[];
+  /** Jumlah jasa seluruh kaki (satu angka per mata uang, karena tarif per baris). */
+  service: number;
+  /** Subtotal per mata uang; kunci = kode mata uang. */
+  perCurrency: Record<string, number>;
+  totalKg: number;
+  /** Mata uang yang muncul di baris berbayar. */
+  currencies: string[];
+  hasPricing: boolean;
+  needsRate: boolean;
+  /** Kuota bersih seluruh kaki; transit biasanya kecil. */
+  capacityKg: number;
+  /** Sisa kuota (positif) atau kelebihan (negatif) setelah muatan. */
+  sisaKg: number;
+  overKg: number;
+  /** Kaki terberat menurut sisa, untuk ditandai di UI. */
+  ketatKaki: string | null;
+};
+
+/**
+ * Jumlahkan jasa lintas kaki bebas. Kapasitas dihitung per kaki (bagasi tidak
+ * berpindah), pendapatan dijumlahkan karena tarif baris sudah memuat mata uang
+ * sendiri. F05: nilai selalu dihitung per mata uang; `service` hanya berarti
+ * bila `currencies.length === 1` (UI wajib menampilkan subtotal per mata uang
+ * saat lebih dari satu).
+ */
+export function tripLintas(kaki: { id: string; destinasi: string; jenis: "utama" | "transit"; scenario: { goods: Good[]; hargaPerKg: number; bags: number; kgPerBag: number; cabin: number; tare: number; hargaCurrency?: string } }[]): TripLintas {
+  const perKaki: KakiRevenue[] = [];
+  const currencies = new Set<string>();
+  const perCurrency: Record<string, number> = {};
+  let service = 0;
+  let totalKg = 0;
+  let capacityKg = 0;
+  let hasPricing = false;
+  let needsRate = false;
+  let ketatKaki: string | null = null;
+  let ketatSisa = Number.POSITIVE_INFINITY;
+
+  for (const k of kaki) {
+    const rev = computeRevenue(k.scenario.goods, k.scenario.hargaPerKg, k.scenario.hargaCurrency ?? "IDR");
+    for (const c of rev.currencies) currencies.add(c);
+    const bersih = Math.max(0, k.scenario.bags * k.scenario.kgPerBag + k.scenario.cabin - k.scenario.tare);
+    const sisa = bersih - rev.totalKg;
+    if (sisa < ketatSisa) {
+      ketatSisa = sisa;
+      ketatKaki = k.id;
+    }
+    perKaki.push({
+      id: k.id,
+      destinasi: k.destinasi,
+      jenis: k.jenis,
+      currency: k.scenario.hargaCurrency ?? "IDR",
+      service: rev.service,
+      totalKg: rev.totalKg,
+      hasPricing: rev.hasPricing,
+      needsRate: rev.needsRate,
+    });
+    // Subtotal per mata uang: baris bertarif sendiri bisa beda dari kaki.
+    for (const row of rev.rows) {
+      const cur = row.currency || "IDR";
+      perCurrency[cur] = round2((perCurrency[cur] ?? 0) + row.service);
+    }
+    service += rev.service;
+    totalKg += rev.totalKg;
+    capacityKg += bersih;
+    hasPricing = hasPricing || rev.hasPricing;
+    needsRate = needsRate || rev.needsRate;
+  }
+
+  const sisaKg = round2(capacityKg - totalKg);
+  return {
+    perKaki,
+    service: round2(service),
+    perCurrency,
+    totalKg: round2(totalKg),
+    currencies: [...currencies],
+    hasPricing,
+    needsRate,
+    capacityKg: round2(capacityKg),
+    sisaKg,
+    overKg: Math.max(0, round2(-sisaKg)),
+    ketatKaki: Number.isFinite(ketatSisa) ? ketatKaki : null,
+  };
+}

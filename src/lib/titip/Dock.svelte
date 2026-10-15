@@ -22,7 +22,7 @@
 <svelte:window onkeydown={onKey} />
 
 <nav
-  class="sticky top-0 z-40 flex items-center justify-between gap-3 bg-bg px-4 py-3 lg:hidden"
+  class="z-40 flex shrink-0 items-center justify-between gap-3 bg-bg px-4 py-3 lg:hidden"
   aria-label="Navigasi"
 >
   <a href="/meja" class="font-display text-xl font-medium leading-none tracking-tight">titipin</a>

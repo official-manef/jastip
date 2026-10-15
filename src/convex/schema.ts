@@ -2,12 +2,14 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { dir, mode, scenario } from "./validators";
 
+
 /**
  * Tabel auth (users/sessions/accounts/verifications) hidup di komponen
  * `@convex-dev/better-auth` (`components.betterAuth`), bukan di schema app.
  * Di sini hanya tabel milik aplikasi.
  */
 export default defineSchema({
+  // Historis: dokumen trip lama `key: live`. Meja kini pakai `tripScenarios`.
   trips: defineTable({
     key: v.literal("live"),
     dir,

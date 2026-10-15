@@ -3,33 +3,46 @@
   import {
     desk,
     initDesk,
+    kakiAktif,
     patch,
-    patchDir,
-    resetDir,
+    patchKaki,
+    resetKaki,
     retrySync,
+    setAktif,
     setCapex,
-    setDir,
+    setDestinasi,
     setGood,
-    setMode,
+    setJenis,
+    setLama,
+    setNama,
     setOpex,
     setPricing,
     clearPricing,
     addGood,
     removeGood,
+    tambahKaki,
+    sisipKaki,
+    hapusKaki,
   } from "../lib/titip/trip-store.svelte";
-  import { computeTrip, DIR_META, type CapexLine, type Dir, type LinePricing, type TripMode } from "../lib/titip/calc";
-  import { capacity, computeRevenue, CURRENCIES, ITEM_UNITS, lineWeightKg, targetProgress } from "../lib/titip/pricing";
+  import { type CapexLine, type LinePricing } from "../lib/titip/calc";
+  import { capacity, computeRevenue, CURRENCIES, ITEM_UNITS, lineWeightKg, targetProgress, tripLintas } from "../lib/titip/pricing";
+  import { DESTINASI, destinasiByCode } from "../lib/titip/destinasi";
+  import { kakiCode, kakiLabel, type Kaki } from "../lib/titip/kaki";
   import { idr, kg } from "../lib/titip/model";
 
   const field = "field";
   const btn = "btn";
 
-  const dir = $derived(desk.dir);
-  const mode = $derived(desk.mode);
-  const byDir = $derived(desk.byDir);
   const source = $derived(desk.source);
   const syncFailed = $derived(desk.syncFailed);
   const conflict = $derived(desk.conflict);
+  const kaki = $derived(desk.kaki);
+  const idx = $derived(Math.min(desk.aktif, Math.max(0, kaki.length - 1)));
+  const now = $derived<Kaki>(kaki[idx]);
+  const scenario = $derived(now.scenario);
+  const meta = $derived(destinasiByCode(now.destinasi));
+  const prev = $derived<Kaki | undefined>(idx > 0 ? kaki[idx - 1] : undefined);
+  const shopCurrency = $derived(meta?.currency ?? "IDR");
 
   onMount(() => { initDesk(); });
 
@@ -38,20 +51,41 @@
   let draftBeli = $state("");
   let draftNotice = $state("");
 
-  const scenario = $derived(byDir[dir]);
-  const meta = $derived(DIR_META[dir]);
-  const other = $derived<Dir>(dir === "cgk-ist" ? "ist-cgk" : "cgk-ist");
-  const n = $derived(computeTrip(mode, dir, byDir));
-  const rev = $derived(computeRevenue(scenario.goods, scenario.hargaPerKg, meta.shop === "TRY" ? "TRY" : "IDR"));
+  /** Total lintas kaki: jasa, muatan, kapasitas. */
+  const lintas = $derived(tripLintas(kaki.map((k) => ({
+    id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario,
+  }))));
+
+  const rev = $derived(computeRevenue(scenario.goods, scenario.hargaPerKg, shopCurrency));
   const progres = $derived(targetProgress(rev.service, scenario.target ?? 0));
-  const kapasitas = $derived(capacity(n.bersih, rev.totalKg));
+  const kapasitas = $derived(capacity(lintas.capacityKg, lintas.totalKg));
   const punyaTarif = $derived(rev.hasPricing);
   const tarifKosong = $derived(rev.rows.filter((r) => (scenario.goods.find((g) => g.id === r.id)?.pricing?.rate ?? 0) <= 0).length);
   const asumsi = $derived(tarifKosong > 0 || rev.needsRate);
   const rowById = $derived(new Map(rev.rows.map((r) => [r.id, r])));
-  const tiketHere = $derived(scenario.opex.find((line) => line.id === "tiket")?.label ?? "Tiket");
-  const tiketThere = $derived(byDir[other].opex.find((line) => line.id === "tiket")?.label ?? "Tiket lawan");
-  const over = $derived(n.sisa < 0);
+
+  /** Hitungan satu kaki (beban, laba) untuk readout & total trip. */
+  function bebanKaki(k: Kaki): number {
+    const opex = k.scenario.opex.reduce((sum, line) => sum + line.amount, 0);
+    const capex = k.scenario.capex.reduce((sum, line) => sum + line.price / Math.max(1, line.trips), 0);
+    return Math.round(opex + capex);
+  }
+  const bebanTrip = $derived(kaki.reduce((sum, k) => sum + bebanKaki(k), 0));
+  const omzetTrip = $derived(lintas.service);
+  const labaTrip = $derived(Math.round(omzetTrip - bebanTrip));
+
+  const bersihKaki = $derived(Math.max(0, scenario.bags * scenario.kgPerBag + scenario.cabin - scenario.tare));
+  const terpakaiKaki = $derived(rev.totalKg);
+  const sisaKaki = $derived(Math.round((bersihKaki - terpakaiKaki) * 10) / 10);
+  const over = $derived(sisaKaki < 0);
+  const penuh = $derived(bersihKaki > 0 ? Math.min(1, terpakaiKaki / bersihKaki) : 1);
+  /** F07: kuota nol → saran harga & impas tidak bermakna. */
+  const kuotaNol = $derived(bersihKaki <= 0);
+  /** F05: lebih dari satu mata uang → tampilkan subtotal, jangan satu total. */
+  const multivaluta = $derived(lintas.currencies.length > 1);
+  /** F04/F05: impas hanya bermakna kalau harga/kg > 0 dan kuota > 0. */
+  const impasKg = $derived(kuotaNol || scenario.hargaPerKg <= 0 ? null : Math.round((bebanKaki(now) / scenario.hargaPerKg) * 10) / 10);
+  const saranPerKg = $derived(kuotaNol ? null : Math.round((bebanKaki(now) / bersihKaki) * (1 + scenario.margin / 100)));
 
   function fmtTarif(rate: number): string {
     return Number.isInteger(rate) ? rate.toLocaleString("id-ID") : String(rate);
@@ -88,50 +122,32 @@
       <span>{label}</span>
       <span class="num text-body">{shown}</span>
     </span>
-    <input
-      type="range"
-      {min}
-      {max}
-      {step}
-      {value}
-      oninput={(e) => {
-        const next = Number(e.currentTarget.value);
-        onChange(step < 1 ? Math.round(next * 10) / 10 : next);
-      }}
-      class="w-full"
-    />
+    <input type="range" {min} {max} {step} {value}
+      oninput={(e) => { const next = Number(e.currentTarget.value); onChange(step < 1 ? Math.round(next * 10) / 10 : next); }}
+      class="w-full" />
   </label>
-{/snippet}
-
-{#snippet seg(pressed: boolean, label: string, onPick: () => void)}
-  <button
-    type="button"
-    aria-pressed={pressed}
-    onclick={onPick}
-    class="min-h-11 rounded px-4 text-body {pressed ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}"
-  >
-    {label}
-  </button>
 {/snippet}
 
 {#snippet row(k: string, v: string, hint?: string)}
   <div class="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3">
-    <dt class="text-body">
-      {k}
-      {#if hint}<span class="block text-small text-muted">{hint}</span>{/if}
-    </dt>
+    <dt class="text-body">{k}{#if hint}<span class="block text-small text-muted">{hint}</span>{/if}</dt>
     <dd class="num shrink-0 text-body">{v}</dd>
   </div>
 {/snippet}
 
 <article class="pb-4">
-  <header class="max-w-[40rem]" data-rise style="--i: 0">
-    <h1>{meta.from} → {meta.to}</h1>
+  <header class="max-w-[44rem]" data-rise style="--i: 0">
+    <h1>Trip {kaki.length} kaki</h1>
     <p class="mt-4 text-lead text-fg">
-      {mode === "pp"
-        ? "Pulang-pergi. Tiket dan opex kedua kaki dijumlahkan; capex tetap sekali."
-        : `${meta.blurb} Hanya tiket dan opex arah ini yang dihitung.`}
+      Susun rute berurutan: tiap kaki punya negara, mata uang belanja, dan muatannya sendiri.
+      Tandai kaki sebagai <strong>transit</strong> kalau cuma singgah sebentar.
     </p>
+
+    <label class="mt-5 block max-w-[28rem]">
+      <span class="mb-2 block text-small text-muted">Nama trip</span>
+      <input class={field} maxlength="80" value={desk.nama} oninput={(e) => setNama(e.currentTarget.value)} aria-label="Nama trip" />
+    </label>
+
     <div class="mt-6 flex flex-wrap items-center gap-3">
       <button type="button" class={btn} onclick={focusDraft}>Tambah barang</button>
       <a class="link text-body" href="/portal">Lihat portal contoh</a>
@@ -141,59 +157,141 @@
     {#if conflict}<button type="button" class="link mt-2 block text-body" onclick={() => window.location.reload()}>Muat ulang trip dari akun</button>{/if}
   </header>
 
-  <div class="mt-10 flex flex-wrap gap-2" role="group" aria-label="Pengaturan tampilan" data-rise style="--i: 1">
-    <div class="flex flex-wrap gap-1 rounded bg-surface p-1" role="group" aria-label="Arah rute">
-      {@render seg(dir === "cgk-ist", "Jakarta → Turki", () => setDir("cgk-ist"))}
-      {@render seg(dir === "ist-cgk", "Turki → Jakarta", () => setDir("ist-cgk"))}
+  <!-- Pemilih kaki: rute berurutan, kaki aktif disorot. -->
+  <section class="mt-8" data-reveal aria-labelledby="rute-kaki">
+    <h2 id="rute-kaki" class="text-lead">Rute</h2>
+    <div class="mt-3 flex flex-wrap items-stretch gap-2">
+      {#each kaki as k, i (k.id)}
+        {@const d = destinasiByCode(k.destinasi)}
+        {@const aktif = i === idx}
+        <button
+          type="button"
+          aria-current={aktif ? "true" : undefined}
+          onclick={() => setAktif(i)}
+          class="min-h-14 rounded px-4 text-left {aktif ? 'bg-primary text-primary-fg' : 'bg-surface text-fg hover:bg-field'}"
+        >
+          <span class="block text-small {aktif ? 'text-primary-fg/80' : 'text-muted'}">{kakiCode(k, i > 0 ? kaki[i - 1] : undefined)}</span>
+          <span class="block text-body">{d?.kota ?? k.destinasi}</span>
+          <span class="block text-small {aktif ? 'text-primary-fg/80' : 'text-muted'}">
+            {k.jenis === "transit" ? `transit ${k.lama}j` : `${k.lama} hari`}
+          </span>
+        </button>
+      {/each}
+      <div class="flex flex-col justify-center gap-2">
+        <button type="button" class="btn-quiet px-3 text-small" onclick={() => tambahKaki()} aria-label="Tambah kaki di akhir">+ Kaki</button>
+        <button type="button" class="btn-quiet px-3 text-small" onclick={() => sisipKaki(idx, "singapura", "transit")} aria-label="Sisipkan kaki transit setelah kaki ini">+ Transit</button>
+      </div>
     </div>
-    <div class="flex flex-wrap gap-1 rounded bg-surface p-1" role="group" aria-label="Jenis trip">
-      {@render seg(mode === "one", "Pergi saja", () => setMode("one"))}
-      {@render seg(mode === "pp", "Pulang-pergi", () => setMode("pp"))}
-    </div>
-  </div>
+  </section>
 
-  <!-- The instrument: the one large thing, sticky while the load is edited. -->
-  <section class="panel mt-6 p-5" data-rise data-ui style="--i: 2" aria-label="Sisa kuota dan laba">
-    <p class="readout {over ? 'text-accent' : 'text-fg'}">
-      {over ? `−${kg(n.overKg)}` : kg(Math.max(0, n.sisa))}
-    </p>
-    <p class="mt-2 text-body">
-      {over ? "kelebihan bagasi" : "sisa kuota bersih"} · {kg(n.terpakai)} terpakai dari {kg(n.bersih)}
-    </p>
-    <div class="meter mt-4" aria-hidden="true">
-      <span style="width: {Math.round(n.penuh * 100)}%; background: {over ? 'var(--color-accent)' : ''}"></span>
+  <!-- Pengaturan kaki aktif -->
+  <section class="panel mt-6 p-5" data-reveal aria-labelledby="kaki-aktif">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <h2 id="kaki-aktif" class="text-lead">{kakiLabel(now, prev)}</h2>
+      {#if kaki.length > 1}
+        <button type="button" class="link text-small" onclick={() => hapusKaki(idx)}>Hapus kaki ini</button>
+      {/if}
     </div>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-3">
+      <label class="block">
+        <span class="mb-2 block text-small text-muted">Negara tujuan</span>
+        <select class={field} value={now.destinasi} onchange={(e) => setDestinasi(idx, e.currentTarget.value)}>
+          {#each DESTINASI as d (d.code)}
+            <option value={d.code}>{d.negara}</option>
+          {/each}
+          <option value="jakarta">Indonesia (Jakarta)</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-small text-muted">Jenis singgah</span>
+        <select class={field} value={now.jenis} onchange={(e) => setJenis(idx, e.currentTarget.value === "transit" ? "transit" : "utama")}>
+          <option value="utama">Utama (belanja)</option>
+          <option value="transit">Transit (singgah)</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="mb-2 block text-small text-muted">{now.jenis === "transit" ? "Lama (jam)" : "Lama (hari)"}</span>
+        <input type="number" min="0" class="{field} num" value={now.lama}
+          oninput={(e) => setLama(idx, Number(e.currentTarget.value))} aria-label="Lama di kaki ini" />
+      </label>
+    </div>
+
+    {#if meta}
+      <p class="mt-3 text-small text-muted">
+        Kategori khas: {meta.kategori.join(", ")}. {meta.alasan}
+        Mata uang belanja {meta.currency} (kurs contoh {idr(meta.kurs)}).
+      </p>
+    {/if}
+  </section>
+
+  <!-- Instrumen: satu-satunya hal besar. Total trip + kaki aktif. -->
+  <section class="panel-deep mt-6 p-5" data-rise data-ui style="--i: 2" aria-label="Sisa kuota dan laba">
+    <p class="text-small">{kakiLabel(now, prev)} · {kakiCode(now, prev)}</p>
+    <p class="readout mt-3 {over ? 'text-accent' : 'text-fg'}">
+      {over ? `−${kg(-sisaKaki)}` : kg(sisaKaki)}
+    </p>
+    <p class="mt-2 text-body">{over ? "kelebihan bagasi kaki ini" : "sisa kuota kaki ini"} · {kg(terpakaiKaki)} dari {kg(bersihKaki)}</p>
+    <div class="meter mt-4" aria-hidden="true"><span style="width: {Math.round(penuh * 100)}%; background: {over ? 'var(--color-accent)' : ''}"></span></div>
 
     <dl class="mt-6 grid gap-3 sm:grid-cols-2">
-      {@render row("Muat lagi", `${n.pcsUji} pcs`, `pcs ${kg(scenario.ujiKg)}`)}
-      {@render row("Harga jual / kg", idr(scenario.hargaPerKg))}
-      {@render row("Modal / kg", idr(n.modalPerKg), mode === "pp" ? "beban trip / kuota dua kaki" : "opex + capex / kuota")}
-      {@render row("Saran jual / kg", idr(n.saranPerKg), `margin ${scenario.margin}%`)}
+      {#if multivaluta}
+        {#each Object.entries(lintas.perCurrency) as [cur, val] (cur)}
+          {@render row(`Jasa (${cur})`, fmtTarif(val), "subtotal per mata uang")}
+        {/each}
+      {:else}
+        {@render row("Jasa kaki ini", `${fmtTarif(rev.service)}${rev.currencies.length === 1 ? ` ${rev.currencies[0]}` : ""}`)}
+      {/if}
+      {@render row("Beban kaki ini", idr(bebanKaki(now)))}
+      {#if !multivaluta}
+        {@render row("Jasa seluruh trip", `${fmtTarif(lintas.service)}${lintas.currencies.length === 1 ? ` ${lintas.currencies[0]}` : ""}`, `${kaki.length} kaki`)}
+      {/if}
+      {@render row("Laba trip (estimasi)", idr(labaTrip), multivaluta ? "campur mata uang — perkiraan kasar" : "jasa semua kaki − beban semua kaki")}
     </dl>
+    {#if multivaluta}
+      <p class="mt-3 text-small text-accent" role="status">
+        Baris memakai lebih dari satu mata uang ({lintas.currencies.join(", ")}). Angka dijumlahkan tanpa kurs, jadi
+        "Laba trip" hanya perkiraan. Pakai satu mata uang per trip untuk laporan final.
+      </p>
+    {/if}
+
+    <div class="mt-4 rounded bg-bg/40 p-4">
+      <div class="flex items-end justify-between gap-3">
+        <span class="text-body">Total muatan</span>
+        <span class="num text-body">{kg(lintas.totalKg)} / {kg(lintas.capacityKg)}</span>
+      </div>
+      <div class="meter mt-3" aria-hidden="true">
+        <span style="width: {Math.min(100, Math.max(0, Math.round((lintas.totalKg / Math.max(0.1, lintas.capacityKg)) * 100)))}%; background: {lintas.overKg > 0 ? 'var(--color-accent)' : ''}"></span>
+      </div>
+      {#if lintas.overKg > 0}
+        <p class="mt-2 text-small text-accent">Kelebihan total {kg(lintas.overKg)}. Cek kaki paling ketat.</p>
+      {/if}
+    </div>
 
     <div class="mt-6 grid gap-4 sm:grid-cols-2">
       <label class="block">
         <span class="mb-2 flex items-baseline justify-between gap-3">
-          <span>Harga per kg</span>
-          <span class="num text-body">{idr(scenario.hargaPerKg)}</span>
+          <span>Harga jual / kg</span><span class="num text-body">{idr(scenario.hargaPerKg)}</span>
         </span>
-        <input type="range" min="50000" max="2000000" step="10000" value={scenario.hargaPerKg} oninput={(e) => patch({ hargaPerKg: Number(e.currentTarget.value) })} class="w-full" />
+        <input type="range" min="50000" max="2000000" step="10000" value={scenario.hargaPerKg}
+          oninput={(e) => patch({ hargaPerKg: Number(e.currentTarget.value) })} class="w-full" />
       </label>
       <label class="block">
         <span class="mb-2 flex items-baseline justify-between gap-3">
-          <span>Target margin</span>
-          <span class="num text-body">{scenario.margin}%</span>
+          <span>Markup atas modal</span><span class="num text-body">{scenario.margin}%</span>
         </span>
-        <input type="range" min="0" max="120" step="5" value={scenario.margin} oninput={(e) => patch({ margin: Number(e.currentTarget.value) })} class="w-full" />
+        <input type="range" min="0" max="120" step="5" value={scenario.margin}
+          oninput={(e) => patch({ margin: Number(e.currentTarget.value) })} class="w-full" />
       </label>
     </div>
-    <button type="button" class="btn-quiet mt-4 w-full" onclick={() => patch({ hargaPerKg: n.saranPerKg })}>
-      Pakai harga saran
+    <button type="button" class="btn-quiet mt-4 w-full disabled:opacity-50" disabled={saranPerKg === null}
+      onclick={() => { if (saranPerKg !== null) patch({ hargaPerKg: saranPerKg }); }}>
+      Pakai harga saran{saranPerKg === null ? " (kuota 0)" : ""}
     </button>
 
-    <dl class="mt-6 grid gap-3 sm:grid-cols-2">
-      {@render row("Omzet jasa", `${fmtTarif(rev.service)}${rev.currencies.length === 1 ? ` ${rev.currencies[0]}` : ""}`, punyaTarif ? "dari tarif per baris" : "tarif global / kg")}
-      {@render row("Berat baris", kg(rev.totalKg), "presisi per baris")}
+    <h3 class="mt-6 text-lead">Omzet & target</h3>
+    <dl class="mt-2 grid gap-3 sm:grid-cols-2">
+      {@render row("Berat baris", kg(lintas.totalKg), "presisi per baris, semua kaki")}
       {#if progres.set}
         {@render row("Target omzet", `${fmtTarif(scenario.target ?? 0)} ${scenario.hargaCurrency ?? "USD"}`, `${progres.persen}% tercapai`)}
         {@render row(progres.achieved ? "Lebih target" : "Butuh lagi", fmtTarif(progres.achieved ? progres.lebih : progres.butuh))}
@@ -207,50 +305,29 @@
     <div class="mt-4 grid gap-4 sm:grid-cols-2">
       <label class="block">
         <span class="mb-2 block">Target omzet jasa</span>
-        <input
-          type="number"
-          min="0"
-          step="50"
-          value={scenario.target ?? 0}
-          class="{field} num"
-          aria-label="Target omzet jasa"
-          oninput={(e) => patch({ target: Math.max(0, Number(e.currentTarget.value)) })}
-        />
+        <input type="number" min="0" step="50" value={scenario.target ?? 0} class="{field} num"
+          aria-label="Target omzet jasa" oninput={(e) => patch({ target: Math.max(0, Number(e.currentTarget.value)) })} />
       </label>
       <label class="block">
         <span class="mb-2 block">Mata uang target</span>
-        <select
-          value={scenario.hargaCurrency ?? meta.shop}
-          class={field}
-          aria-label="Mata uang target"
-          onchange={(e) => patch({ hargaCurrency: e.currentTarget.value })}
-        >
+        <select class={field} value={scenario.hargaCurrency ?? shopCurrency} aria-label="Mata uang target"
+          onchange={(e) => patch({ hargaCurrency: e.currentTarget.value })}>
           {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
         </select>
       </label>
     </div>
     {#if asumsi}
       <p class="mt-3 text-small text-accent" role="status">
-        Proyeksi potensi & impas memakai tarif asumsi global; {tarifKosong > 0 ? `${tarifKosong} baris belum bertarif` : "baris bercampur mata uang tanpa kurs"}. Bukan laporan final.
+        Proyeksi memakai tarif asumsi global; {tarifKosong > 0 ? `${tarifKosong} baris belum bertarif` : "baris bercampur mata uang tanpa kurs"}. Bukan laporan final.
       </p>
     {/if}
-
-    <div class="panel-deep mt-6 p-4">
-      <div class="flex items-end justify-between gap-3">
-        <span class="text-body">{mode === "pp" ? "Laba trip" : "Laba bawa"}</span>
-        <span class="num text-lead {n.laba < 0 ? 'text-accent' : 'text-fg'}">{idr(n.laba)}</span>
-      </div>
-      <p class="mt-3 text-small">
-        {idr(n.pendapatan)} jasa{mode === "pp" ? " dua kaki" : ""} − {idr(n.beban)} beban. Impas di {kg(n.breakEvenKg)}. Sisa kuota kaki ini {asumsi ? "berpotensi" : ""} {idr(n.potensi)}.
-      </p>
-    </div>
   </section>
 
   <section class="mt-14" aria-labelledby="bagasi">
-    <h2 id="bagasi" data-reveal>Kuota bagasi</h2>
+    <h2 id="bagasi" data-reveal>Kuota bagasi kaki ini</h2>
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" data-reveal>
       {@render slider("Koper check-in", scenario.bags, 0, 3, 1, `${scenario.bags} koper`, (bags) => patch({ bags }))}
-      {@render slider("Kg per koper", scenario.kgPerBag, 10, 40, 1, kg(scenario.kgPerBag), (kgPerBag) => patch({ kgPerBag }))}
+      {@render slider("Kg per koper", scenario.kgPerBag, 10, 60, 1, kg(scenario.kgPerBag), (kgPerBag) => patch({ kgPerBag }))}
       {@render slider("Kabin", scenario.cabin, 0, 12, 1, kg(scenario.cabin), (cabin) => patch({ cabin }))}
       {@render slider("Tara koper & pribadi", scenario.tare, 0, 12, 0.1, kg(scenario.tare), (tare) => patch({ tare }))}
       {@render slider("Denda kelebihan / kg", scenario.overPerKg, 0, 800000, 10000, idr(scenario.overPerKg), (overPerKg) => patch({ overPerKg }))}
@@ -260,10 +337,8 @@
 
   <section class="mt-14" aria-labelledby="muatan">
     <div class="flex flex-wrap items-baseline justify-between gap-3">
-      <h2 id="muatan" data-reveal>Muatan</h2>
-      <p class="num text-body text-muted" data-reveal>
-        {kg(n.terpakai)} terpakai · {idr(n.pendapatan)} jasa
-      </p>
+      <h2 id="muatan" data-reveal>Muatan {meta?.kota ?? "kaki ini"}</h2>
+      <p class="num text-body text-muted" data-reveal>{kg(terpakaiKaki)} terpakai · {fmtTarif(rev.service)} jasa</p>
     </div>
 
     <ul class="mt-5 flex flex-col gap-3">
@@ -275,7 +350,7 @@
             <div class="min-w-0">
               <p class="text-body">{g.name}</p>
               <p class="num mt-1 text-small text-muted">
-                {kg(g.kg)} × {g.qty} = {kg(lineWeightKg(g))} · beli {meta.shop === "TRY" ? `₺${g.beli}` : idr(g.beli)}
+                {kg(g.kg)} × {g.qty} = {kg(lineWeightKg(g))} · beli {meta?.currency === "IDR" || now.destinasi === "jakarta" ? idr(g.beli) : `${meta?.currency ?? ""} ${g.beli}`}
               </p>
               <p class="num mt-1 text-small {tarif ? 'text-fg' : 'text-muted'}">
                 {#if r && tarif}
@@ -301,37 +376,22 @@
             {#if tarif}
               <label class="flex items-center gap-2 text-small text-muted">
                 Tarif
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={tarif.rate}
-                  class="{field} num w-24"
-                  aria-label="Tarif {g.name}"
-                  oninput={(e) => setPricing(g.id, { rate: Math.max(0, Number(e.currentTarget.value)) })}
-                />
+                <input type="number" min="0" step="1" value={tarif.rate} class="{field} num w-24"
+                  aria-label="Tarif {g.name}" oninput={(e) => setPricing(g.id, { rate: Math.max(0, Number(e.currentTarget.value)) })} />
               </label>
               {#if tarif.model === "per_item"}
                 <label class="flex items-center gap-2 text-small text-muted">
                   Satuan
-                  <select
-                    value={tarif.unit ?? "unit"}
-                    class="{field} w-28"
-                    aria-label="Satuan {g.name}"
-                    onchange={(e) => setPricing(g.id, { unit: e.currentTarget.value })}
-                  >
+                  <select value={tarif.unit ?? "unit"} class="{field} w-28" aria-label="Satuan {g.name}"
+                    onchange={(e) => setPricing(g.id, { unit: e.currentTarget.value })}>
                     {#each ITEM_UNITS as u (u)}<option value={u}>{u}</option>{/each}
                   </select>
                 </label>
               {/if}
               <label class="flex items-center gap-2 text-small text-muted">
                 Mata uang
-                <select
-                  value={tarif.currency ?? meta.shop}
-                  class="{field} w-24"
-                  aria-label="Mata uang {g.name}"
-                  onchange={(e) => setPricing(g.id, { currency: e.currentTarget.value })}
-                >
+                <select value={tarif.currency ?? shopCurrency} class="{field} w-24" aria-label="Mata uang {g.name}"
+                  onchange={(e) => setPricing(g.id, { currency: e.currentTarget.value })}>
                   {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
                 </select>
               </label>
@@ -341,13 +401,13 @@
             {/if}
           </div>
         </li>
+      {:else}
+        <li class="panel p-6 text-body text-muted">Belum ada barang di kaki ini.</li>
       {/each}
     </ul>
 
-    <form
-      class="panel mt-4 grid gap-3 p-4 sm:grid-cols-[1fr_6rem_7rem_auto]"
-      onsubmit={(e) => { e.preventDefault(); addDraft(); }}
-    >
+    <form class="panel mt-4 grid gap-3 p-4 sm:grid-cols-[1fr_6rem_7rem_auto]"
+      onsubmit={(e) => { e.preventDefault(); addDraft(); }}>
       <label class="block">
         <span class="mb-2 block text-small text-muted">Barang baru</span>
         <input id="barang-baru" bind:value={draftName} class={field} aria-label="Nama barang" />
@@ -358,7 +418,7 @@
       </label>
       <label class="block">
         <span class="mb-2 block text-small text-muted">Harga beli</span>
-        <input bind:value={draftBeli} inputmode="numeric" placeholder={meta.shop === "TRY" ? "₺" : "Rp"} class="{field} num" aria-label="Harga beli" />
+        <input bind:value={draftBeli} inputmode="numeric" placeholder={shopCurrency === "IDR" ? "Rp" : shopCurrency} class="{field} num" aria-label="Harga beli" />
       </label>
       <button type="submit" class="btn self-end">Tambah</button>
     </form>
@@ -366,102 +426,73 @@
   </section>
 
   <section class="mt-14" aria-labelledby="opex">
-    <h2 id="opex" data-reveal>{mode === "pp" ? "Opex kaki ini" : "Opex trip ini"}</h2>
+    <h2 id="opex" data-reveal>Opex kaki ini</h2>
     <p class="num mt-2 text-body text-muted" data-reveal>
-      {mode === "pp"
-        ? `Tiket total ${idr(n.tiketTotal)} · kaki ini ${idr(n.tiket)} + lawan ${idr(n.tiketLawan)}`
-        : `Tiket ${idr(n.tiket)}`}
+      {kakiCode(now, prev)} · tiket {idr(scenario.opex.find((l) => l.id === "tiket")?.amount ?? 0)}
     </p>
     <ul class="mt-5 flex flex-col gap-2">
       {#each scenario.opex as line (line.id)}
         <li class="flex items-center justify-between gap-3">
           <label class="text-body" for={"opex-" + line.id}>{line.label}</label>
-          <input
-            id={"opex-" + line.id}
-            type="number"
-            value={line.amount}
-            min="0"
-            step="50000"
-            class="{field} num w-40"
-            oninput={(e) => setOpex(line.id, Number(e.currentTarget.value))}
-          />
+          <input id={"opex-" + line.id} type="number" value={line.amount} min="0" step="50000"
+            class="{field} num w-40" oninput={(e) => setOpex(line.id, Number(e.currentTarget.value))} />
         </li>
       {/each}
     </ul>
-    {#if dir === "ist-cgk" || mode === "pp"}
+    {#if now.destinasi === "turki"}
       <label class="mt-5 block">
         <span class="mb-2 flex items-baseline justify-between gap-3">
-          <span>Kurs 1 TRY</span>
-          <span class="num text-body">{idr(byDir["ist-cgk"].kursTry)}</span>
+          <span>Kurs 1 TRY</span><span class="num text-body">{idr(scenario.kursTry)}</span>
         </span>
-        <input
-          type="range"
-          min="200"
-          max="900"
-          step="10"
-          value={byDir["ist-cgk"].kursTry}
-          oninput={(e) => patchDir("ist-cgk", { kursTry: Number(e.currentTarget.value) })}
-          class="w-full"
-        />
+        <input type="range" min="200" max="900" step="10" value={scenario.kursTry}
+          oninput={(e) => patchKaki(idx, { kursTry: Number(e.currentTarget.value) })} class="w-full" />
       </label>
     {/if}
   </section>
 
   <section class="mt-14" aria-labelledby="capex">
-    <h2 id="capex" data-reveal>Capex, dibagi per trip</h2>
-    {#if mode === "pp"}<p class="mt-2 text-body text-muted" data-reveal>Pulang-pergi tetap dihitung 1 trip.</p>{/if}
+    <h2 id="capex" data-reveal>Capex, dipakai semua kaki</h2>
+    <p class="mt-2 text-body text-muted" data-reveal>Koper dan timbangan dipakai bersama; dibagi umur trip, dihitung sekali.</p>
     <ul class="mt-5 flex flex-col gap-3">
       {#each scenario.capex as line (line.id)}
         <li class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem_7rem] sm:items-end">
           <p class="text-body">
             {line.label}
-            <span class="num mt-1 block text-small text-muted">
-              {idr(Math.round(line.price / Math.max(1, line.trips)))} / trip
-            </span>
+            <span class="num mt-1 block text-small text-muted">{idr(Math.round(line.price / Math.max(1, line.trips)))} / trip</span>
           </p>
           <label class="block">
             <span class="mb-2 block text-small text-muted">Harga alat</span>
-            <input id={"capex-price-" + line.id} type="number" value={line.price} min="0" class="{field} num" oninput={(e) => setCapex(line.id, { price: Number(e.currentTarget.value) })} />
+            <input type="number" value={line.price} min="0" class="{field} num" oninput={(e) => setCapex(line.id, { price: Number(e.currentTarget.value) })} />
           </label>
           <label class="block">
             <span class="mb-2 block text-small text-muted">Umur trip</span>
-            <input id={"capex-trips-" + line.id} type="number" value={line.trips} min="1" class="{field} num" oninput={(e) => setCapex(line.id, { trips: Math.max(1, Number(e.currentTarget.value)) })} />
+            <input type="number" value={line.trips} min="1" class="{field} num" oninput={(e) => setCapex(line.id, { trips: Math.max(1, Number(e.currentTarget.value)) })} />
           </label>
+        </li>
+      {:else}
+        <li class="panel p-6 text-body text-muted">Belum ada capex.</li>
+      {/each}
+    </ul>
+    <button type="button" class="link mt-5 block text-body" onclick={resetKaki}>Reset kaki ini ke skenario contoh</button>
+  </section>
+
+  <section class="mt-14" aria-labelledby="negara">
+    <h2 id="negara" data-reveal>Negara tujuan jastip</h2>
+    <p class="mt-3 text-body text-muted" data-reveal>
+      Sepuluh tujuan paling populer untuk pasar Indonesia, plus Turki (koridor lama). Kategori dan kurs
+      di bawah ini contoh untuk memulai.
+    </p>
+    <ul class="mt-5 grid gap-3 sm:grid-cols-2">
+      {#each DESTINASI as d (d.code)}
+        <li class="panel p-4">
+          <div class="flex items-baseline justify-between gap-3">
+            <p class="text-body">{d.negara}</p>
+            <span class="num text-small text-muted">{d.currency} · {idr(d.kurs)}</span>
+          </div>
+          <p class="mt-1 text-small text-muted">{d.ringkas}</p>
+          <button type="button" class="link mt-2 text-small" onclick={() => setDestinasi(idx, d.code)}>Pakai untuk kaki ini</button>
         </li>
       {/each}
     </ul>
-    <button type="button" class="link mt-5 block text-body" onclick={resetDir}>Reset arah ini ke skenario contoh</button>
-  </section>
-
-  <section class="mt-14" aria-labelledby="rute">
-    <h2 id="rute" data-reveal>Rute yang dihitung</h2>
-    <p class="mt-3 text-body text-muted" data-reveal>
-      Satu koridor saja: Jakarta (CGK) dan Istanbul (IST). Foto di bawah ini adalah rute sungguhan, bukan
-      hasil produk Titipin. Semua angka di meja adalah skenario contoh.
-    </p>
-
-    <!-- Signature move: the atmosphere crossfades like light shifting. -->
-    <div class="crossfade relative mt-6 aspect-[16/10] overflow-hidden rounded bg-surface" data-reveal aria-hidden="true">
-      <img class="absolute inset-0 size-full object-cover" src="/img/terminal3soekarnohatt.jpg" alt="" width="1920" height="1503" />
-      <img class="absolute inset-0 size-full object-cover" src="/img/istanbul-bosphorus-ferry.jpg" alt="" width="1920" height="1080" loading="lazy" />
-      <img class="absolute inset-0 size-full object-cover" src="/img/soetta-skytrain-9.jpg" alt="" width="1920" height="1280" loading="lazy" />
-    </div>
-
-    <div class="mt-6 grid gap-4 sm:grid-cols-2">
-      <figure data-reveal>
-        <img class="w-full rounded object-cover" src="/img/sultanahmet-ferry-on-the-bosphorus-in-istanbul.jpg" alt="Kapal feri Sultanahmet di Selat Bosphorus, Istanbul" width="1920" height="1275" loading="lazy" decoding="async" />
-        <figcaption class="mt-2 text-small text-muted">
-          Feri di Bosphorus, sisi Istanbul dari rute. "Sultanahmet ferry on the Bosphorus", Moonik, CC BY-SA 3.0, Wikimedia Commons.
-        </figcaption>
-      </figure>
-      <figure data-reveal>
-        <video class="w-full rounded" autoplay muted loop playsinline preload="metadata" poster="/img/a-ferry-in-the-bosphorus-20251015-poster.jpg" width="854" height="480" aria-label="Feri berlayar di Selat Bosphorus">
-          <source src="/img/a-ferry-in-the-bosphorus-20251015.webm" type="video/webm" />
-        </video>
-        <figcaption class="mt-2 text-small text-muted">
-          Feri berlayar, siang hari. "A ferry in the Bosphorus", Kurmanbek, CC BY-SA 4.0, Wikimedia Commons.
-        </figcaption>
-      </figure>
-    </div>
   </section>
 </article>

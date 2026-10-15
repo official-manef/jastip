@@ -9,10 +9,13 @@
 import type { AiToolDef } from "./ai";
 import { authedFetch, session } from "./session.svelte";
 import {
-  addGood, desk, patch, patchDir, removeGood, resetDir, setCapex, setDir, setGood, setMode, setOpex, snapshot,
+  addGood, desk, patch, patchKaki, removeGood, resetKaki, setGood, setOpex, setCapex,
+  kakiAktif, tambahKaki, sisipKaki, hapusKaki, setAktif, setDestinasi, setNama, snapshot,
 } from "./trip-store.svelte";
-import { computeTrip, type Dir } from "./calc";
-import { capacity, computeRevenue, targetProgress } from "./pricing";
+import { compute } from "./calc";
+import { capacity, computeRevenue, targetProgress, tripLintas } from "./pricing";
+import { DESTINASI, destinasiByCode } from "./destinasi";
+import { newKaki as baruKaki } from "./kaki";
 import { suggestToTarget, type SuggestCandidate } from "./suggest";
 import { evaluateRisk, type RiskRule } from "./risk";
 import { isArah, isStatus, type TitipanRow } from "./titipan";
@@ -27,21 +30,27 @@ const n = { type: "number" } as const;
 const s = { type: "string" } as const;
 const b = { type: "boolean" } as const;
 const dirEnum = { type: "string", enum: ["cgk-ist", "ist-cgk"] } as const;
+const kakiJenis = { type: "string", enum: ["utama", "transit"] } as const;
+const destinasiEnum = { type: "string", enum: DESTINASI.map((d) => d.code) } as const;
 
 export const TOOL_DEFS: AiToolDef[] = [
-  { type: "function", function: { name: "ringkasan_trip", description: "Baca angka meja hitung saat ini (kuota, sisa, omzet jasa, laba, progres target).", parameters: obj({}) } },
-  { type: "function", function: { name: "set_trip", description: "Ubah skenario trip. Hanya field yang dikirim berubah. arah menentukan kaki mana.", parameters: obj({
-    arah: dirEnum,
-    mode: { type: "string", enum: ["one", "pp"] },
+  { type: "function", function: { name: "ringkasan_trip", description: "Baca angka meja hitung: rute (daftar kaki), kuota, muatan, omzet, laba, progres target, dan daftar negara tujuan yang tersedia.", parameters: obj({}) } },
+  { type: "function", function: { name: "set_trip", description: "Ubah skenario KAKI AKTIF. Hanya field yang dikirim berubah.", parameters: obj({
     bags: n, kgPerBag: n, cabin: n, tare: n, overPerKg: n, hargaPerKg: n, margin: n, ujiKg: n, kursTry: n,
-    target: n, hargaCurrency: { type: "string", enum: ["IDR", "USD", "TRY"] },
+    target: n, hargaCurrency: { type: "string", enum: ["IDR", "USD", "TRY", "JPY", "KRW", "SGD", "HKD", "THB", "EUR", "MYR", "AUD"] },
   }) } },
-  { type: "function", function: { name: "set_opex", description: "Set nominal satu baris opex berdasarkan id baris (lihat ringkasan_trip).", parameters: obj({ id: s, amount: n }, ["id", "amount"]) } },
-  { type: "function", function: { name: "set_capex", description: "Set harga dan/atau umur trip sebuah capex berdasarkan id baris.", parameters: obj({ id: s, price: n, trips: n }, ["id"]) } },
+  { type: "function", function: { name: "pilih_kaki", description: "Jadikan kaki ke-`index` sebagai kaki aktif (index 0 = kaki pertama).", parameters: obj({ index: n }, ["index"]) } },
+  { type: "function", function: { name: "tambah_kaki", description: "Tambah kaki baru di akhir rute. destinasi = kode negara (lihat ringkasan_trip.negaraTersedia).", parameters: obj({ destinasi: destinasiEnum, jenis: kakiJenis, lama: n }, ["destinasi"]) } },
+  { type: "function", function: { name: "sisip_transit", description: "Sisipkan kaki transit setelah kaki ke-`index` (untuk negara singgah di tengah rute).", parameters: obj({ index: n, destinasi: destinasiEnum, lama: n }, ["index", "destinasi"]) } },
+  { type: "function", function: { name: "hapus_kaki", description: "Hapus kaki ke-`index`. Minimal satu kaki harus tersisa.", parameters: obj({ index: n }, ["index"]) } },
+  { type: "function", function: { name: "set_kaki", description: "Ubah jenis (utama|transit) atau lama kaki ke-`index`.", parameters: obj({ index: n, jenis: kakiJenis, lama: n }, ["index"]) } },
+  { type: "function", function: { name: "set_nama_trip", description: "Ubah nama trip.", parameters: obj({ nama: s }, ["nama"]) } },
+  { type: "function", function: { name: "set_opex", description: "Set nominal satu baris opex kaki aktif berdasarkan id (lihat ringkasan_trip).", parameters: obj({ id: s, amount: n }, ["id", "amount"]) } },
+  { type: "function", function: { name: "set_capex", description: "Set harga dan/atau umur trip sebuah capex; berlaku untuk semua kaki.", parameters: obj({ id: s, price: n, trips: n }, ["id"]) } },
   { type: "function", function: { name: "tambah_barang", description: "Tambah satu barang ke muatan kaki aktif.", parameters: obj({ nama: s, kg: n, qty: n, beli: n, model_tarif: { type: "string", enum: ["per_kg", "per_item"] }, tarif: n, satuan: s }, ["nama", "kg"]) } },
   { type: "function", function: { name: "ubah_barang", description: "Ubah barang berdasarkan id (lihat ringkasan_trip).", parameters: obj({ id: s, nama: s, kg: n, qty: n, beli: n, tarif: n, model_tarif: { type: "string", enum: ["per_kg", "per_item"] }, satuan: s }, ["id"]) } },
-  { type: "function", function: { name: "hapus_barang", description: "Hapus barang dari muatan aktif.", parameters: obj({ id: s }, ["id"]) } },
-  { type: "function", function: { name: "reset_arah", description: "Kembalikan kaki aktif ke nilai contoh awal.", parameters: obj({}) } },
+  { type: "function", function: { name: "hapus_barang", description: "Hapus barang dari muatan kaki aktif.", parameters: obj({ id: s }, ["id"]) } },
+  { type: "function", function: { name: "reset_kaki", description: "Kembalikan kaki aktif ke nilai contoh destinasi/jenis-nya.", parameters: obj({}) } },
   { type: "function", function: { name: "daftar_titipan", description: "Baca daftar titipan (butuh masuk; klien melihat miliknya, jastiper/admin melihat semua).", parameters: obj({}) } },
   { type: "function", function: { name: "buat_titipan", description: "Buat titipan baru (peran klien atau admin).", parameters: obj({ arah: dirEnum, nama: s, kg: n, catatan: s }, ["arah", "nama", "kg"]) } },
   { type: "function", function: { name: "ubah_status_titipan", description: "Ubah status titipan: baru | dibawa | selesai (peran jastiper atau admin).", parameters: obj({ id: s, status: { type: "string", enum: ["baru", "dibawa", "selesai"] } }, ["id", "status"]) } },
@@ -65,33 +74,45 @@ async function jsonFetch(url: string, init?: RequestInit): Promise<{ ok: boolean
 
 function ringkasan(): Json {
   const s = snapshot();
-  const legs = (["cgk-ist", "ist-cgk"] as Dir[]).map((d) => {
-    const sc = s[d === "cgk-ist" ? "cgkIst" : "istCgk"];
-    const rev = computeRevenue(sc.goods, sc.hargaPerKg);
-    return {
-      arah: d, aktif: s.dir === d, bags: sc.bags, kgPerBag: sc.kgPerBag, cabin: sc.cabin, tare: sc.tare,
-      overPerKg: sc.overPerKg, hargaPerKg: sc.hargaPerKg, margin: sc.margin, ujiKg: sc.ujiKg, kursTry: sc.kursTry,
-      target: sc.target ?? 0, hargaCurrency: sc.hargaCurrency ?? "IDR",
-      barang: sc.goods.map((g) => ({ id: g.id, nama: g.name, kg: g.kg, qty: g.qty, beli: g.beli, tarif: g.pricing?.rate, model: g.pricing?.model })),
-      opex: sc.opex, capex: sc.capex,
-      kuotaBersih: capacity(sc.bags * sc.kgPerBag + sc.cabin - sc.tare, rev.totalKg).capacityKg,
-      omzetJasa: rev.service,
-    };
-  });
-  const n = computeTrip(s.mode, s.dir, { "cgk-ist": s.cgkIst, "ist-cgk": s.istCgk });
-  const aktif = s.dir === "cgk-ist" ? s.cgkIst : s.istCgk;
-  const rev = computeRevenue(aktif.goods, aktif.hargaPerKg);
+  const idx = Math.min(desk.aktif, Math.max(0, s.kaki.length - 1));
+  const now = s.kaki[idx];
+  const meta = destinasiByCode(now.destinasi);
+  const rev = computeRevenue(now.scenario.goods, now.scenario.hargaPerKg, meta?.currency ?? "IDR");
+  const lintas = tripLintas(s.kaki.map((k) => ({ id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario })));
+  const bebanTrip = s.kaki.reduce((sum, k) => {
+    const opex = k.scenario.opex.reduce((a, l) => a + l.amount, 0);
+    const capex = k.scenario.capex.reduce((a, l) => a + l.price / Math.max(1, l.trips), 0);
+    return sum + Math.round(opex + capex);
+  }, 0);
+  const bersihKaki = Math.max(0, now.scenario.bags * now.scenario.kgPerBag + now.scenario.cabin - now.scenario.tare);
   return {
-    mode: s.mode,
-    arahAktif: s.dir,
-    sisaKg: Math.round(n.sisa * 10) / 10,
-    overKg: n.overKg,
-    omzetJasa: rev.service,
-    target: aktif.target ?? 0,
-    progresPersen: targetProgress(rev.service, aktif.target ?? 0).persen,
-    laba: n.laba,
-    beban: n.beban,
-    kaki: legs,
+    nama: s.nama,
+    jumlahKaki: s.kaki.length,
+    kakiAktif: idx,
+    rute: s.kaki.map((k, i) => ({
+      index: i,
+      destinasi: k.destinasi,
+      negara: destinasiByCode(k.destinasi)?.negara ?? (k.destinasi === "jakarta" ? "Indonesia" : k.destinasi),
+      kota: destinasiByCode(k.destinasi)?.kota ?? k.destinasi,
+      jenis: k.jenis,
+      lama: k.lama,
+      aktif: i === idx,
+      mataUangBelanja: destinasiByCode(k.destinasi)?.currency ?? "IDR",
+      muatanKg: tripLintas([{ id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario }]).totalKg,
+    })),
+    sisaKgKakiIni: Math.round((bersihKaki - rev.totalKg) * 10) / 10,
+    muatanTripKg: lintas.totalKg,
+    kapasitasTripKg: lintas.capacityKg,
+    overTripKg: lintas.overKg,
+    omzetJasaTrip: lintas.service,
+    labaTrip: Math.round(lintas.service - bebanTrip),
+    bebanTrip,
+    target: now.scenario.target ?? 0,
+    progresPersen: targetProgress(rev.service, now.scenario.target ?? 0).persen,
+    barang: now.scenario.goods.map((g) => ({ id: g.id, nama: g.name, kg: g.kg, qty: g.qty, beli: g.beli, tarif: g.pricing?.rate, model: g.pricing?.model })),
+    opex: now.scenario.opex,
+    capex: now.scenario.capex,
+    negaraTersedia: DESTINASI.map((d) => ({ kode: d.code, negara: d.negara, kategori: d.kategori })),
   };
 }
 
@@ -101,16 +122,69 @@ export async function runTool(name: string, args: Json): Promise<Json> {
       return ringkasan();
 
     case "set_trip": {
-      const arah: Dir = args.arah === "ist-cgk" ? "ist-cgk" : "cgk-ist";
-      if (args.mode === "one" || args.mode === "pp") setMode(args.mode);
       const fields: Record<string, number | string> = {};
       for (const key of ["bags", "kgPerBag", "cabin", "tare", "overPerKg", "hargaPerKg", "margin", "ujiKg", "kursTry", "target"]) {
         const v = num(args[key]);
         if (v !== undefined) fields[key] = v;
       }
       if (str(args.hargaCurrency)) fields.hargaCurrency = str(args.hargaCurrency) as string;
-      if (Object.keys(fields).length) patchDir(arah, fields);
-      if (args.arah) setDir(arah);
+      if (Object.keys(fields).length) patch(fields);
+      return { ok: true, ringkasan: ringkasan() };
+    }
+
+    case "pilih_kaki": {
+      const index = num(args.index);
+      if (index === undefined) return { error: "isian" };
+      setAktif(index);
+      return { ok: true, ringkasan: ringkasan() };
+    }
+
+    case "tambah_kaki": {
+      const kode = str(args.destinasi);
+      if (!kode || !DESTINASI.some((d) => d.code === kode)) return { error: "destinasi tidak ada", tersedia: DESTINASI.map((d) => d.code) };
+      tambahKaki(kode, args.jenis === "transit" ? "transit" : "utama");
+      return { ok: true, ringkasan: ringkasan() };
+    }
+
+    case "sisip_transit": {
+      const index = num(args.index);
+      const kode = str(args.destinasi);
+      if (index === undefined || !kode || !DESTINASI.some((d) => d.code === kode)) return { error: "isian", tersedia: DESTINASI.map((d) => d.code) };
+      sisipKaki(index, kode, "transit");
+      if (num(args.lama) !== undefined) {
+        // lama diisi lewat set_kaki berikutnya bila model mengirimnya.
+      }
+      return { ok: true, ringkasan: ringkasan() };
+    }
+
+    case "hapus_kaki": {
+      const index = num(args.index);
+      if (index === undefined) return { error: "isian" };
+      if (snapshot().kaki.length <= 1) return { error: "minimal satu kaki" };
+      hapusKaki(index);
+      return { ok: true, ringkasan: ringkasan() };
+    }
+
+    case "set_kaki": {
+      const index = num(args.index);
+      if (index === undefined) return { error: "isian" };
+      const s = snapshot().kaki[index];
+      if (!s) return { error: "kaki tidak ada" };
+      if (args.jenis === "transit" || args.jenis === "utama") {
+        const segar = baruKaki(s.destinasi, args.jenis).scenario;
+        patchKaki(index, { ...segar, goods: s.scenario.goods, capex: s.scenario.capex });
+        desk.kaki = desk.kaki.map((k, i) => (i === index ? { ...k, jenis: args.jenis as "utama" | "transit" } : k));
+      }
+      if (num(args.lama) !== undefined) {
+        desk.kaki = desk.kaki.map((k, i) => (i === index ? { ...k, lama: num(args.lama) as number } : k));
+      }
+      return { ok: true, ringkasan: ringkasan() };
+    }
+
+    case "set_nama_trip": {
+      const nama = str(args.nama);
+      if (!nama) return { error: "isian" };
+      setNama(nama);
       return { ok: true, ringkasan: ringkasan() };
     }
 
@@ -118,22 +192,22 @@ export async function runTool(name: string, args: Json): Promise<Json> {
       const id = str(args.id);
       const amount = num(args.amount);
       if (!id || amount === undefined) return { error: "isian" };
-      const aktif = desk.dir === "cgk-ist" ? desk.byDir["cgk-ist"] : desk.byDir["ist-cgk"];
-      if (!aktif.opex.some((line) => line.id === id)) return { error: "id tidak ada", opex: aktif.opex };
+      const aktif = kakiAktif();
+      if (!aktif.scenario.opex.some((line) => line.id === id)) return { error: "id tidak ada", opex: aktif.scenario.opex };
       setOpex(id, amount);
-      return { ok: true, opex: aktif.opex };
+      return { ok: true, opex: aktif.scenario.opex };
     }
 
     case "set_capex": {
       const id = str(args.id);
       if (!id) return { error: "isian" };
-      const aktif = desk.dir === "cgk-ist" ? desk.byDir["cgk-ist"] : desk.byDir["ist-cgk"];
-      if (!aktif.capex.some((line) => line.id === id)) return { error: "id tidak ada", capex: aktif.capex };
+      const aktif = kakiAktif();
+      if (!aktif.scenario.capex.some((line) => line.id === id)) return { error: "id tidak ada", capex: aktif.scenario.capex };
       const partial: { price?: number; trips?: number } = {};
       if (num(args.price) !== undefined) partial.price = num(args.price);
       if (num(args.trips) !== undefined) partial.trips = num(args.trips);
       setCapex(id, partial);
-      return { ok: true, capex: aktif.capex };
+      return { ok: true, capex: aktif.scenario.capex };
     }
 
     case "tambah_barang": {
@@ -153,9 +227,9 @@ export async function runTool(name: string, args: Json): Promise<Json> {
     case "ubah_barang": {
       const id = str(args.id);
       if (!id) return { error: "isian" };
-      const aktif = desk.byDir[desk.dir];
-      const good = aktif.goods.find((g) => g.id === id);
-      if (!good) return { error: "id tidak ada", barang: aktif.goods.map((g) => g.id) };
+      const aktif = kakiAktif();
+      const good = aktif.scenario.goods.find((g) => g.id === id);
+      if (!good) return { error: "id tidak ada", barang: aktif.scenario.goods.map((g) => g.id) };
       const nama = str(args.nama);
       const weight = num(args.kg);
       const qty = num(args.qty);
@@ -173,13 +247,13 @@ export async function runTool(name: string, args: Json): Promise<Json> {
 
     case "hapus_barang": {
       const id = str(args.id);
-      if (!id || !desk.byDir[desk.dir].goods.some((g) => g.id === id)) return { error: "id tidak ada" };
+      if (!id || !kakiAktif().scenario.goods.some((g) => g.id === id)) return { error: "id tidak ada" };
       removeGood(id);
       return { ok: true, ringkasan: ringkasan() };
     }
 
-    case "reset_arah":
-      resetDir();
+    case "reset_kaki":
+      resetKaki();
       return { ok: true, ringkasan: ringkasan() };
 
     case "daftar_titipan": {
@@ -216,7 +290,7 @@ export async function runTool(name: string, args: Json): Promise<Json> {
     }
 
     case "usul_penutup_target": {
-      const aktif = desk.byDir[desk.dir];
+      const aktif = kakiAktif().scenario;
       const rev = computeRevenue(aktif.goods, aktif.hargaPerKg);
       const kekurangan = num(args.kekurangan) ?? Math.max(0, (aktif.target ?? 0) - rev.service);
       const kandidat = Array.isArray(args.kandidat) ? args.kandidat : [];

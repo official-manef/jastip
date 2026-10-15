@@ -50,30 +50,35 @@
 </svelte:head>
 
 {#if isApp}
-  <div class="flex min-h-dvh">
+  <!-- Dua area scroll: rail setinggi layar, kolom konten scroll sendiri (F01). -->
+  <div class="flex h-dvh overflow-hidden">
     <Sidebar />
     <div class="flex min-w-0 flex-1 flex-col">
-      <main class="w-full flex-1 px-4 py-6 lg:px-10 lg:py-10">
-        <div class="mx-auto w-full max-w-[68rem]">
-          {@render children()}
-        </div>
-      </main>
+      <!-- Header mobile di ATAS konten, sebelum main (F02). -->
+      <Dock />
+      <div class="flex-1 overflow-y-auto" id="konten-app">
+        <main class="w-full px-4 py-6 lg:px-10 lg:py-10">
+          <div class="mx-auto w-full max-w-[68rem]">
+            {@render children()}
+          </div>
+        </main>
 
-      <footer class="px-4 pb-10 lg:px-10 lg:pb-14">
-        <div
-          class="mx-auto grid w-full max-w-[68rem] gap-3 text-small text-muted sm:grid-cols-[1fr_auto_1fr] sm:items-baseline sm:gap-6"
-        >
-          <p class="max-w-none">Titipin. Hitung bagasi, tarif, dan laba satu trip.</p>
-          <nav class="flex flex-wrap gap-6" aria-label="Tautan kaki">
-            <a class="link text-fg" href="/meja">Meja</a>
-            <a class="link text-fg" href="/portal">Portal</a>
-            <a class="link text-fg" href="/">Beranda</a>
-          </nav>
-          <p class="max-w-none sm:text-right">Angka awal = contoh.</p>        </div>
-      </footer>
+        <footer class="px-4 pb-10 lg:px-10 lg:pb-14">
+          <div
+            class="mx-auto grid w-full max-w-[68rem] gap-3 text-small text-muted sm:grid-cols-[1fr_auto_1fr] sm:items-baseline sm:gap-6"
+          >
+            <p class="max-w-none">Titipin. Hitung bagasi, tarif, dan laba satu trip.</p>
+            <nav class="flex flex-wrap gap-6" aria-label="Tautan kaki">
+              <a class="link text-fg" href="/meja">Meja</a>
+              <a class="link text-fg" href="/portal">Portal</a>
+              <a class="link text-fg" href="/">Beranda</a>
+            </nav>
+            <p class="max-w-none sm:text-right">Angka awal = contoh.</p>
+          </div>
+        </footer>
+      </div>
     </div>
   </div>
-  <Dock />
 {:else}
   <div class="flex min-h-dvh flex-col">
     <header class="flex items-center justify-between px-6 py-5 sm:px-10">

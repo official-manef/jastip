@@ -10,8 +10,11 @@ import { computeRevenue, targetProgress, capacity } from "./pricing.ts";
 export type TripSummary = {
   slug: string;
   name: string;
-  dir: Dir;
-  mode: TripMode;
+  /** Kaki pertama = asal; dipakai untuk ringkas daftar. */
+  dari: string;
+  /** Kaki terakhir = tujuan utama. */
+  ke: string;
+  jumlahKaki: number;
   updatedAt: string;
   version: number;
 };
@@ -47,8 +50,6 @@ export function uniqueSlug(name: string, taken: string[]): string {
 }
 
 export type TripRollup = {
-  dir: Dir;
-  mode: TripMode;
   service: number;
   totalKg: number;
   hasPricing: boolean;
@@ -56,41 +57,43 @@ export type TripRollup = {
   target: number;
   currency: string;
   progress: ReturnType<typeof targetProgress>;
-  legs: { dir: Dir; remainingKg: number; overKg: number }[];
+  legs: { id: string; destinasi: string; jenis: "utama" | "transit"; remainingKg: number; overKg: number }[];
 };
 
 /** Headline numbers for one trip, computed from the same engine the desk uses. */
 export function rollup(trip: TripState): TripRollup {
-  const active = trip.cgkIst;
-  const currency = active.hargaCurrency || "IDR";
-  const legsIn = trip.mode === "one" ? [trip.dir] : (["cgk-ist", "ist-cgk"] as Dir[]);
+  const currency = trip.kaki[0]?.scenario.hargaCurrency || "IDR";
   let service = 0;
   let totalKg = 0;
   let hasPricing = false;
   let needsRate = false;
   const legs: TripRollup["legs"] = [];
-  for (const d of legsIn) {
-    const s = d === "cgk-ist" ? trip.cgkIst : trip.istCgk;
-    // The desk keeps target in `hargaCurrency` on the active leg; both legs
-    // share capacity math but each keeps its own remaining space.
-    const rev = computeRevenue(s.goods, s.hargaPerKg, currency);
+  for (const kaki of trip.kaki) {
+    const s = kaki.scenario;
+    const rev = computeRevenue(s.goods, s.hargaPerKg, s.hargaCurrency ?? currency);
     const cap = capacity(legCapacity(s), rev.totalKg);
     service += rev.service;
     totalKg += rev.totalKg;
     hasPricing ||= rev.hasPricing;
     needsRate ||= rev.needsRate;
-    legs.push({ dir: d, remainingKg: cap.remainingKg, overKg: cap.overKg });
+    legs.push({
+      id: kaki.id,
+      destinasi: kaki.destinasi,
+      jenis: kaki.jenis,
+      remainingKg: cap.remainingKg,
+      overKg: cap.overKg,
+    });
   }
-  const target = active.target ?? 0;
+  // Target dibaca dari kaki pertama yang memasangnya (indikator progres saja).
+  const withTarget = trip.kaki.find((k) => (k.scenario.target ?? 0) > 0);
+  const target = withTarget?.scenario.target ?? 0;
   return {
-    dir: trip.dir,
-    mode: trip.mode,
     service,
     totalKg,
     hasPricing,
     needsRate,
     target,
-    currency,
+    currency: withTarget?.scenario.hargaCurrency ?? currency,
     progress: targetProgress(service, target),
     legs,
   };

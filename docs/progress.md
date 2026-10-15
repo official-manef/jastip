@@ -2,6 +2,25 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 15 Oktober 2026 (lanjutan 3): trip berkaki bebas + katalog 10 negara
+
+- Model trip jadi **daftar kaki** (`trip.kaki`), bukan lagi `dir`/`mode` tetap. Kaki bebas berurutan;
+  transit = kaki bertanda khusus yang tetap boleh diisi barang. Sumber: `src/lib/titip/kaki.ts`,
+  `src/lib/titip/trip-state.ts` (skema v2 + zod, migrasi v1 otomatis).
+- Katalog **10 negara tujuan populer** pasar Indonesia + Turki: `src/lib/titip/destinasi.ts`
+  (Jepang, Korea, Singapura, Hong Kong, Thailand, Amerika, Prancis, Malaysia, Jerman, Australia).
+  Tiap destinasi punya mata uang, kurs contoh, kategori khas, dan alasan.
+- Total lintas kaki: `tripLintas` di `src/lib/titip/pricing.ts` (jasa, muatan, kapasitas, over, kaki
+  paling ketat). Capex dipakai bersama semua kaki, dihitung sekali.
+- Target omzet tetap indikator progres (keputusan pemilik, bukan pengubah harga otomatis).
+- Meja (`src/desk/Desk.svelte`) dapat pemilih kaki (tombol berurutan) + panel kaki aktif (negara,
+  jenis, lama) + daftar 10 negara. Asisten dapat tool baru: `pilih_kaki`, `tambah_kaki`,
+  `sisip_transit`, `hapus_kaki`, `set_kaki`, `set_nama_trip`; `reset_arah` → `reset_kaki`.
+- Verifikasi: `svelte-check` 0 error; `tsc -p src/convex` 0 error; 61 tes lulus; gate tasteskill
+  `/` = 0 FAIL 0 WARN, `/meja` = 0 FAIL (1 WARN card-rows); uji browser: sisip transit, ganti
+  destinasi, dan total lintas kaki bekerja.
+- Bandingkan dengan template starter: [bandingkan-template.md](bandingkan-template.md).
+
 ## 15 Oktober 2026: akun pindah ke Convex (buang Postgres/Neon/PGlite)
 
 - Auth + data akun kini di **Convex** via komponen resmi `@convex-dev/better-auth`

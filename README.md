@@ -1,31 +1,45 @@
 # titipin
 
-Kalkulator bagasi jastip untuk **satu rute: Jakarta ↔ Turki**. Bukan marketplace multi-kota. Satu meja hitung yang langsung berubah, plus akun untuk klien, jastiper, dan admin.
+Kalkulator bagasi jastip **multi-negara**: trip disusun sebagai daftar kaki (penerbangan) berurutan, tiap kaki punya negara, mata uang belanja, dan muatannya sendiri. Plus akun untuk klien, jastiper, dan admin.
 
 Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 
 ## Yang sudah jalan
 
-- Meja trip: kuota bagasi, muatan per kg, harga per kg, opex, capex, laba.
-- Arah `Jakarta → Turki` dan `Turki → Jakarta`.
-- Mode **pergi saja** atau **pulang-pergi**. PP menjumlahkan tiket dan opex kedua kaki. Capex dihitung sekali.
-- Kalkulasi pengunjung tersimpan di perangkat. Skenario trip akun tersimpan di Convex (`trips`), dibatasi oleh sesi pengguna pada kode aplikasi.
-- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu dan ditetapkan operator melalui ID akun, bukan dipilih pengunjung pertama.
-- Asisten AI di `/asisten` dengan **function calling**: bisa langsung mengubah meja hitung, titipan, dan peran. Model & key dari env server; BYOK opsional di `/pengaturan`.
+- **Trip berkaki bebas**: 1, 2, 3, atau lebih kaki; tiap kaki pilih negara dari katalog. Transit = kaki bertanda khusus yang tetap boleh diisi barang.
+- Katalog 10 negara tujuan populer untuk pasar Indonesia + Turki (koridor lama): Jepang, Korea, Singapura, Hong Kong, Thailand, Amerika, Prancis, Malaysia, Jerman, Australia.
+- Meja per kaki: kuota bagasi, muatan per kg, harga per kg, opex, capex; total lintas kaki (jasa, muatan, kapasitas, laba) dihitung sekaligus.
+- Capex (koper, timbangan) dipakai bersama semua kaki, dibagi umur trip, dihitung sekali.
+- Target omzet sebagai indikator progres (batang + "butuh lagi"), bukan pengubah harga otomatis.
+- Kalkulasi pengunjung tersimpan di perangkat. Skenario trip akun tersimpan di Convex (`tripScenarios`), dibatasi oleh sesi pengguna.
+- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu dan ditetapkan operator melalui ID akun.
+- Asisten AI di `/asisten` dengan **function calling**: bisa menyusun kaki, ganti destinasi, isi muatan, dan ubah peran.
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
-- PWA: `manifest.webmanifest` (start_url `/meja`, ikon maskable, screenshot manifest), service worker
-  offline shell + toast "versi baru". Dua shell layout: beranda/masuk tanpa sidebar dan terpusat;
-  halaman app memakai rail sidebar.
+- PWA: `manifest.webmanifest` (start_url `/meja`, ikon maskable, screenshot manifest), service worker offline shell + toast "versi baru". Dua shell layout: beranda/masuk tanpa sidebar dan terpusat; halaman app memakai rail sidebar.
 
-Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [docs/progress.md](docs/progress.md). Bahasa visual ada di [DESIGN.md](DESIGN.md).
+Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [docs/progress.md](docs/progress.md). Bahasa visual ada di [DESIGN.md](DESIGN.md). Perbandingan dengan template starter ada di [docs/bandingkan-template.md](docs/bandingkan-template.md).
+
+## Model trip
+
+Satu trip = daftar **kaki** (penerbangan) berurutan. Tiap kaki menyimpan: destinasi (kode katalog),
+jenis (`utama` atau `transit`), lama (hari untuk utama, jam untuk transit), dan skenario lengkap
+(kuota bagasi, barang, opex, capex). Total trip menjumlahkan jasa, muatan, dan kapasitas semua kaki.
+
+- **Transit** = kaki bertanda `transit`: kuota bagasi kecil, opex ringan, tetap boleh diisi barang.
+- **Capex** (koper, timbangan) dipakai bersama seluruh kaki; dibagi umur trip, dihitung sekali.
+- **Target omzet** = indikator progres di kaki aktif (batang + "butuh lagi"), bukan pengubah harga otomatis.
+- Trip lama (v1: satu koridor `dir`/`mode`) dimigrasi otomatis ke daftar kaki saat dibaca.
+
+Sumber: `src/lib/titip/destinasi.ts` (katalog), `src/lib/titip/kaki.ts` (tipe + migrasi),
+`src/lib/titip/pricing.ts` (`tripLintas`), `src/lib/titip/trip-state.ts` (skema v2 + zod).
 
 ## Halaman
 
 | Path | Untuk siapa | Isi | Shell |
 | --- | --- | --- | --- |
 | `/` | Semua | Beranda publik: instrumen hidup, rute, peran | Publik (tanpa sidebar, konten terpusat) |
-| `/meja` | Semua | Meja hitung | App (sidebar) |
+| `/meja` | Semua | Meja hitung multi-kaki | App (sidebar) |
 | `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin), Deniz (klien lain) | App |
 | `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru | Publik |
 | `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan BYOK (opsional bila key server ada) | App |

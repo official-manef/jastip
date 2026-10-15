@@ -1,7 +1,7 @@
 # Titipin
 
-Reading this as: kalkulator bagasi untuk klien dan jastiper Jakarta ↔ Turki, dengan bahasa visual
-waybill; ENERGY 1 / RHYTHM 2 / MOTION 1.
+Reading this as: kalkulator bagasi multi-negara untuk klien dan jastiper Indonesia, dengan bahasa
+visual waybill; ENERGY 1 / RHYTHM 2 / MOTION 1.
 
 Art direction diambil dari skill **design-taste-frontend** (tasteskill v2), direction
 `quiet-instrument` (seed 2117912992): alat presisi yang bicara pelan. Kolom sempit, angka tabular
@@ -30,6 +30,13 @@ Permukaan dipisahkan oleh **satu langkah tone**, bukan garis atau bayangan.
   diletakkan di tengah layar (grid `place-items-center`) dan dibatasi `max-w-[46rem]`.
 - **App** (`/meja`, `/portal`, `/titip`, `/asisten`, `/pengaturan`, `/admin`): rail sidebar tetap
   (>=lg) + bar/drawer (mobile). Area kerja memakai sisa lebar penuh, konten `max-w-[68rem]` di tengah.
+
+## Meja multi-kaki
+
+Meja menyusun trip sebagai daftar kaki. Pemilih kaki = deretan tombol berurutan berisi kode rute
+(mis. `CGK → TYO`), kota, dan lama; kaki aktif disorot. Di bawahnya, panel kaki aktif memuat pemilih
+negara, jenis (utama/transit), lama, lalu kuota, muatan, opex, capex. Total lintas kaki (jasa, muatan,
+kapasitas, laba) tampil sebagai satu panel. Readout besar tetap sisa kuota kaki aktif.
 
 ## Tipe
 

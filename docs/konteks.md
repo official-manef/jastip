@@ -1,8 +1,35 @@
 # Konteks
 
-Titipin adalah MVP jastip pribadi untuk satu koridor. Orang yang menitip (klien) mengirim barang. Orang yang terbang (jastiper) membawa bagasi dan menghitung apakah trip itu untung. Admin adalah pengembang, satu orang.
+Titipin adalah MVP jastip pribadi multi-negara. Orang yang menitip (klien) mengirim barang. Orang yang terbang (jastiper) menyusun rute, membawa bagasi, dan menghitung apakah trip itu untung. Admin adalah pengembang, satu orang.
 
-Bukan katalog banyak kota. Kalau rute bertambah, itu keputusan terpisah. Sekarang hanya Jakarta (CGK) dan Istanbul (IST).
+## Model trip: kaki
+
+Satu **trip** = daftar **kaki** (penerbangan) berurutan. Tiap kaki punya destinasi dari katalog 10 negara
+(+ Turki), jenis `utama`|`transit`, lama (hari/jam), dan skenario lengkap sendiri: kuota bagasi, barang,
+opex, capex.
+
+- **Transit** = kaki singgah pendek; kuota kecil, opex ringan, tapi tetap bisa diisi barang.
+- **Capex** dipakai bersama seluruh kaki (koper, timbangan); dibagi umur trip, dihitung sekali.
+- **Total trip** menjumlahkan jasa, muatan, dan kapasitas semua kaki (`tripLintas`).
+- Koridor lama (Jakarta ↔ Turki) cuma kasus khusus dua kaki; data v1 dimigrasi otomatis.
+
+## Katalog tujuan
+
+Sepuluh negara paling populer untuk pasar Indonesia, plus Turki (koridor lama). Sumber:
+`src/lib/titip/destinasi.ts`. Kategori dan kurs adalah contoh — jastiper yang mengubah di meja.
+
+| Negara | Kategori khas |
+| --- | --- |
+| Jepang | Skincare, makeup, kamera, elektronik, figure |
+| Korea Selatan | K-beauty, fashion, album/fotokard K-pop, makanan |
+| Singapura | Kosmetik, obat, brand regional, barang premium |
+| Hong Kong | Skincare, tas branded, aksesori, lifestyle |
+| Thailand | Kosmetik lokal, fashion murah, snack, herbal |
+| Amerika Serikat | Sepatu, streetwear, gadget, supplement |
+| Prancis | Parfum, kosmetik, fashion, luxury |
+| Malaysia | Produk halal, fashion, kebutuhan harian |
+| Jerman | Skincare/farmasi, alat rumah tangga, otomotif |
+| Australia | Vitamin, kesehatan, skincare, susu |
 
 ## Peran
 
@@ -23,25 +50,21 @@ Bahasa visual (palet, tipe, aturan rumah, gerak) ada di [DESIGN.md](../DESIGN.md
 
 ## Hitung trip
 
-Sumber angkanya `src/lib/titip/calc.ts`. Meja memakainya langsung. Convex menyimpan skenario yang sama.
+Sumber angkanya `src/lib/titip/calc.ts` (per kaki) + `src/lib/titip/pricing.ts` (`tripLintas`, total
+lintas kaki). Meja memakainya langsung.
 
-Dua arah:
+Per kaki, `compute` memakai kuota `kotor = bags*kgPerBag + cabin`, `bersih = kotor - tare`, lalu
+membandingkan dengan total berat muatan. Opex (`opex`), denda kelebihan, dan capex (harga alat dibagi
+umur trip) membentuk beban kaki.
 
-- `cgk-ist` — beli di Jakarta, turun di Istanbul. Harga barang dalam rupiah.
-- `ist-cgk` — beli di Turki, turun di Jakarta. Harga barang dalam lira, dikonversi ke rupiah.
+Total trip (`tripLintas`):
 
-Mode:
+- **Jasa** = jumlah jasa semua kaki. Tarif per baris sudah memuat mata uangnya sendiri.
+- **Muatan** = jumlah berat semua kaki. **Kapasitas** = jumlah kuota bersih semua kaki.
+- **Over** = kapasitas − muatan; ditandai kalau negatif, dan kaki paling ketat disorot.
 
-- `one` — satu kaki. Tiket dan opex hanya arah yang sedang dibuka.
-- `pp` — dua kaki. Tiket, opex lain, denda, dan pendapatan kargo dijumlahkan. Capex (alat dibagi umur trip) tetap sekali.
-
-Benih tiket:
-
-- CGK–IST Rp6.800.000
-- IST–CGK Rp7.200.000
-- PP Rp14.000.000
-
-Pada benih pergi saja, sisa bagasi 17,7 kg dan laba −Rp5.896.750. Angka itu titik cek, bukan harga pasar yang dikunci selamanya. Slider di meja mengubahnya.
+Kaki contoh Jakarta awal: sisa bagasi 17,7 kg dan laba −Rp5.896.750 (mesin lama, tetap jadi titik cek).
+Slider di meja mengubahnya.
 
 ## Data
 
@@ -67,6 +90,7 @@ Klien dan jastiper dapat memilih peran sekali. Admin harus ditetapkan operator d
 
 ## Yang sengaja ditunda
 
-- Banyak rute.
+- Integrasi bea cukai / aturan hukum per negara (katalog hanya kategori & kurs contoh).
 - OAuth broker tidak diperlukan oleh login email/password mandiri.
 - Reset password dan verifikasi email.
+- Target omzet sebagai pengubah harga otomatis (sekarang hanya indikator progres).

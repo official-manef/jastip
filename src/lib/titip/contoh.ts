@@ -1,4 +1,4 @@
-import { computeTrip, scenarioFor } from "./calc";
+import { compute, scenarioFor } from "./calc";
 import type { Role } from "./roles";
 import type { Arah, TitipanStatus } from "./titipan";
 
@@ -76,9 +76,7 @@ export function salinTitipan(): ContohTitipan[] {
   return SEED.map((row) => ({ ...row }));
 }
 
+/** Contoh dashboard portal: hitung satu kaki Jakarta → Turki. */
 export function contohTrip() {
-  return computeTrip("one", "cgk-ist", {
-    "cgk-ist": scenarioFor("cgk-ist"),
-    "ist-cgk": scenarioFor("ist-cgk"),
-  });
+  return compute("cgk-ist", scenarioFor("cgk-ist"));
 }

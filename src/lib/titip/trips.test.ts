@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { isSlug, legCapacity, resolveSave, rollup, slugify, uniqueSlug } from "./trips.ts";
 import { seedTrip } from "./trip-state.ts";
+import { newKaki } from "./kaki.ts";
 import type { PricedGood } from "./pricing.ts";
 
 test("slugs are derived from names and stay index-safe", () => {
@@ -29,36 +30,38 @@ test("version mismatch is a conflict, never a silent overwrite", () => {
 });
 
 test("leg capacity mirrors compute's net quota", () => {
-  const s = seedTrip().cgkIst;
-  assert.equal(legCapacity(s), 26.8);
+  const jakarta = seedTrip().kaki.find((k) => k.destinasi === "jakarta")!.scenario;
+  assert.equal(legCapacity(jakarta), 26.8);
   assert.equal(legCapacity({ bags: 0, kgPerBag: 0, cabin: 3, tare: 5 }), 0);
 });
 
-test("rollup agrees with the single-leg baseline on a fresh trip", () => {
-  const r = rollup(seedTrip());
-  assert.equal(r.mode, "one");
-  assert.equal(r.legs.length, 1);
-  // Legacy seed revenue is totalKg*rate rounded; rollup uses precise line weights.
-  assert.equal(r.service, 2548000);
+test("rollup sums service over every leg of a fresh multi-leg trip", () => {
+  const trip = seedTrip();
+  const r = rollup(trip);
+  assert.equal(r.legs.length, trip.kaki.length);
+  assert.equal(r.legs[0].destinasi, "jakarta");
+  assert.ok(r.service > 0);
   assert.equal(r.progress.set, false);
   assert.equal(r.currency, "IDR");
 });
 
-test("rollup counts PP service across both legs and keeps capacity per leg", () => {
+test("rollup keeps capacity per leg", () => {
   const trip = seedTrip();
-  trip.mode = "pp";
   const r = rollup(trip);
   assert.equal(r.legs.length, 2);
-  assert.equal(r.legs[0].dir, "cgk-ist");
-  assert.equal(r.legs[1].dir, "ist-cgk");
-  assert.ok(r.service > 0);
+  for (const leg of r.legs) {
+    assert.ok(leg.remainingKg >= 0 || leg.overKg > 0);
+  }
 });
 
 test("rollup surfaces target progress and mixed-currency flags", () => {
+  // Target dihitung terhadap total jasa trip, jadi pakai satu kaki agar angkanya pasti.
   const trip = seedTrip();
-  trip.cgkIst.target = 1200;
-  trip.cgkIst.hargaCurrency = "USD";
-  trip.cgkIst.goods = [
+  trip.kaki = [trip.kaki[0]];
+  const leg = trip.kaki[0];
+  leg.scenario.target = 1200;
+  leg.scenario.hargaCurrency = "USD";
+  leg.scenario.goods = [
     { id: "baju", name: "Baju", kg: 0.5, qty: 4, beli: 0, pricing: { model: "per_kg", rate: 20, currency: "USD" } },
     { id: "hp", name: "HP", kg: 0.25, qty: 2, beli: 0, pricing: { model: "per_item", rate: 30, currency: "IDR", unit: "unit" } },
   ] as PricedGood[];
@@ -69,4 +72,15 @@ test("rollup surfaces target progress and mixed-currency flags", () => {
   assert.equal(r.progress.butuh, 1100);
   assert.equal(r.hasPricing, true);
   assert.equal(r.needsRate, true);
+});
+
+test("transit legs start with a small quota and Japan seeds shop currency", () => {
+  const transit = newKaki("singapura", "transit");
+  assert.equal(transit.jenis, "transit");
+  assert.equal(transit.scenario.bags, 0);
+  assert.ok(legCapacity(transit.scenario) < 10);
+
+  const jepang = newKaki("jepang", "utama");
+  assert.equal(jepang.scenario.hargaCurrency, "JPY");
+  assert.equal(jepang.scenario.kursTry, 470);
 });

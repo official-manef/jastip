@@ -1,7 +1,12 @@
 import { mutation, query } from "./_generated/server";
-import { scenarioFor } from "../lib/titip/calc";
 import { dir, mode, scenario } from "./validators";
+import { scenarioFor } from "../lib/titip/calc";
 
+/**
+ * Kode historis: skenario trip lama (satu koridor dua arah, dokumen `key: live`).
+ * Meja aktif tidak lagi memakainya — trip per akun hidup di `tripScenarios`.
+ * Dipertahankan supaya dokumen lama tetap terbaca dan tidak perlu migrasi data.
+ */
 const tripArgs = { dir, mode, cgkIst: scenario, istCgk: scenario };
 
 function seed() {

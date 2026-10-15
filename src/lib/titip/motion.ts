@@ -2,29 +2,59 @@
  * Motion layer, one place. The static page is finished without it; this only
  * adds entrances (SKILL.md step 9) and keeps the crossfade from running while
  * the tab is hidden. Everything animates transform/opacity only.
+ *
+ * F03: konten yang muncul belakangan (data async: titipan, jawaban AI, tab
+ * portal) harus ikut ter-reveal. MutationObserver menangkap node baru, dan
+ * fallback memastikan tak ada yang tertinggal transparan.
  */
 
 /** Reveal `[data-reveal]` elements once, as they enter the viewport. */
 export function initReveal(): () => void {
-  if (typeof IntersectionObserver === "undefined") return () => {};
+  const reveal = (el: Element) => el.classList.add("is-in");
+  const all = () => document.querySelectorAll<HTMLElement>("[data-reveal]:not(.is-in)");
+
+  // Tanpa IntersectionObserver: konten harus tetap terlihat (jangan pernah
+  // meninggalkan opacity:0). Langsung tampilkan.
+  if (typeof IntersectionObserver === "undefined") {
+    for (const el of all()) reveal(el);
+    return () => {};
+  }
+
   const io = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
-        entry.target.classList.add("is-in");
+        reveal(entry.target);
         io.unobserve(entry.target);
       }
     },
-    { rootMargin: "0px 0px -12% 0px", threshold: 0.1 },
+    // F01: area konten app kini scroll container sendiri, bukan viewport.
+    { root: document.getElementById("konten-app"), rootMargin: "0px 0px -12% 0px", threshold: 0.1 },
   );
+
   const observe = () => {
-    for (const el of document.querySelectorAll("[data-reveal]:not(.is-in)")) io.observe(el);
+    for (const el of all()) io.observe(el);
   };
   observe();
-  // New sections can appear (route changes); re-scan a couple of times.
-  const timers = [200, 700].map((ms) => window.setTimeout(observe, ms));
+
+  // Konten baru (route berubah / data datang) langsung diobservasi.
+  const mo = new MutationObserver(() => observe());
+  mo.observe(document.body, { childList: true, subtree: true });
+
+  // Jaring pengaman: apa pun yang sudah masuk viewport tapi belum ter-reveal,
+  // dipaksa terlihat. Menutup celah observer yang tidak sempat memicu.
+  const forceVisible = () => {
+    const vh = window.innerHeight || 0;
+    for (const el of all()) {
+      const r = el.getBoundingClientRect();
+      if (r.top < vh * 0.98 && r.bottom > 0) reveal(el);
+    }
+  };
+  const timers = [600, 1600, 3000].map((ms) => window.setTimeout(() => { observe(); forceVisible(); }, ms));
+
   return () => {
     io.disconnect();
+    mo.disconnect();
     for (const t of timers) window.clearTimeout(t);
   };
 }

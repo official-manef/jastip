@@ -1,5 +1,5 @@
 <script lang="ts">
-  /** Desktop rail: wordmark, nav, account. Separated by a tone step, no rule. */
+  /** Desktop rail: wordmark, nav, account. Full viewport height (F01). */
   import { page } from "$app/state";
   import Akun from "./Akun.svelte";
   import { isActive, navFor } from "./nav";
@@ -10,15 +10,15 @@
 </script>
 
 <aside
-  class="sticky top-0 hidden min-h-dvh w-60 shrink-0 flex-col bg-surface px-3 py-5 lg:flex"
+  class="hidden h-full w-60 shrink-0 flex-col bg-surface px-3 py-5 lg:flex"
   aria-label="Navigasi utama"
 >
   <a href="/meja" class="mb-6 flex items-baseline gap-2 px-2" aria-label="titipin, meja hitung">
     <span class="font-display text-xl font-medium leading-none tracking-tight">titipin</span>
-    <span class="text-small text-muted">CGK ↔ IST</span>
+    <span class="text-small text-muted">ID ↔ Dunia</span>
   </a>
 
-  <nav class="flex flex-1 flex-col gap-0.5">
+  <nav class="flex flex-col gap-0.5 overflow-y-auto">
     {#each items as item (item.href)}
       <a
         href={item.href}
@@ -44,7 +44,8 @@
     {/each}
   </nav>
 
-  <div class="mt-4">
+  <!-- mt-auto: akun menempel dasar sidebar, bukan dasar dokumen. -->
+  <div class="mt-auto pt-4">
     <Akun />
   </div>
 </aside>

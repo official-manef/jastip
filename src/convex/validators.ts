@@ -34,7 +34,17 @@ export const scenario = v.object({
   goods: v.array(good),
   opex: v.array(opexLine),
   capex: v.array(capexLine),
+  // Opsional: dipakai mesin tarif campuran & target (indikator progres).
+  target: v.optional(v.number()),
+  hargaCurrency: v.optional(v.string()),
 });
 
 export const dir = v.union(v.literal("cgk-ist"), v.literal("ist-cgk"));
 export const mode = v.union(v.literal("one"), v.literal("pp"));
+
+/**
+ * Kaki bebas (model multi-destinasi). `state` pada tripScenarios disimpan
+ * sebagai `v.any()` karena bentuknya bisa berubah; validasi ketat ada di
+ * `src/lib/titip/trip-state.ts` (zod) sebelum ditulis.
+ */
+export const kakiJenis = v.union(v.literal("utama"), v.literal("transit"));
