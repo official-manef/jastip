@@ -54,8 +54,13 @@
           <a class="link text-fg" href="/masuk">Masuk</a>
         </nav>
         <p class="max-w-none sm:text-right">
-          Foto rute: Wikimedia Commons, CC BY-SA (Jwslubbock, Gunawan Kartapranata, Moonik,
-          Davidelit, Kurmanbek). Angka awal = contoh.
+          Foto rute: Wikimedia Commons, CC BY-SA
+          (<a class="link text-fg" href="https://commons.wikimedia.org/w/index.php?curid=84394752">Jwslubbock</a>,
+          <a class="link text-fg" href="https://commons.wikimedia.org/w/index.php?curid=70870213">Gunawan Kartapranata</a>,
+          <a class="link text-fg" href="https://commons.wikimedia.org/w/index.php?curid=23174064">Moonik</a>,
+          <a class="link text-fg" href="https://commons.wikimedia.org/w/index.php?curid=58065331">Davidelit</a>,
+          <a class="link text-fg" href="https://commons.wikimedia.org/wiki/File:A_ferry_in_the_Bosphorus_20251015.webm">Kurmanbek</a>).
+          Angka awal = contoh.
         </p>
       </div>
     </footer>
