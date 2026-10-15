@@ -1,6 +1,6 @@
 import { databaseReady } from "../../../lib/titip/runtime";
 
-/** Whether account storage (DATABASE_URL) is live — read by the sign-in UI. */
+/** Apakah penyimpanan akun aktif. Sejak auth pindah ke Convex, selalu siap. */
 export function GET() {
   return Response.json(
     { accountsReady: databaseReady(process.env) },

@@ -45,22 +45,28 @@ Pada benih pergi saja, sisa bagasi 17,7 kg dan laba −Rp5.896.750. Angka itu ti
 
 ## Data
 
-Data akun disimpan terpusat; kalkulasi pengunjung memiliki salinan perangkat.
+Data akun disimpan terpusat di Convex; kalkulasi pengunjung memiliki salinan perangkat.
 
-**Trip aktif** disimpan di Convex (`trips`, deployment `impressive-wildcat-570`), satu dokumen per ID akun yang berasal dari sesi server. Pengunjung tanpa akun memakai localStorage perangkat. Fungsi Convex lama dipertahankan sebagai kode historis.
+**Semua data akun ada di Convex** (deployment `impressive-wildcat-570`):
 
-Sumber data resmi proyek ini adalah Convex. Postgres/Neon tidak dipakai.
+- Tabel auth (users/sessions/accounts) di komponen resmi `@convex-dev/better-auth`.
+- `profiles` (peran per akun), `titipan` (milik satu akun), `tripScenarios` (trip per akun, slug `utama` = trip aktif meja).
+- `trips` menyimpan skenario contoh lama (kode historis).
 
-Portal `/portal` tidak menulis ke keduanya. Sari, Raka, Deniz, dan Manef hanya ada di memori halaman.
+Route SvelteKit (`/api/saya,peran,admin,titipan,trip,trips`) memanggil fungsi Convex lewat `ConvexHttpClient` di server; token sesi diambil otomatis dari cookie. Logika server ada di `src/convex/`. Pengunjung tanpa akun memakai localStorage perangkat.
+
+Sumber data resmi proyek ini adalah Convex. Postgres/Neon/PGlite sudah dihapus dari kode.
+
+Portal `/portal` tidak menulis ke Convex. Sari, Raka, Deniz, dan Manef hanya ada di memori halaman.
 
 ## Masuk
 
-Email/password mandiri melalui Better Auth. Login akun lama tidak membutuhkan pilihan peran ulang. Belum ada reset password atau verifikasi email.
+Email/password mandiri melalui Better Auth (database di Convex). Login akun lama tidak membutuhkan pilihan peran ulang. Belum ada reset password atau verifikasi email.
 
 Klien dan jastiper dapat memilih peran sekali. Admin harus ditetapkan operator dengan `TITIPIN_ADMIN_USER_ID`; identitas email yang belum diverifikasi tidak dapat digunakan untuk mengambil admin. Admin tetap hanya satu.
 
 ## Yang sengaja ditunda
 
 - Banyak rute.
-- Pemasangan UI trip ke Convex (`PUBLIC_CONVEX_URL` di Vercel).
 - OAuth broker tidak diperlukan oleh login email/password mandiri.
+- Reset password dan verifikasi email.

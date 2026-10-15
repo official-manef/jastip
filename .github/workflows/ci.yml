@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      VITE_AUTH_ENABLED: "true"
+      # Auth + data akun kini di Convex; URL deployment wajib ada saat dev/uji.
+      PUBLIC_CONVEX_URL: "https://impressive-wildcat-570.convex.cloud"
+      AI_API_KEY: "ci-placeholder-not-used"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,7 +37,9 @@ jobs:
             if curl -sf http://127.0.0.1:8080/api/saya > /dev/null; then break; fi
             sleep 1
           done
-          npm run test:trip-api
+          # Account-API test writes synthetic accounts; only run it when a
+          # dedicated Convex deployment key is provided, never against prod.
+          if [ -n "$CONVEX_DEPLOY_KEY" ]; then npm run test:trip-api; else echo "skip test:trip-api (no CONVEX_DEPLOY_KEY)"; fi
           node scripts/browser-smoke.mjs http://127.0.0.1:8080 /workspace/screenshots/jastip-dev.png
           npm run preview:restart
           node scripts/browser-smoke.mjs http://127.0.0.1:8081 /workspace/screenshots/jastip-built.png --baseline /workspace/screenshots/jastip-dev.json

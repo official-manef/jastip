@@ -1,5 +1,7 @@
-import { bodyOf, json, readAccount, rejectedCrossSite } from "../../../lib/titip/accounts.server";
+import { bodyOf, json, rejectedCrossSite } from "../../../lib/titip/accounts.server";
+import { convexServer } from "../../../lib/titip/convex.server";
 import { callProvider, DEFAULT_AI_BASE_URL, DEFAULT_AI_MODEL, parseAiRequest } from "../../../lib/titip/ai";
+import { api } from "../../../convex/_generated/api";
 
 /** Sumber konfigurasi AI: env operator. `AI_API_KEY` = key server (dipakai kalau BYOK kosong). */
 function config() {
@@ -29,7 +31,8 @@ export async function POST({ request }: { request: Request }) {
   if (blocked) return blocked;
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) return reply({ error: "lintas-situs" }, 403);
-  if (!await readAccount(request)) return reply({ error: "masuk" }, 401);
+  const me = await convexServer().query(api.accounts.me, {});
+  if (!me.user) return reply({ error: "masuk" }, 401);
   if (Number(request.headers.get("content-length")) > 262144) return reply({ error: "isian" }, 413);
   try {
     const conf = config();

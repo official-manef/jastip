@@ -1,17 +1,18 @@
 import { createAuthClient } from "better-auth/svelte";
+import { convexClient } from "@convex-dev/better-auth/client/plugins";
 
 /**
- * Better Auth client for this SvelteKit app (browser side).
- *
- * Talks to this app's OWN Better Auth at same-origin `/api/auth/*` with the
- * HttpOnly session cookie. Email/password only — no broker, no bearer tokens.
+ * Klien Better Auth (browser). `convexClient()` menambah endpoint
+ * `convex.token()` untuk menukar sesi jadi JWT Convex. Email/password saja.
  */
-export const authClient = createAuthClient();
+export const authClient = createAuthClient({
+  plugins: [convexClient()],
+});
 
-/** True when sign-in UI should be shown. `VITE_AUTH_ENABLED=false` forces it off. */
-export const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== "false";
+/** True saat UI masuk harus ditampilkan. */
+export const authEnabled = true;
 
-/** End the local session, then send the visitor to `redirectTo`. */
+/** Akhiri sesi lokal, lalu arahkan ke `redirectTo`. */
 export async function signOut(redirectTo = "/"): Promise<void> {
   const { error } = await authClient.signOut();
   if (error) throw new Error(error.message ?? "Keluar gagal");
