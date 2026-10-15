@@ -74,13 +74,15 @@ test("rollup surfaces target progress and mixed-currency flags", () => {
   assert.equal(r.needsRate, true);
 });
 
-test("transit legs start with a small quota and Japan seeds shop currency", () => {
+test("transit legs start with a small quota and service tariff stays in IDR", () => {
   const transit = newKaki("singapura", "transit");
   assert.equal(transit.jenis, "transit");
   assert.equal(transit.scenario.bags, 0);
   assert.ok(legCapacity(transit.scenario) < 10);
 
+  // F06: tarif jasa = rupiah (diturunkan dari kurs), jadi tidak mewarisi mata
+  // uang belanja destinasi. Default IDR supaya label tidak salah ratusan kali.
   const jepang = newKaki("jepang", "utama");
-  assert.equal(jepang.scenario.hargaCurrency, "JPY");
+  assert.equal(jepang.scenario.hargaCurrency, undefined);
   assert.equal(jepang.scenario.kursTry, 470);
 });

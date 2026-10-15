@@ -25,24 +25,37 @@
   /**
    * Tiga langkah pakai: tanpa akun → akun gratis → langganan. Ini ajakan
    * (copy), bukan gating: belum ada pembayaran, fitur "segera" ditandai jujur.
+   * Setiap paket dipanggil dengan hasilnya, bukan sekadar daftar fitur.
    */
   const paket = [
     {
-      nama: "Gratis",
+      nama: "Coba",
       harga: "Rp0",
       satuan: "",
-      ket: "Tanpa akun",
-      fitur: ["Meja hitung multi-kaki", "Katalog 10 negara + transit", "Simpan otomatis di perangkat"],
-      cta: { label: "Buka meja hitung", href: "/meja" },
+      ket: "Tanpa daftar",
+      janji: "Hitung trip pertamamu sekarang.",
+      fitur: [
+        "Kalkulator bagasi multi-tahap",
+        "10 negara tujuan + transit",
+        "Laba, muatan, dan sisa kuota langsung",
+        "Tersimpan di perangkat ini",
+      ],
+      cta: { label: "Buka kalkulator", href: "/meja" },
       utama: false,
     },
     {
       nama: "Akun",
       harga: "Rp0",
       satuan: "",
-      ket: "Daftar gratis",
-      fitur: ["Semua di Gratis", "Trip tersimpan di cloud, lintas perangkat", "Portal & titipan per akun", "Asisten AI (pakai key sendiri)"],
-      cta: { label: "Daftar akun", href: "/masuk" },
+      ket: "Gratis selamanya",
+      janji: "Bawa hitunganmu ke mana-mana.",
+      fitur: [
+        "Semua di paket Coba",
+        "Trip tersimpan di cloud — ganti HP, tetap ada",
+        "Portal & titipan per akun",
+        "Asisten AI yang mengubah trip dari chat",
+      ],
+      cta: { label: "Daftar gratis", href: "/masuk" },
       utama: true,
     },
     {
@@ -50,8 +63,15 @@
       harga: "Rp99rb",
       satuan: "/bulan",
       ket: "Segera",
-      fitur: ["Semua di Akun", "Trip & riwayat tak terbatas", "Proyeksi target omzet", "Ekspor CSV (segera)", "Asisten AI tanpa key sendiri (segera)"],
-      cta: { label: "Daftar dulu", href: "/masuk" },
+      janji: "Untuk jastiper yang jalan terus.",
+      fitur: [
+        "Semua di paket Akun",
+        "Trip & riwayat tanpa batas",
+        "Proyeksi target omzet tiap trip",
+        "Ekspor laporan CSV (segera)",
+        "Asisten AI tanpa key sendiri (segera)",
+      ],
+      cta: { label: "Amankan harga awal", href: "/masuk" },
       utama: false,
     },
   ];
@@ -64,28 +84,28 @@
     Bagasi, tarif, dan laba satu trip
   </h1>
   <p class="mx-auto mt-5 max-w-[38ch] text-body text-muted" data-rise style="--i: 1">
-    Untuk jastiper multi-negara. Susun rute, isi muatan tiap kaki, dan biaya terbang; sisanya dihitung langsung.
+    Untuk jastiper multi-negara. Susun rute bertahap, isi muatan tiap tahap, dan biaya terbang; sisanya dihitung langsung.
   </p>
   <div class="mt-7 flex flex-wrap items-center justify-center gap-3" data-rise style="--i: 2">
     <a class="btn" href="/masuk">Daftar gratis</a>
-    <a class="link text-body" href="/meja">Coba meja hitung</a>
+    <a class="link text-body" href="/meja">Coba kalkulator</a>
   </div>
   <p class="mx-auto mt-3 max-w-[38ch] text-small text-muted" data-rise style="--i: 3">
-    Akun menyimpan trip di cloud, lintas perangkat. Meja hitung tetap bisa dipakai tanpa akun.
+    Akun menyimpan trip di cloud, lintas perangkat. Kalkulator tetap bisa dipakai tanpa akun.
   </p>
 </section>
 
-<!-- Instrumen hidup: satu-satunya hal besar di layar, angka asli dari meja. -->
-<section class="panel-deep mx-auto mt-10 w-full max-w-[34rem] rounded p-6" data-ui data-reveal aria-label="Instrumen meja hitung">
+<!-- Instrumen hidup: satu-satunya hal besar di layar, angka asli dari kalkulator. -->
+<section class="panel-deep mx-auto mt-10 w-full max-w-[34rem] rounded p-6" data-ui data-reveal aria-label="Instrumen kalkulator bagasi">
   <div class="flex flex-wrap items-baseline justify-between gap-2">
-    <p class="text-body">{kakiCode(now)} · {kaki.length} kaki</p>
+    <p class="text-body">{kakiCode(now)} · {kaki.length} tahap</p>
     <p class="num text-small text-muted">{kg(lintas.totalKg)} muatan</p>
   </div>
 
   <p class="readout mt-4 {over ? 'text-accent' : 'text-fg'}">
     {over ? `−${kg(-sisa)}` : kg(sisa)}
   </p>
-  <p class="mt-2 text-body">{over ? "kelebihan bagasi kaki ini" : "sisa kuota kaki ini"}</p>
+  <p class="mt-2 text-body">{over ? "kelebihan bagasi tahap ini" : "sisa kuota tahap ini"}</p>
 
   <div class="meter mt-5" aria-hidden="true">
     <span style="width: {Math.round(Math.min(1, bersih > 0 ? rev.totalKg / bersih : 1) * 100)}%; background: {over ? 'var(--color-accent)' : ''}"></span>
@@ -151,12 +171,13 @@
 </section>
 
 <section class="mt-14" data-reveal aria-labelledby="paket">
-  <h2 id="paket" class="text-center" data-reveal>Tiga langkah, mulai gratis</h2>
+  <h2 id="paket" class="text-center" data-reveal>Mulai gratis, naik bila perlu</h2>
   <p class="mx-auto mt-3 max-w-[46ch] text-center text-body text-muted" data-reveal>
-    Pakai meja hitung tanpa akun. Daftar untuk menyimpan trip di cloud. Langganan untuk fitur lanjutan.
+    Kalkulator bisa langsung dicoba tanpa akun. Daftar untuk membawa trip ke perangkat mana pun.
+    Langganan untuk jastiper yang jalan terus.
   </p>
 
-  <ul class="mx-auto mt-8 grid max-w-[52rem] gap-4 sm:grid-cols-3">
+  <ul class="mx-auto mt-8 grid max-w-[54rem] gap-4 sm:grid-cols-3">
     {#each paket as p (p.nama)}
       <li class="flex flex-col rounded p-5 {p.utama ? 'panel-deep' : 'panel'}" data-reveal>
         <div class="flex items-baseline justify-between gap-2">
@@ -166,6 +187,7 @@
         <p class="num mt-4 text-head">
           {p.harga}{#if p.satuan}<span class="text-body text-muted">{p.satuan}</span>{/if}
         </p>
+        <p class="mt-3 text-body">{p.janji}</p>
         <ul class="mt-4 flex-1 space-y-2 text-small text-muted">
           {#each p.fitur as f (f)}
             <li>{f}</li>
@@ -176,7 +198,7 @@
     {/each}
   </ul>
   <p class="mx-auto mt-4 max-w-[46ch] text-center text-small text-muted" data-reveal>
-    Harga contoh, bisa berubah. Fitur bertanda "segera" belum aktif.
+    Langganan belum aktif — harga awal bisa berubah. Fitur bertanda "segera" menyusul.
   </p>
 </section>
 
@@ -198,6 +220,6 @@
   </dl>
   <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
     <a class="btn" href="/masuk">Daftar gratis</a>
-    <a class="link text-body" href="/meja">Buka meja hitung</a>
+    <a class="link text-body" href="/meja">Buka kalkulator</a>
   </div>
 </section>

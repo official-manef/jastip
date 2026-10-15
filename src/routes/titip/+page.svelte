@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { kg } from "../../lib/titip/model";
-  import { homeFor } from "../../lib/titip/roles";
   import { authedFetch, loadMe, session } from "../../lib/titip/session.svelte";
   import { ARAH, arahLabel, isArah, STATUSES, statusLabel, type TitipanRow, type TitipanStatus } from "../../lib/titip/titipan";
 
@@ -111,6 +110,8 @@
   }
 </script>
 
+<svelte:head><title>Titipan — Titipin</title></svelte:head>
+
 <section>
   {#if session.pending || loading}
     <p class="text-body text-muted" role="status">Memuat titipan…</p>
@@ -188,10 +189,11 @@
               <p class="mt-2 text-body">{row.catatan}</p>
             {/if}
             {#if canCarry}
-              <div class="mt-4 flex flex-wrap gap-1">
+              <div class="mt-4 flex flex-wrap gap-1" role="group" aria-label="Status {row.nama}">
                 {#each STATUSES as item (item.id)}
                   <button
                     type="button"
+                    aria-pressed={row.status === item.id}
                     class="min-h-11 rounded px-3 text-body {row.status === item.id ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}"
                     onclick={() => ubah(row.id, item.id)}
                   >
@@ -208,7 +210,9 @@
     {/if}
 
     <p class="mt-8 text-body">
-      <a class="link" href={homeFor(session.role)}>Kembali</a>
+      <!-- F14: tujuan harus beda dari halaman ini. Klien rumahnya /titip, jadi
+           "Kembali" ke rumah hanya no-op. Arahkan ke kalkulator. -->
+      <a class="link" href="/meja">Buka kalkulator</a>
     </p>
   {/if}
 </section>

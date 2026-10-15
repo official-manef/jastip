@@ -69,7 +69,7 @@
         body: JSON.stringify({ email: email.trim(), password, ...(registering ? { name: name.trim() } : {}) }),
       });
       if (!response.ok) {
-        notice = response.status === 503 ? "Penyimpanan akun belum tersedia. Meja hitung tetap bisa digunakan." : registering
+        notice = response.status === 503 ? "Penyimpanan akun belum tersedia. Kalkulator tetap bisa digunakan." : registering
           ? "Akun belum dibuat. Periksa isian atau masuk jika email sudah terdaftar."
           : "Email atau password tidak sesuai. Coba lagi.";
         return;
@@ -86,6 +86,8 @@
   }
 </script>
 
+<svelte:head><title>{registering ? "Daftar akun" : "Masuk"} — Titipin</title></svelte:head>
+
 <section>
   {#if session.pending}
     <p class="text-body text-muted" role="status">Memeriksa akun…</p>
@@ -96,20 +98,20 @@
     </p>
     <a href={homeFor(session.role)} class="btn mt-6">Lanjut</a>
   {:else}
+    <!-- F13: form utama lebih awal; Ringkas (jangkar sekunder) dipindah ke bawah.
+         Judul + copy mengikuti mode (Masuk vs Daftar). -->
     <header data-rise style="--i: 0">
-      <h1>{session.user ? "Pilih peran" : "Masuk ke titipin"}</h1>
+      <h1>{session.user ? "Pilih peran" : registering ? "Daftar akun titipin" : "Masuk ke titipin"}</h1>
       <p class="mt-4 text-lead">
         {#if session.user}
           Kamu sudah masuk sebagai {session.user.name || session.user.email}. Pilih peran sekali. Admin ditetapkan oleh operator.
+        {:else if registering}
+          Buat akun dengan email dan password, lalu pilih peran klien atau jastiper.
         {:else}
-          Masuk dengan email dan password. Untuk akun baru, pilih peran klien atau jastiper. Meja hitung tetap bisa dibuka tanpa akun.
+          Masuk dengan email dan password. Belum punya akun? Pilih Daftar di bawah.
         {/if}
       </p>
     </header>
-
-    <div class="mt-6" data-reveal>
-      <Ringkas compact />
-    </div>
 
     {#if session.user}
       <div class="mt-8 flex flex-col gap-2">
@@ -138,23 +140,26 @@
       {#if !session.databaseReady}
         <p class="mt-4 text-body text-accent" role="status">
           Penyimpanan akun belum tersedia. Pendaftaran dan login belum aktif.
-          <a href="/meja" class="link">Gunakan meja hitung</a> dengan penyimpanan di perangkat ini.
+          <a href="/meja" class="link">Gunakan kalkulator</a> dengan penyimpanan di perangkat ini.
         </p>
       {/if}
 
-      <div class="mt-8 flex flex-col gap-2">
-        {#each ROLES.filter((item) => item.id !== "admin" || session.canClaimAdmin) as item (item.id)}
-          <button
-            type="button"
-            class="rounded p-4 text-left transition-colors {chosen === item.id ? 'bg-primary text-primary-fg' : 'bg-surface hover:bg-field'}"
-            aria-pressed={chosen === item.id}
-            onclick={() => (chosen = item.id)}
-          >
-            <span class="block text-lead">{item.label}</span>
-            <span class="mt-1 block text-small {chosen === item.id ? 'text-primary-fg/80' : 'text-muted'}">{item.blurb}</span>
-          </button>
-        {/each}
-      </div>
+      <!-- Pilihan peran hanya saat mendaftar, bukan saat login biasa. -->
+      {#if registering}
+        <div class="mt-6 flex flex-col gap-2">
+          {#each ROLES.filter((item) => item.id !== "admin" || session.canClaimAdmin) as item (item.id)}
+            <button
+              type="button"
+              class="rounded p-4 text-left transition-colors {chosen === item.id ? 'bg-primary text-primary-fg' : 'bg-surface hover:bg-field'}"
+              aria-pressed={chosen === item.id}
+              onclick={() => (chosen = item.id)}
+            >
+              <span class="block text-lead">{item.label}</span>
+              <span class="mt-1 block text-small {chosen === item.id ? 'text-primary-fg/80' : 'text-muted'}">{item.blurb}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
 
       <form class="mt-6 flex flex-col gap-4" onsubmit={lanjut}>
         {#if registering}
@@ -183,5 +188,10 @@
         <p class="mt-3 text-small text-muted">Pilih peran dulu, baru lanjut.</p>
       {/if}
     {/if}
+
+    <!-- Jangkar sekunder: angka kalkulator, setelah tugas utama. -->
+    <div class="mt-10" data-reveal>
+      <Ringkas compact />
+    </div>
   {/if}
 </section>

@@ -1,10 +1,10 @@
 /**
- * Satu sumber state trip (meja hitung). Dipakai bersama oleh Desk.svelte dan
- * asisten AI (tools), supaya perubahan dari chat langsung terlihat di meja.
+ * Satu sumber state trip (kalkulator). Dipakai bersama oleh Desk.svelte dan
+ * asisten AI (tools), supaya perubahan dari chat langsung terlihat di kalkulator.
  * Modul ini juga pemilik simpan-muat: localStorage perangkat + akun (`/api/trip`).
  *
  * Model: trip = daftar kaki berurutan (`desk.kaki`). `aktif` = index kaki yang
- * sedang dibuka di meja.
+ * sedang dibuka di kalkulator.
  */
 import { browser } from "$app/env";
 import { authedFetch, loadMe, session } from "./session.svelte";
@@ -257,6 +257,11 @@ export function addGood(good: Good) {
 
 export function removeGood(id: string) {
   patch({ goods: kakiAktif().scenario.goods.filter((g) => g.id !== id) });
+}
+
+/** F11: pulihkan daftar barang penuh (dipakai Undo setelah hapus). Urutan tetap. */
+export function setGoods(goods: Good[]) {
+  patch({ goods });
 }
 
 export function setPricing(id: string, partial: Partial<NonNullable<Good["pricing"]>>) {

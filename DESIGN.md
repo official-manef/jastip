@@ -31,12 +31,12 @@ Permukaan dipisahkan oleh **satu langkah tone**, bukan garis atau bayangan.
 - **App** (`/meja`, `/portal`, `/titip`, `/asisten`, `/pengaturan`, `/admin`): rail sidebar tetap
   (>=lg) + bar/drawer (mobile). Area kerja memakai sisa lebar penuh, konten `max-w-[68rem]` di tengah.
 
-## Meja multi-kaki
+## Kalkulator multi-tahap
 
-Meja menyusun trip sebagai daftar kaki. Pemilih kaki = deretan tombol berurutan berisi kode rute
-(mis. `CGK → TYO`), kota, dan lama; kaki aktif disorot. Di bawahnya, panel kaki aktif memuat pemilih
-negara, jenis (utama/transit), lama, lalu kuota, muatan, opex, capex. Total lintas kaki (jasa, muatan,
-kapasitas, laba) tampil sebagai satu panel. Readout besar tetap sisa kuota kaki aktif.
+Kalkulator menyusun trip sebagai daftar tahap. Pemilih tahap = deretan tombol berurutan berisi kode rute
+(mis. `CGK → TYO`), kota, dan lama; tahap aktif disorot. Di bawahnya, panel tahap aktif memuat pemilih
+negara, jenis (utama/transit), lama, lalu kuota, muatan, biaya jalan, biaya alat. Total lintas tahap (jasa, muatan,
+kapasitas, laba) tampil sebagai satu panel. Readout besar tetap sisa kuota tahap aktif.
 
 ## Tipe
 

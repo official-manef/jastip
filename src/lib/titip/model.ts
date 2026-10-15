@@ -18,6 +18,13 @@ export function idr(n: number): string {
   return `${n < 0 ? "-" : ""}Rp${group(Math.round(Math.abs(n)))}`;
 }
 
+/**
+ * F09: tampilkan presisi sumber, jangan bulatkan terlalu awal (0,25 dan 0,35
+ * dulu sama-sama "0,3 kg"). Pakai sampai 2 desimal, buang nol tak berarti:
+ * 0,3 → "0,3"; 0,25 → "0,25". Aturan sama di mana-mana supaya konsisten.
+ */
 export function kg(n: number): string {
-  return `${n.toFixed(1).replace(".", ",")} kg`;
+  const rounded = Math.round(n * 100) / 100;
+  const text = rounded.toFixed(2).replace(/0+$/, "").replace(/\.$/, ".0");
+  return `${text.replace(".", ",")} kg`;
 }

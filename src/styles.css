@@ -150,6 +150,15 @@
     border-radius: var(--radius);
   }
 
+  /*
+   * F12: input harus terbaca sebagai field, bukan menyatu dengan halaman.
+   * Dulu `bg = --color-bg` + border 0 → tak terlihat di halaman ground.
+   * `.field` dipakai di tiga latar berbeda (ground, panel, panel-deep), jadi
+   * fill saja tak pernah cukup. Dipakai fill ground (lebih terang dari panel)
+   * + inset ring tipis agar terbaca di semua latar. Ini pengecualian sadar
+   * aturan "tanpa kotak": kontrol form butuh batas (WCAG 1.4.11, kontras
+   * non-teks). Ring dekoratif lain tetap dilarang.
+   */
   .field {
     min-height: 2.75rem;
     width: 100%;
@@ -159,6 +168,20 @@
     padding-inline: 0.75rem;
     font-size: max(1rem, var(--step-body));
     outline: none;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-muted) 32%, transparent);
+    transition: box-shadow var(--t-hover) ease, background-color var(--t-hover) ease;
+  }
+
+  .field:hover {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-muted) 55%, transparent);
+  }
+
+  .field:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+  }
+
+  .field::placeholder {
+    color: color-mix(in srgb, var(--color-muted) 72%, transparent);
   }
 
   .btn {

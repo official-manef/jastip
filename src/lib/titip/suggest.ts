@@ -7,7 +7,7 @@ import { computeRevenue, type PricedGood } from "./pricing.ts";
  * bukan pesanan. Omzet hanya diakui saat titipan berstatus `selesai`
  * (docs/rencana-omzet-trip.md §3–§5). Angka di sini hanya usulan rencana.
  *
- * Murni: memakai `computeRevenue` sebagai mesin yang sama dengan meja, tidak
+ * Murni: memakai `computeRevenue` sebagai mesin yang sama dengan kalkulator, tidak
  * menduplikasi rumus jasa/berat.
  */
 

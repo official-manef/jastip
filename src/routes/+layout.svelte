@@ -45,7 +45,7 @@
   <title>Titipin. Kalkulator bagasi & laba jastip multi-negara</title>
   <meta
     name="description"
-    content="Titipin. Kalkulator bagasi jastip multi-negara: susun rute berkaki, isi muatan tiap kaki, lihat laba. Daftar gratis untuk menyimpan trip di cloud."
+    content="Titipin. Kalkulator bagasi jastip multi-negara: susun rute bertahap, isi muatan tiap tahap, lihat laba. Daftar gratis untuk menyimpan trip di cloud."
   />
 </svelte:head>
 
@@ -68,8 +68,8 @@
             class="mx-auto grid w-full max-w-[68rem] gap-3 text-small text-muted sm:grid-cols-[1fr_auto_1fr] sm:items-baseline sm:gap-6"
           >
             <p class="max-w-none">Titipin. Hitung bagasi, tarif, dan laba satu trip.</p>
-            <nav class="flex flex-wrap gap-6" aria-label="Tautan kaki">
-              <a class="link text-fg" href="/meja">Meja</a>
+            <nav class="flex flex-wrap gap-6" aria-label="Tautan utama">
+              <a class="link text-fg" href="/meja">Kalkulator</a>
               <a class="link text-fg" href="/portal">Portal</a>
               <a class="link text-fg" href="/">Beranda</a>
             </nav>

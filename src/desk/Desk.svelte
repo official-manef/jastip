@@ -12,6 +12,7 @@
     setCapex,
     setDestinasi,
     setGood,
+    setGoods,
     setJenis,
     setLama,
     setNama,
@@ -43,6 +44,9 @@
   const meta = $derived(destinasiByCode(now.destinasi));
   const prev = $derived<Kaki | undefined>(idx > 0 ? kaki[idx - 1] : undefined);
   const shopCurrency = $derived(meta?.currency ?? "IDR");
+  /** F06: tarif jasa punya mata uangnya sendiri (`hargaCurrency`), terpisah dari
+   *  mata uang belanja destinasi. Omzet/laba mengikuti mata uang tarif. */
+  const tariffCurrency = $derived(scenario.hargaCurrency ?? "IDR");
 
   onMount(() => { initDesk(); });
 
@@ -50,13 +54,25 @@
   let draftKg = $state("0,5");
   let draftBeli = $state("");
   let draftNotice = $state("");
+  /** F11: item terakhir yang dihapus (untuk Undo), atau null. */
+  let undoBarang = $state<{ name: string; goods: typeof scenario.goods } | null>(null);
+  /** F11: konfirmasi reset sebelum menimpa skenario. */
+  let konfirmReset = $state(false);
+
+  /** Hapus barang dengan simpan snapshot untuk Undo. */
+  function hapusBarang(id: string) {
+    const item = scenario.goods.find((g) => g.id === id);
+    if (!item) return;
+    undoBarang = { name: item.name, goods: scenario.goods };
+    removeGood(id);
+  }
 
   /** Total lintas kaki: jasa, muatan, kapasitas. */
   const lintas = $derived(tripLintas(kaki.map((k) => ({
     id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario,
   }))));
 
-  const rev = $derived(computeRevenue(scenario.goods, scenario.hargaPerKg, shopCurrency));
+  const rev = $derived(computeRevenue(scenario.goods, scenario.hargaPerKg, tariffCurrency));
   const progres = $derived(targetProgress(rev.service, scenario.target ?? 0));
   const kapasitas = $derived(capacity(lintas.capacityKg, lintas.totalKg));
   const punyaTarif = $derived(rev.hasPricing);
@@ -137,10 +153,10 @@
 
 <article class="pb-4">
   <header class="max-w-[44rem]" data-rise style="--i: 0">
-    <h1>Trip {kaki.length} kaki</h1>
+    <h1>Trip {kaki.length} tahap</h1>
     <p class="mt-4 text-lead text-fg">
-      Susun rute berurutan: tiap kaki punya negara, mata uang belanja, dan muatannya sendiri.
-      Tandai kaki sebagai <strong>transit</strong> kalau cuma singgah sebentar.
+      Susun rute berurutan: tiap tahap punya negara, mata uang belanja, dan muatannya sendiri.
+      Tandai tahap sebagai <strong>transit</strong> kalau cuma singgah sebentar.
     </p>
 
     <label class="mt-5 block max-w-[28rem]">
@@ -157,7 +173,7 @@
     {#if conflict}<button type="button" class="link mt-2 block text-body" onclick={() => window.location.reload()}>Muat ulang trip dari akun</button>{/if}
   </header>
 
-  <!-- Pemilih kaki: rute berurutan, kaki aktif disorot. -->
+  <!-- Pemilih tahap: rute berurutan, tahap aktif disorot. -->
   <section class="mt-8" data-reveal aria-labelledby="rute-kaki">
     <h2 id="rute-kaki" class="text-lead">Rute</h2>
     <div class="mt-3 flex flex-wrap items-stretch gap-2">
@@ -178,18 +194,18 @@
         </button>
       {/each}
       <div class="flex flex-col justify-center gap-2">
-        <button type="button" class="btn-quiet px-3 text-small" onclick={() => tambahKaki()} aria-label="Tambah kaki di akhir">+ Kaki</button>
-        <button type="button" class="btn-quiet px-3 text-small" onclick={() => sisipKaki(idx, "singapura", "transit")} aria-label="Sisipkan kaki transit setelah kaki ini">+ Transit</button>
+        <button type="button" class="btn-quiet px-3 text-small" onclick={() => tambahKaki()} aria-label="Tambah tahap di akhir">+ Tahap</button>
+        <button type="button" class="btn-quiet px-3 text-small" onclick={() => sisipKaki(idx, "singapura", "transit")} aria-label="Sisipkan tahap transit setelah tahap ini">+ Transit</button>
       </div>
     </div>
   </section>
 
-  <!-- Pengaturan kaki aktif -->
+  <!-- Pengaturan tahap aktif -->
   <section class="panel mt-6 p-5" data-reveal aria-labelledby="kaki-aktif">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <h2 id="kaki-aktif" class="text-lead">{kakiLabel(now, prev)}</h2>
       {#if kaki.length > 1}
-        <button type="button" class="link text-small" onclick={() => hapusKaki(idx)}>Hapus kaki ini</button>
+        <button type="button" class="link text-small" onclick={() => hapusKaki(idx)}>Hapus tahap ini</button>
       {/if}
     </div>
 
@@ -213,7 +229,7 @@
       <label class="block">
         <span class="mb-2 block text-small text-muted">{now.jenis === "transit" ? "Lama (jam)" : "Lama (hari)"}</span>
         <input type="number" min="0" class="{field} num" value={now.lama}
-          oninput={(e) => setLama(idx, Number(e.currentTarget.value))} aria-label="Lama di kaki ini" />
+          oninput={(e) => setLama(idx, Number(e.currentTarget.value))} aria-label="Lama di tahap ini" />
       </label>
     </div>
 
@@ -225,13 +241,13 @@
     {/if}
   </section>
 
-  <!-- Instrumen: satu-satunya hal besar. Total trip + kaki aktif. -->
+  <!-- Instrumen: satu-satunya hal besar. Total trip + tahap aktif. -->
   <section class="panel-deep mt-6 p-5" data-rise data-ui style="--i: 2" aria-label="Sisa kuota dan laba">
     <p class="text-small">{kakiLabel(now, prev)} · {kakiCode(now, prev)}</p>
     <p class="readout mt-3 {over ? 'text-accent' : 'text-fg'}">
       {over ? `−${kg(-sisaKaki)}` : kg(sisaKaki)}
     </p>
-    <p class="mt-2 text-body">{over ? "kelebihan bagasi kaki ini" : "sisa kuota kaki ini"} · {kg(terpakaiKaki)} dari {kg(bersihKaki)}</p>
+    <p class="mt-2 text-body">{over ? "kelebihan bagasi tahap ini" : "sisa kuota tahap ini"} · {kg(terpakaiKaki)} dari {kg(bersihKaki)}</p>
     <div class="meter mt-4" aria-hidden="true"><span style="width: {Math.round(penuh * 100)}%; background: {over ? 'var(--color-accent)' : ''}"></span></div>
 
     <dl class="mt-6 grid gap-3 sm:grid-cols-2">
@@ -240,13 +256,13 @@
           {@render row(`Jasa (${cur})`, fmtTarif(val), "subtotal per mata uang")}
         {/each}
       {:else}
-        {@render row("Jasa kaki ini", `${fmtTarif(rev.service)}${rev.currencies.length === 1 ? ` ${rev.currencies[0]}` : ""}`)}
+        {@render row("Jasa tahap ini", `${fmtTarif(rev.service)}${rev.currencies.length === 1 ? ` ${rev.currencies[0]}` : ""}`)}
       {/if}
-      {@render row("Beban kaki ini", idr(bebanKaki(now)))}
+      {@render row("Beban tahap ini", idr(bebanKaki(now)))}
       {#if !multivaluta}
-        {@render row("Jasa seluruh trip", `${fmtTarif(lintas.service)}${lintas.currencies.length === 1 ? ` ${lintas.currencies[0]}` : ""}`, `${kaki.length} kaki`)}
+        {@render row("Jasa seluruh trip", `${fmtTarif(lintas.service)}${lintas.currencies.length === 1 ? ` ${lintas.currencies[0]}` : ""}`, `${kaki.length} tahap`)}
       {/if}
-      {@render row("Laba trip (estimasi)", idr(labaTrip), multivaluta ? "campur mata uang — perkiraan kasar" : "jasa semua kaki − beban semua kaki")}
+      {@render row("Laba trip (estimasi)", idr(labaTrip), multivaluta ? "campur mata uang — perkiraan kasar" : "jasa semua tahap − beban semua tahap")}
     </dl>
     {#if multivaluta}
       <p class="mt-3 text-small text-accent" role="status">
@@ -264,7 +280,7 @@
         <span style="width: {Math.min(100, Math.max(0, Math.round((lintas.totalKg / Math.max(0.1, lintas.capacityKg)) * 100)))}%; background: {lintas.overKg > 0 ? 'var(--color-accent)' : ''}"></span>
       </div>
       {#if lintas.overKg > 0}
-        <p class="mt-2 text-small text-accent">Kelebihan total {kg(lintas.overKg)}. Cek kaki paling ketat.</p>
+        <p class="mt-2 text-small text-accent">Kelebihan total {kg(lintas.overKg)}. Cek tahap paling ketat.</p>
       {/if}
     </div>
 
@@ -291,7 +307,7 @@
 
     <h3 class="mt-6 text-lead">Omzet & target</h3>
     <dl class="mt-2 grid gap-3 sm:grid-cols-2">
-      {@render row("Berat baris", kg(lintas.totalKg), "presisi per baris, semua kaki")}
+      {@render row("Berat baris", kg(lintas.totalKg), "presisi per baris, semua tahap")}
       {#if progres.set}
         {@render row("Target omzet", `${fmtTarif(scenario.target ?? 0)} ${scenario.hargaCurrency ?? "USD"}`, `${progres.persen}% tercapai`)}
         {@render row(progres.achieved ? "Lebih target" : "Butuh lagi", fmtTarif(progres.achieved ? progres.lebih : progres.butuh))}
@@ -324,7 +340,7 @@
   </section>
 
   <section class="mt-14" aria-labelledby="bagasi">
-    <h2 id="bagasi" data-reveal>Kuota bagasi kaki ini</h2>
+    <h2 id="bagasi" data-reveal>Kuota bagasi tahap ini</h2>
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" data-reveal>
       {@render slider("Koper check-in", scenario.bags, 0, 3, 1, `${scenario.bags} koper`, (bags) => patch({ bags }))}
       {@render slider("Kg per koper", scenario.kgPerBag, 10, 60, 1, kg(scenario.kgPerBag), (kgPerBag) => patch({ kgPerBag }))}
@@ -337,7 +353,7 @@
 
   <section class="mt-14" aria-labelledby="muatan">
     <div class="flex flex-wrap items-baseline justify-between gap-3">
-      <h2 id="muatan" data-reveal>Muatan {meta?.kota ?? "kaki ini"}</h2>
+      <h2 id="muatan" data-reveal>Muatan {meta?.kota ?? "tahap ini"}</h2>
       <p class="num text-body text-muted" data-reveal>{kg(terpakaiKaki)} terpakai · {fmtTarif(rev.service)} jasa</p>
     </div>
 
@@ -364,7 +380,7 @@
               <button type="button" aria-label="Kurangi {g.name}" class="grid size-11 place-items-center rounded bg-bg text-lead" onclick={() => setGood(g.id, { qty: Math.max(0, g.qty - 1) })}>−</button>
               <span class="num w-8 text-center text-body">{g.qty}</span>
               <button type="button" aria-label="Tambah {g.name}" class="grid size-11 place-items-center rounded bg-bg text-lead" onclick={() => setGood(g.id, { qty: g.qty + 1 })}>+</button>
-              <button type="button" class="btn-quiet px-3" onclick={() => removeGood(g.id)}>Hapus</button>
+              <button type="button" class="btn-quiet px-3" aria-label="Hapus {g.name}" onclick={() => hapusBarang(g.id)}>Hapus</button>
             </div>
           </div>
           <div class="mt-4 flex flex-wrap items-center gap-3">
@@ -402,9 +418,21 @@
           </div>
         </li>
       {:else}
-        <li class="panel p-6 text-body text-muted">Belum ada barang di kaki ini.</li>
+        <li class="panel p-6 text-body text-muted">Belum ada barang di tahap ini.</li>
       {/each}
     </ul>
+
+    <!-- F11: Undo hapus, terlihat langsung di dekat daftar. -->
+    {#if undoBarang}
+      <p class="mt-3 flex flex-wrap items-center gap-3 text-body" role="status">
+        <span class="text-muted">“{undoBarang.name}” dihapus.</span>
+        <button
+          type="button"
+          class="link text-body"
+          onclick={() => { if (undoBarang) { setGoods(undoBarang.goods); undoBarang = null; } }}
+        >Urungkan</button>
+      </p>
+    {/if}
 
     <form class="panel mt-4 grid gap-3 p-4 sm:grid-cols-[1fr_6rem_7rem_auto]"
       onsubmit={(e) => { e.preventDefault(); addDraft(); }}>
@@ -426,7 +454,7 @@
   </section>
 
   <section class="mt-14" aria-labelledby="opex">
-    <h2 id="opex" data-reveal>Opex kaki ini</h2>
+    <h2 id="opex" data-reveal>Biaya jalan tahap ini</h2>
     <p class="num mt-2 text-body text-muted" data-reveal>
       {kakiCode(now, prev)} · tiket {idr(scenario.opex.find((l) => l.id === "tiket")?.amount ?? 0)}
     </p>
@@ -451,7 +479,7 @@
   </section>
 
   <section class="mt-14" aria-labelledby="capex">
-    <h2 id="capex" data-reveal>Capex, dipakai semua kaki</h2>
+    <h2 id="capex" data-reveal>Biaya alat, dipakai semua tahap</h2>
     <p class="mt-2 text-body text-muted" data-reveal>Koper dan timbangan dipakai bersama; dibagi umur trip, dihitung sekali.</p>
     <ul class="mt-5 flex flex-col gap-3">
       {#each scenario.capex as line (line.id)}
@@ -470,10 +498,21 @@
           </label>
         </li>
       {:else}
-        <li class="panel p-6 text-body text-muted">Belum ada capex.</li>
+        <li class="panel p-6 text-body text-muted">Belum ada biaya alat.</li>
       {/each}
     </ul>
-    <button type="button" class="link mt-5 block text-body" onclick={resetKaki}>Reset kaki ini ke skenario contoh</button>
+    <!-- F11: reset cakupan besar → konfirmasi dulu, bukan langsung menimpa. -->
+    {#if konfirmReset}
+      <div class="panel mt-5 p-4" role="alertdialog" aria-label="Konfirmasi reset tahap">
+        <p class="text-body">Reset tahap ini ke skenario contoh? Perubahan yang belum disalin akan hilang.</p>
+        <div class="mt-3 flex flex-wrap gap-3">
+          <button type="button" class="btn" onclick={() => { resetKaki(); konfirmReset = false; undoBarang = null; }}>Ya, reset</button>
+          <button type="button" class="btn-quiet" onclick={() => (konfirmReset = false)}>Batal</button>
+        </div>
+      </div>
+    {:else}
+      <button type="button" class="link mt-5 block text-body" onclick={() => (konfirmReset = true)}>Reset tahap ini ke skenario contoh</button>
+    {/if}
   </section>
 
   <section class="mt-14" aria-labelledby="negara">
@@ -490,7 +529,7 @@
             <span class="num text-small text-muted">{d.currency} · {idr(d.kurs)}</span>
           </div>
           <p class="mt-1 text-small text-muted">{d.ringkas}</p>
-          <button type="button" class="link mt-2 text-small" onclick={() => setDestinasi(idx, d.code)}>Pakai untuk kaki ini</button>
+          <button type="button" class="link mt-2 text-small" onclick={() => setDestinasi(idx, d.code)}>Pakai untuk tahap ini</button>
         </li>
       {/each}
     </ul>

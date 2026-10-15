@@ -2,15 +2,15 @@
  * Katalog destinasi jastip untuk pasar Indonesia.
  *
  * Daftar ini adalah bahan produk, bukan hukum: kategori, mata uang belanja,
- * dan catatan akses bisa berbeda per orang. Harga tiket/opex tetap diisi
- * jastiper di meja; di sini hanya nilai contoh yang wajar untuk memulai.
+ * dan catatan akses bisa berbeda per orang. Harga tiket/biaya jalan tetap diisi
+ * jastiper di kalkulator; di sini hanya nilai contoh yang wajar untuk memulai.
  *
- * `kurs` = rupiah per 1 unit mata uang lokal (perkiraan, bisa diubah di meja).
+ * `kurs` = rupiah per 1 unit mata uang lokal (perkiraan, bisa diubah di kalkulator).
  * `transit` = bandara/lokasi yang sering dipakai sebagai titik singgah.
  */
 
 export type Destinasi = {
-  /** Kode stabil; dipakai sebagai id kaki & slug. */
+  /** Kode stabil; dipakai sebagai id tahap & slug. */
   code: string;
   negara: string;
   /** Kota/bandara utama tempat belanja. */
@@ -167,5 +167,5 @@ export function destinasiByCode(code: string): Destinasi | undefined {
 /** Kode destinasi yang dikenal katalog; kompat dengan trip lama. */
 export const DESTINASI_CODES = DESTINASI.map((d) => d.code);
 
-/** Titik asal rumah (Jakarta). Kaki pertama biasanya dari sini. */
+/** Titik asal rumah (Jakarta). Tahap pertama biasanya dari sini. */
 export const ASAL = { code: "jakarta", negara: "Indonesia", kota: "Jakarta", iata: "CGK" } as const;

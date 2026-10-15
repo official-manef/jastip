@@ -7,7 +7,7 @@ export const ROLES = [
   {
     id: "jastiper",
     label: "Jastiper",
-    blurb: "Bawa bagasi. Hitung kuota, opex, dan capex trip.",
+    blurb: "Bawa bagasi. Hitung kuota, biaya jalan, dan biaya alat trip.",
   },
   {
     id: "admin",

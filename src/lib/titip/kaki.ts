@@ -1,13 +1,13 @@
 /**
- * Model trip berkaki bebas.
+ * Model trip bertahap bebas.
  *
- * Trip = daftar kaki (penerbangan) berurutan. Tiap kaki punya destinasi,
- * mata uang belanja, kuota bagasi, muatan, opex, dan capex sendiri. Kaki
- * bertanda `transit` = singgah pendek (jam, bukan hari) yang tetap boleh
+ * Trip = daftar tahap (penerbangan) berurutan. Tiap tahap punya destinasi,
+ * mata uang belanja, kuota bagasi, muatan, biaya jalan, dan biaya alat sendiri.
+ * Tahap bertanda `transit` = singgah pendek (jam, bukan hari) yang tetap boleh
  * diisi barang terbatas.
  *
- * Koridor lama (Jakarta ↔ Turki) hanya kasus khusus: dua kaki.
- * `dariTripLama` mengubah state v1 ke daftar kaki supaya data lama tetap terbaca.
+ * Koridor lama (Jakarta ↔ Turki) hanya kasus khusus: dua tahap.
+ * `dariTripLama` mengubah state v1 ke daftar tahap supaya data lama tetap terbaca.
  */
 import {
   scenarioFor,
@@ -20,7 +20,7 @@ import { destinasiByCode, type Destinasi } from "./destinasi.ts";
 /** Satu penerbangan dalam satu trip. */
 export type Kaki = {
   id: string;
-  /** Kode destinasi katalog, atau "jakarta" untuk kaki asal. */
+  /** Kode destinasi katalog, atau "jakarta" untuk tahap asal. */
   destinasi: string;
   /** "utama" = tujuan belanja; "transit" = singgah pendek. */
   jenis: "utama" | "transit";
@@ -38,8 +38,8 @@ export type TripKaki = {
 const ID = () => Math.random().toString(36).slice(2, 10);
 
 /**
- * Skenario awal untuk satu kaki. Angka mengikuti destinasi (kurs, harga
- * tiket contoh, opex lokal) supaya meja tidak mulai dari nol. Semua nilai
+ * Skenario awal untuk satu tahap. Angka mengikuti destinasi (kurs, harga
+ * tiket contoh, biaya jalan lokal) supaya kalkulator tidak mulai dari nol. Semua nilai
  * tetap contoh — jastiper yang mengubah.
  */
 export function scenarioForKaki(kode: string, jenis: Kaki["jenis"]): Scenario {
@@ -69,7 +69,9 @@ export function scenarioForKaki(kode: string, jenis: Kaki["jenis"]): Scenario {
     ],
     capex: [],
   };
-  if (d) base.hargaCurrency = d.currency;
+  // F06: tarif jasa dinyatakan dalam rupiah (diturunkan dari kurs), jadi
+  // JANGAN mewarisi mata uang belanja destinasi. Mata uang tarif default IDR;
+  // pengguna boleh menggantinya di meja.
   return base;
 }
 
@@ -90,7 +92,7 @@ function tiketContoh(d: Destinasi, transit: boolean): number {
   return tiketUmum[d.code] ?? 5000000;
 }
 
-/** Kaki kosong untuk destinasi (jenis default utama). */
+/** Tahap kosong untuk destinasi (jenis default utama). */
 export function newKaki(kode: string, jenis: Kaki["jenis"] = "utama"): Kaki {
   return {
     id: `${kode}-${ID()}`,
@@ -101,7 +103,7 @@ export function newKaki(kode: string, jenis: Kaki["jenis"] = "utama"): Kaki {
   };
 }
 
-/** Nama tampilan satu kaki, mis. "Jakarta → Tokyo" atau "Tokyo (transit)". */
+/** Nama tampilan satu tahap, mis. "Jakarta → Tokyo" atau "Tokyo (transit)". */
 export function kakiLabel(kaki: Kaki, prev?: Kaki): string {
   const to = destinasiByCode(kaki.destinasi);
   const tujuan = to ? `${to.kota}` : kaki.destinasi === "jakarta" ? "Jakarta" : kaki.destinasi;
@@ -113,12 +115,12 @@ export function kakiLabel(kaki: Kaki, prev?: Kaki): string {
   return tujuan;
 }
 
-/** Kode tampilan rute, mis. "CGK → NRT". Kaki asal (Jakarta) tampil "CGK" saja. */
+/** Kode tampilan rute, mis. "CGK → NRT". Tahap asal (Jakarta) tampil "CGK" saja. */
 export function kakiCode(kaki: Kaki, prev?: Kaki): string {
   const to = destinasiByCode(kaki.destinasi);
   const kodeTo = to?.iata ?? (kaki.destinasi === "jakarta" ? "CGK" : kaki.destinasi.toUpperCase());
   if (!prev) {
-    // Kaki pertama = titik asal; tak ada panah.
+    // Tahap pertama = titik asal; tak ada panah.
     return kaki.destinasi === "jakarta" ? "CGK (asal)" : kodeTo;
   }
   const from = destinasiByCode(prev.destinasi);
@@ -127,8 +129,8 @@ export function kakiCode(kaki: Kaki, prev?: Kaki): string {
 }
 
 /**
- * Ubah state trip lama (v1: dir + mode + cgkIst/istCgk) jadi daftar kaki.
- * `one` = satu kaki; `pp` = dua kaki. Arah Turki memakai skenario istCgk.
+ * Ubah state trip lama (v1: dir + mode + cgkIst/istCgk) jadi daftar tahap.
+ * `one` = satu tahap; `pp` = dua tahap. Arah Turki memakai skenario istCgk.
  */
 export function dariTripLama(input: { dir: Dir; mode: "one" | "pp"; cgkIst: Scenario; istCgk: Scenario }): TripKaki {
   const turki: Kaki = {

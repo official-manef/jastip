@@ -54,6 +54,8 @@
   }
 </script>
 
+<svelte:head><title>AI & model — Titipin</title></svelte:head>
+
 <section>
   <header data-rise style="--i: 0">
     <h1>AI & model</h1>
@@ -95,7 +97,7 @@
 
   <div class="panel mt-6 grid gap-4 p-5" data-reveal>
     <h2>Uji cepat</h2>
-    <p class="text-small text-muted">Untuk mengubah data, pakai halaman <a class="link" href="/asisten">Asisten</a> (function calling). Di sini hanya uji jawaban.</p>
+    <p class="text-small text-muted">Untuk mengubah data, pakai halaman <a class="link" href="/asisten">Asisten</a>. Di sini hanya uji jawaban.</p>
     <label class="block">
       <span class="mb-2 block text-small text-muted">Pertanyaan</span>
       <textarea class="{field} py-3" rows="4" bind:value={prompt} maxlength="4000" placeholder="Apa yang perlu disiapkan untuk trip saya?"></textarea>

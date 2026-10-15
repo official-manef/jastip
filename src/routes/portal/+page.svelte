@@ -1,12 +1,13 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { idr, kg } from "../../lib/titip/model";
-  import { contohTrip, PORTAL_MASUK, salinOrang, salinTitipan, type ContohOrang, type ContohTitipan } from "../../lib/titip/contoh";
+  import { PORTAL_MASUK, salinOrang, salinTitipan, type ContohOrang, type ContohTitipan } from "../../lib/titip/contoh";
   import Ringkas from "../../lib/titip/Ringkas.svelte";
   import { roleLabel, type Role } from "../../lib/titip/roles";
   import { ARAH, arahLabel, STATUSES, statusLabel, type Arah, type TitipanStatus } from "../../lib/titip/titipan";
-
+  import { desk, initDesk } from "../../lib/titip/trip-store.svelte";
+  import { computeRevenue, tripLintas } from "../../lib/titip/pricing";
   const field = "field";
-  const trip = contohTrip();
 
   let orang = $state<ContohOrang[]>(salinOrang());
   let rows = $state<ContohTitipan[]>(salinTitipan());
@@ -16,6 +17,29 @@
   let berat = $state("0,5");
   let catatan = $state("");
   let arah = $state<Arah>("cgk-ist");
+
+  // F10: kartu jastiper memakai state trip aktif yang sama dengan kalkulator,
+  // bukan skenario contoh statis. Tidak ada lagi dua angka berbeda di layar.
+  onMount(() => { initDesk(); });
+
+  const lintas = $derived(tripLintas(desk.kaki.map((k) => ({
+    id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario,
+  }))));
+  const bebanTrip = $derived(desk.kaki.reduce((sum, k) => {
+    const opex = k.scenario.opex.reduce((a, l) => a + l.amount, 0);
+    const capex = k.scenario.capex.reduce((a, l) => a + l.price / Math.max(1, l.trips), 0);
+    return sum + Math.round(opex + capex);
+  }, 0));
+  const labaTrip = $derived(Math.round(lintas.service - bebanTrip));
+  /** Sisa kuota tahap paling ketat, sama seperti instrumen di kalkulator. */
+  const sisaAktif = $derived.by(() => {
+    if (desk.kaki.length === 0) return 0;
+    const idx = Math.min(desk.aktif, desk.kaki.length - 1);
+    const k = desk.kaki[idx];
+    const rev = computeRevenue(k.scenario.goods, k.scenario.hargaPerKg, k.scenario.hargaCurrency ?? "IDR");
+    const bersih = Math.max(0, k.scenario.bags * k.scenario.kgPerBag + k.scenario.cabin - k.scenario.tare);
+    return Math.round((bersih - rev.totalKg) * 10) / 10;
+  });
 
   const aku = $derived(orang.find((item) => item.id === siapa) ?? orang[0]);
   const milikku = $derived(rows.filter((row) => row.orangId === aku.id));
@@ -30,6 +54,21 @@
   function pilih(id: (typeof PORTAL_MASUK)[number]) {
     siapa = id;
     notice = "";
+  }
+
+  /** F15: roving tabindex untuk tablist — ArrowLeft/Right/Home/End memindah tab. */
+  function tabKey(event: KeyboardEvent, index: number) {
+    const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
+    if (!keys.includes(event.key)) return;
+    event.preventDefault();
+    const last = PORTAL_MASUK.length - 1;
+    const next = event.key === "Home" ? 0
+      : event.key === "End" ? last
+      : event.key === "ArrowRight" ? (index + 1 > last ? 0 : index + 1)
+      : (index - 1 < 0 ? last : index - 1);
+    pilih(PORTAL_MASUK[next]);
+    const el = document.getElementById(`tab-${PORTAL_MASUK[next]}`);
+    el?.focus();
   }
 
   function ubahStatus(id: string, status: TitipanStatus) {
@@ -80,9 +119,11 @@
   }
 </script>
 
+<svelte:head><title>Portal contoh — Titipin</title></svelte:head>
+
 <section>
   <header class="max-w-[40rem]" data-rise style="--i: 0">
-    <h1>Tiga meja, satu rute</h1>
+    <h1>Tiga panel, satu rute</h1>
     <p class="mt-4 text-lead">
       Dashboard contoh supaya alur terlihat tanpa akun sungguhan. Semua nama dan angka di halaman ini pura-pura.
     </p>
@@ -93,14 +134,18 @@
   </header>
 
   <div class="mt-8 flex flex-wrap gap-1 rounded bg-surface p-1" role="tablist" aria-label="Masuk sebagai contoh" data-reveal>
-    {#each PORTAL_MASUK as id (id)}
+    {#each PORTAL_MASUK as id, i (id)}
       {@const orangIni = orang.find((item) => item.id === id)}
       <button
         type="button"
+        id={`tab-${id}`}
         role="tab"
         aria-selected={siapa === id}
+        aria-controls="panel-peran"
+        tabindex={siapa === id ? 0 : -1}
         class="min-h-11 rounded px-4 text-left text-body {siapa === id ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}"
         onclick={() => pilih(id)}
+        onkeydown={(event) => tabKey(event, i)}
       >
         <span class="block">{orangIni?.name}</span>
         <span class="block text-small {siapa === id ? 'text-primary-fg/80' : 'text-muted'}">{roleLabel(orangIni?.role ?? null)} · {orangIni?.city}</span>
@@ -112,6 +157,7 @@
     <p class="mt-4 text-body text-accent" role="status">{notice}</p>
   {/if}
 
+  <div id="panel-peran" role="tabpanel" aria-labelledby={`tab-${siapa}`}>
   {#if aku.role === "klien"}
     <dl class="mt-8 grid gap-3 sm:grid-cols-3">
       <div class="panel p-4">
@@ -169,18 +215,18 @@
     <dl class="mt-8 grid gap-3 sm:grid-cols-3">
       <div class="panel p-4">
         <dt class="text-small text-muted">Sisa bagasi</dt>
-        <dd class="num mt-1 text-lead">{kg(trip.sisa)}</dd>
+        <dd class="num mt-1 text-lead">{kg(sisaAktif)}</dd>
       </div>
       <div class="panel p-4">
-        <dt class="text-small text-muted">Laba trip contoh</dt>
-        <dd class="num mt-1 text-lead {trip.laba < 0 ? 'text-accent' : ''}">{idr(trip.laba)}</dd>
+        <dt class="text-small text-muted">Laba trip (kalkulator)</dt>
+        <dd class="num mt-1 text-lead {labaTrip < 0 ? 'text-accent' : ''}">{idr(labaTrip)}</dd>
       </div>
       <div class="panel p-4">
         <dt class="text-small text-muted">Antrian</dt>
         <dd class="num mt-1 text-lead">{antrian.length}</dd>
       </div>
     </dl>
-    <p class="mt-3 text-body text-muted">CGK → IST, pergi saja. Angka mengikuti meja hitung. <a class="link" href="/meja">Buka meja</a>.</p>
+    <p class="mt-3 text-body text-muted">Angka mengikuti kalkulator saat ini ({desk.kaki.length} tahap). <a class="link" href="/meja">Buka kalkulator</a>.</p>
 
     <ul class="mt-5 flex flex-col gap-3">
       {#each rows as row (row.id)}
@@ -190,10 +236,11 @@
             <p class="num text-small text-muted">{kg(row.kg)}</p>
           </div>
           <p class="mt-1 text-small text-muted">{namaOrang(row.orangId)} · {arahLabel(row.arah)}</p>
-          <div class="mt-3 flex flex-wrap gap-1">
+          <div class="mt-3 flex flex-wrap gap-1" role="group" aria-label="Status {row.nama}">
             {#each STATUSES as item (item.id)}
               <button
                 type="button"
+                aria-pressed={row.status === item.id}
                 class="min-h-11 rounded px-3 text-body {row.status === item.id ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}"
                 onclick={() => ubahStatus(row.id, item.id)}
               >
@@ -246,4 +293,5 @@
       {/each}
     </ul>
   {/if}
+  </div>
 </section>

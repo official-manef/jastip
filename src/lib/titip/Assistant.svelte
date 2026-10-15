@@ -1,12 +1,12 @@
 <script lang="ts">
   /**
    * Asisten Titipin: chat + function calling. Tool dijalankan di klien (`tools.ts`)
-   * sehingga perubahan langsung tampil di meja hitung dan halaman lain.
+   * sehingga perubahan langsung tampil di kalkulator dan halaman lain.
    */
   import { authedFetch, session } from "./session.svelte";
   import { aiError, aiSettings, loadAiSettings } from "./ai-settings.svelte";
   import Ringkas from "./Ringkas.svelte";
-  import { TOOL_DEFS, runTool, summarize } from "./tools";
+  import { aksiLabel, TOOL_DEFS, runTool, summarize } from "./tools";
   import type { AiMessage, AiToolCall } from "./ai";
 
   type Bubble = { role: "user" | "assistant"; content: string; note?: string };
@@ -61,7 +61,7 @@
         log = [...log, { role: "assistant", content: reply.content, tool_calls: calls }];
         const names: string[] = [];
         for (const call of calls) {
-          names.push(call.function.name);
+          names.push(aksiLabel(call.function.name));
           let args: Record<string, unknown> = {};
           try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* keep empty */ }
           let result: Record<string, unknown>;
@@ -69,7 +69,7 @@
           catch (err) { result = { error: err instanceof Error ? err.message : "gagal" }; }
           log = [...log, { role: "tool", tool_call_id: call.id, content: summarize(call.function.name, result) }];
         }
-        bubbles = [...bubbles, { role: "assistant", content: reply.content.trim(), note: `Tool: ${names.join(", ")}` }];
+        bubbles = [...bubbles, { role: "assistant", content: reply.content.trim(), note: `Mengubah: ${names.join(", ")}` }];
       }
     } catch (err) {
       notice = aiError(err instanceof Error ? err.message : undefined);
@@ -85,10 +85,9 @@
   <header data-rise style="--i: 0">
     <h1>Tanya & ubah</h1>
     <p class="mt-3 text-body">
-      Asisten bisa langsung mengubah meja hitung, titipan, dan peran lewat tool. Saran omzet = proyeksi.
-      <a class="link" href="/pengaturan">Atur API key</a> dulu (mode BYOK).
-    </p>
-    <div class="mt-4" data-reveal>
+      Asisten bisa langsung mengubah kalkulator, titipan, dan peran dari chat. Saran omzet = proyeksi.
+      <a class="link" href="/pengaturan">Atur API key</a> dulu.
+    </p>    <div class="mt-4" data-reveal>
       <Ringkas compact />
     </div>
   </header>

@@ -1,8 +1,8 @@
 <script lang="ts">
   /**
    * Fragmen interface hidup (SKILL.md step 6: "software shows its own interface").
-   * Angka asli dari meja hitung, dipakai sebagai jangkar layar pertama di halaman
-   * selain meja. Ditandai `data-ui` supaya house-rules mengenalinya sebagai
+   * Angka asli dari kalkulator, dipakai sebagai jangkar layar pertama di halaman
+   * selain kalkulator. Ditandai `data-ui` supaya house-rules mengenalinya sebagai
    * potongan interface, bukan kotak dekoratif.
    */
   import { desk, kakiAktif } from "./trip-store.svelte";
@@ -31,15 +31,15 @@
   }, 0));
 </script>
 
-<div class="panel-deep rounded p-4" data-ui aria-label="Ringkasan meja hitung">
+<div class="panel-deep rounded p-4" data-ui aria-label="Ringkasan kalkulator">
   <div class="flex flex-wrap items-baseline justify-between gap-2">
-    <p class="text-body">{kakiCode(now, prev)} · {kaki.length} kaki</p>
+    <p class="text-body">{kakiCode(now, prev)} · {kaki.length} tahap</p>
     <p class="num text-small">{kg(lintas.totalKg)} muatan</p>
   </div>
   <p class="readout mt-3 {over ? 'text-accent' : 'text-fg'}">
     {over ? `−${kg(-sisa)}` : kg(sisa)}
   </p>
-  <p class="mt-2 text-body">{over ? "kelebihan bagasi kaki ini" : "sisa kuota kaki ini"}</p>
+  <p class="mt-2 text-body">{over ? "kelebihan bagasi tahap ini" : "sisa kuota tahap ini"}</p>
   {#if !compact}
     <dl class="mt-4 grid gap-2 text-body sm:grid-cols-2">
       <div class="flex items-baseline justify-between gap-3">
@@ -47,7 +47,7 @@
         <dd class="num {lintas.service - bebanTrip < 0 ? 'text-accent' : 'text-fg'}">{idr(Math.round(lintas.service - bebanTrip))}</dd>
       </div>
       <div class="flex items-baseline justify-between gap-3">
-        <dt>Kaki aktif</dt>
+        <dt>Tahap aktif</dt>
         <dd class="num">{kakiLabel(now, prev)}</dd>
       </div>
     </dl>

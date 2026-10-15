@@ -2,21 +2,21 @@
 
 Titipin adalah MVP jastip pribadi multi-negara. Orang yang menitip (klien) mengirim barang. Orang yang terbang (jastiper) menyusun rute, membawa bagasi, dan menghitung apakah trip itu untung. Admin adalah pengembang, satu orang.
 
-## Model trip: kaki
+## Model trip: tahap
 
-Satu **trip** = daftar **kaki** (penerbangan) berurutan. Tiap kaki punya destinasi dari katalog 10 negara
+Satu **trip** = daftar **tahap** (penerbangan) berurutan. Tiap tahap punya destinasi dari katalog 10 negara
 (+ Turki), jenis `utama`|`transit`, lama (hari/jam), dan skenario lengkap sendiri: kuota bagasi, barang,
-opex, capex.
+biaya jalan, biaya alat.
 
-- **Transit** = kaki singgah pendek; kuota kecil, opex ringan, tapi tetap bisa diisi barang.
-- **Capex** dipakai bersama seluruh kaki (koper, timbangan); dibagi umur trip, dihitung sekali.
-- **Total trip** menjumlahkan jasa, muatan, dan kapasitas semua kaki (`tripLintas`).
-- Koridor lama (Jakarta ↔ Turki) cuma kasus khusus dua kaki; data v1 dimigrasi otomatis.
+- **Transit** = tahap singgah pendek; kuota kecil, biaya jalan ringan, tapi tetap bisa diisi barang.
+- **Biaya alat** dipakai bersama seluruh tahap (koper, timbangan); dibagi umur trip, dihitung sekali.
+- **Total trip** menjumlahkan jasa, muatan, dan kapasitas semua tahap (`tripLintas`).
+- Koridor lama (Jakarta ↔ Turki) cuma kasus khusus dua tahap; data v1 dimigrasi otomatis.
 
 ## Katalog tujuan
 
 Sepuluh negara paling populer untuk pasar Indonesia, plus Turki (koridor lama). Sumber:
-`src/lib/titip/destinasi.ts`. Kategori dan kurs adalah contoh — jastiper yang mengubah di meja.
+`src/lib/titip/destinasi.ts`. Kategori dan kurs adalah contoh — jastiper yang mengubah di kalkulator.
 
 | Negara | Kategori khas |
 | --- | --- |
@@ -43,28 +43,28 @@ Peran klien/jastiper terkunci setelah dipilih. Akun tidak bisa menaikkan dirinya
 
 Rumah setelah masuk: klien `/titip`, jastiper `/meja`, admin `/admin`.
 
-Dua shell layout: beranda `/` (publik, terpusat) dan `/meja` (app, sidebar). Meja hitung tak
+Dua shell layout: beranda `/` (publik, terpusat) dan `/meja` (app, sidebar). Kalkulator hitung tak
 dikunci login.
 
 Bahasa visual (palet, tipe, aturan rumah, gerak) ada di [DESIGN.md](../DESIGN.md).
 
 ## Hitung trip
 
-Sumber angkanya `src/lib/titip/calc.ts` (per kaki) + `src/lib/titip/pricing.ts` (`tripLintas`, total
-lintas kaki). Meja memakainya langsung.
+Sumber angkanya `src/lib/titip/calc.ts` (per tahap) + `src/lib/titip/pricing.ts` (`tripLintas`, total
+lintas tahap). Kalkulator memakainya langsung.
 
-Per kaki, `compute` memakai kuota `kotor = bags*kgPerBag + cabin`, `bersih = kotor - tare`, lalu
-membandingkan dengan total berat muatan. Opex (`opex`), denda kelebihan, dan capex (harga alat dibagi
-umur trip) membentuk beban kaki.
+Per tahap, `compute` memakai kuota `kotor = bags*kgPerBag + cabin`, `bersih = kotor - tare`, lalu
+membandingkan dengan total berat muatan. Biaya jalan (`opex`), denda kelebihan, dan biaya alat (harga alat dibagi
+umur trip) membentuk beban tahap.
 
 Total trip (`tripLintas`):
 
-- **Jasa** = jumlah jasa semua kaki. Tarif per baris sudah memuat mata uangnya sendiri.
-- **Muatan** = jumlah berat semua kaki. **Kapasitas** = jumlah kuota bersih semua kaki.
-- **Over** = kapasitas − muatan; ditandai kalau negatif, dan kaki paling ketat disorot.
+- **Jasa** = jumlah jasa semua tahap. Tarif per baris sudah memuat mata uangnya sendiri.
+- **Muatan** = jumlah berat semua tahap. **Kapasitas** = jumlah kuota bersih semua tahap.
+- **Over** = kapasitas − muatan; ditandai kalau negatif, dan tahap paling ketat disorot.
 
-Kaki contoh Jakarta awal: sisa bagasi 17,7 kg dan laba −Rp5.896.750 (mesin lama, tetap jadi titik cek).
-Slider di meja mengubahnya.
+Tahap contoh Jakarta awal: sisa bagasi 17,7 kg dan laba −Rp5.896.750 (mesin lama, tetap jadi titik cek).
+Slider di kalkulator mengubahnya.
 
 ## Data
 
@@ -73,7 +73,7 @@ Data akun disimpan terpusat di Convex; kalkulasi pengunjung memiliki salinan per
 **Semua data akun ada di Convex** (deployment `impressive-wildcat-570`):
 
 - Tabel auth (users/sessions/accounts) di komponen resmi `@convex-dev/better-auth`.
-- `profiles` (peran per akun), `titipan` (milik satu akun), `tripScenarios` (trip per akun, slug `utama` = trip aktif meja).
+- `profiles` (peran per akun), `titipan` (milik satu akun), `tripScenarios` (trip per akun, slug `utama` = trip aktif kalkulator).
 - `trips` menyimpan skenario contoh lama (kode historis).
 
 Route SvelteKit (`/api/saya,peran,admin,titipan,trip,trips`) memanggil fungsi Convex lewat `ConvexHttpClient` di server; token sesi diambil otomatis dari cookie. Logika server ada di `src/convex/`. Pengunjung tanpa akun memakai localStorage perangkat.

@@ -207,7 +207,7 @@ export function tripRevenue(
   };
 }
 
-/* ---------- Total lintas kaki bebas (model multi-destinasi) ---------- */
+/* ---------- Total lintas tahap bebas (model multi-destinasi) ---------- */
 
 export type KakiRevenue = {
   id: string;
@@ -241,7 +241,7 @@ export type TripLintas = {
 };
 
 /**
- * Jumlahkan jasa lintas kaki bebas. Kapasitas dihitung per kaki (bagasi tidak
+ * Jumlahkan jasa lintas tahap bebas. Kapasitas dihitung per tahap (bagasi tidak
  * berpindah), pendapatan dijumlahkan karena tarif baris sudah memuat mata uang
  * sendiri. F05: nilai selalu dihitung per mata uang; `service` hanya berarti
  * bila `currencies.length === 1` (UI wajib menampilkan subtotal per mata uang

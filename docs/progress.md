@@ -2,6 +2,48 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 16 Oktober 2026: tindak lanjut audit 15 Okt (13 dari 18 temuan)
+
+Audit eksternal 15 Okt (18 temuan: 8 P1, 10 P2) diperiksa ulang terhadap kode. Status:
+
+**Sudah beres (11)**
+
+- **F01** sidebar ikut tinggi dokumen → shell `h-dvh`, aside `h-full`, akun `mt-auto`.
+- **F02** nav mobile di dasar → `Dock` sebelum `<main>`.
+- **F03** konten transparan → `motion.ts` MutationObserver + jaring pengaman + fallback tanpa IO.
+- **F04** omzet baris ≠ laba → laba pakai `lintas.service` (tarif per baris).
+- **F06** label IDR ditulis TRY → tarif jasa tidak lagi mewarisi mata uang destinasi;
+  `hargaCurrency` default IDR (kaki.ts + seed trip-state.ts). `tariffCurrency` dipakai di meja.
+- **F07** tarif nol ditawarkan → `kuotaNol` → saran `null`, tombol disabled.
+- **F08** "target margin" = markup → label "Markup atas modal".
+- **F09** pembulatan berat → `kg()` tampil sampai 2 desimal, buang nol tak berarti.
+- **F11** reset/hapus tanpa pemulihan → Undo hapus (`setGoods`) + konfirmasi reset + nama barang
+  di label Hapus.
+- **F13** login urutan + judul mode → form utama lebih awal, peran hanya saat daftar, judul/copy
+  ikut mode (Masuk/Daftar).
+- **F14** Kembali klien → `/titip` = halaman sendiri → diganti tautan "Buka kalkulator".
+- **F16** judul tab tertinggal → `svelte:head` ditambah di portal, titip, pengaturan, admin, masuk.
+- **F12** kolom menyatu latar → `.field` dapat inset ring tipis (kontras kontrol), tetap tanpa
+  kotak dekoratif lain.
+- **F15** tab/status tanpa keyboard → tablist portal roving tabindex + ArrowLeft/Right/Home/End +
+  `aria-controls`/`tabpanel`; tombol status `aria-pressed` + `aria-label`.
+- **F18** AI bocorkan istilah internal → catatan "Mengubah: …" pakai label manusia
+  (`aksiLabel`), "function calling"/"BYOK" dibuang dari UI.
+
+**Sebagian (2)**
+
+- **F05** mata uang campur: subtotal per mata uang + peringatan sudah ada, konversi kurs belum
+  (butuh keputusan nilai kurs).
+- **F10** ringkasan portal: kartu jastiper kini ikut state kalkulator, bukan skenario statis.
+
+**Belum (1) — butuh keputusan produk**
+
+- **F17** jastiper pilih sendiri + lihat semua titipan: perlu model persetujuan operator/penugasan
+  trip. Belum diubah tanpa keputusan pemilik.
+
+Verifikasi: `svelte-check` 0 error; 61 tes lulus; build sukses; smoke dev + produksi bersih
+desktop+mobile di delapan halaman.
+
 ## 15 Oktober 2026 (lanjutan 5): landing mengajak daftar
 
 - Beranda `/` sekarang mengajak tiga langkah: **Gratis** (meja hitung tanpa akun) → **Akun**

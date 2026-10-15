@@ -34,23 +34,23 @@ const kakiJenis = { type: "string", enum: ["utama", "transit"] } as const;
 const destinasiEnum = { type: "string", enum: DESTINASI.map((d) => d.code) } as const;
 
 export const TOOL_DEFS: AiToolDef[] = [
-  { type: "function", function: { name: "ringkasan_trip", description: "Baca angka meja hitung: rute (daftar kaki), kuota, muatan, omzet, laba, progres target, dan daftar negara tujuan yang tersedia.", parameters: obj({}) } },
-  { type: "function", function: { name: "set_trip", description: "Ubah skenario KAKI AKTIF. Hanya field yang dikirim berubah.", parameters: obj({
+  { type: "function", function: { name: "ringkasan_trip", description: "Baca angka kalkulator: rute (daftar tahap), kuota, muatan, omzet, laba, progres target, dan daftar negara tujuan yang tersedia.", parameters: obj({}) } },
+  { type: "function", function: { name: "set_trip", description: "Ubah skenario TAHAP AKTIF. Hanya field yang dikirim berubah.", parameters: obj({
     bags: n, kgPerBag: n, cabin: n, tare: n, overPerKg: n, hargaPerKg: n, margin: n, ujiKg: n, kursTry: n,
     target: n, hargaCurrency: { type: "string", enum: ["IDR", "USD", "TRY", "JPY", "KRW", "SGD", "HKD", "THB", "EUR", "MYR", "AUD"] },
   }) } },
-  { type: "function", function: { name: "pilih_kaki", description: "Jadikan kaki ke-`index` sebagai kaki aktif (index 0 = kaki pertama).", parameters: obj({ index: n }, ["index"]) } },
-  { type: "function", function: { name: "tambah_kaki", description: "Tambah kaki baru di akhir rute. destinasi = kode negara (lihat ringkasan_trip.negaraTersedia).", parameters: obj({ destinasi: destinasiEnum, jenis: kakiJenis, lama: n }, ["destinasi"]) } },
-  { type: "function", function: { name: "sisip_transit", description: "Sisipkan kaki transit setelah kaki ke-`index` (untuk negara singgah di tengah rute).", parameters: obj({ index: n, destinasi: destinasiEnum, lama: n }, ["index", "destinasi"]) } },
-  { type: "function", function: { name: "hapus_kaki", description: "Hapus kaki ke-`index`. Minimal satu kaki harus tersisa.", parameters: obj({ index: n }, ["index"]) } },
-  { type: "function", function: { name: "set_kaki", description: "Ubah jenis (utama|transit) atau lama kaki ke-`index`.", parameters: obj({ index: n, jenis: kakiJenis, lama: n }, ["index"]) } },
+  { type: "function", function: { name: "pilih_kaki", description: "Jadikan tahap ke-`index` sebagai tahap aktif (index 0 = tahap pertama).", parameters: obj({ index: n }, ["index"]) } },
+  { type: "function", function: { name: "tambah_kaki", description: "Tambah tahap baru di akhir rute. destinasi = kode negara (lihat ringkasan_trip.negaraTersedia).", parameters: obj({ destinasi: destinasiEnum, jenis: kakiJenis, lama: n }, ["destinasi"]) } },
+  { type: "function", function: { name: "sisip_transit", description: "Sisipkan tahap transit setelah tahap ke-`index` (untuk negara singgah di tengah rute).", parameters: obj({ index: n, destinasi: destinasiEnum, lama: n }, ["index", "destinasi"]) } },
+  { type: "function", function: { name: "hapus_kaki", description: "Hapus tahap ke-`index`. Minimal satu tahap harus tersisa.", parameters: obj({ index: n }, ["index"]) } },
+  { type: "function", function: { name: "set_kaki", description: "Ubah jenis (utama|transit) atau lama tahap ke-`index`.", parameters: obj({ index: n, jenis: kakiJenis, lama: n }, ["index"]) } },
   { type: "function", function: { name: "set_nama_trip", description: "Ubah nama trip.", parameters: obj({ nama: s }, ["nama"]) } },
-  { type: "function", function: { name: "set_opex", description: "Set nominal satu baris opex kaki aktif berdasarkan id (lihat ringkasan_trip).", parameters: obj({ id: s, amount: n }, ["id", "amount"]) } },
-  { type: "function", function: { name: "set_capex", description: "Set harga dan/atau umur trip sebuah capex; berlaku untuk semua kaki.", parameters: obj({ id: s, price: n, trips: n }, ["id"]) } },
-  { type: "function", function: { name: "tambah_barang", description: "Tambah satu barang ke muatan kaki aktif.", parameters: obj({ nama: s, kg: n, qty: n, beli: n, model_tarif: { type: "string", enum: ["per_kg", "per_item"] }, tarif: n, satuan: s }, ["nama", "kg"]) } },
+  { type: "function", function: { name: "set_opex", description: "Set nominal satu baris biaya jalan tahap aktif berdasarkan id (lihat ringkasan_trip).", parameters: obj({ id: s, amount: n }, ["id", "amount"]) } },
+  { type: "function", function: { name: "set_capex", description: "Set harga dan/atau umur trip sebuah biaya alat; berlaku untuk semua tahap.", parameters: obj({ id: s, price: n, trips: n }, ["id"]) } },
+  { type: "function", function: { name: "tambah_barang", description: "Tambah satu barang ke muatan tahap aktif.", parameters: obj({ nama: s, kg: n, qty: n, beli: n, model_tarif: { type: "string", enum: ["per_kg", "per_item"] }, tarif: n, satuan: s }, ["nama", "kg"]) } },
   { type: "function", function: { name: "ubah_barang", description: "Ubah barang berdasarkan id (lihat ringkasan_trip).", parameters: obj({ id: s, nama: s, kg: n, qty: n, beli: n, tarif: n, model_tarif: { type: "string", enum: ["per_kg", "per_item"] }, satuan: s }, ["id"]) } },
-  { type: "function", function: { name: "hapus_barang", description: "Hapus barang dari muatan kaki aktif.", parameters: obj({ id: s }, ["id"]) } },
-  { type: "function", function: { name: "reset_kaki", description: "Kembalikan kaki aktif ke nilai contoh destinasi/jenis-nya.", parameters: obj({}) } },
+  { type: "function", function: { name: "hapus_barang", description: "Hapus barang dari muatan tahap aktif.", parameters: obj({ id: s }, ["id"]) } },
+  { type: "function", function: { name: "reset_kaki", description: "Kembalikan tahap aktif ke nilai contoh destinasi/jenis-nya.", parameters: obj({}) } },
   { type: "function", function: { name: "daftar_titipan", description: "Baca daftar titipan (butuh masuk; klien melihat miliknya, jastiper/admin melihat semua).", parameters: obj({}) } },
   { type: "function", function: { name: "buat_titipan", description: "Buat titipan baru (peran klien atau admin).", parameters: obj({ arah: dirEnum, nama: s, kg: n, catatan: s }, ["arah", "nama", "kg"]) } },
   { type: "function", function: { name: "ubah_status_titipan", description: "Ubah status titipan: baru | dibawa | selesai (peran jastiper atau admin).", parameters: obj({ id: s, status: { type: "string", enum: ["baru", "dibawa", "selesai"] } }, ["id", "status"]) } },
@@ -343,5 +343,38 @@ export async function runTool(name: string, args: Json): Promise<Json> {
 export function summarize(name: string, result: Json): string {
   const text = JSON.stringify(result);
   return text.length > 6000 ? `${text.slice(0, 6000)}…` : text;
+}
+
+/**
+ * F18: nama aksi yang dibaca manusia, bukan nama tool internal. Dipakai UI
+ * asisten untuk catatan "Mengubah: …" supaya pengguna nonteknis tak melihat
+ * `set_trip`/`tambah_kaki`.
+ */
+const AKSI_LABEL: Record<string, string> = {
+  set_trip: "isi & tarif",
+  set_nama_trip: "nama trip",
+  set_opex: "biaya jalan",
+  set_capex: "biaya alat",
+  tambah_barang: "barang",
+  ubah_barang: "barang",
+  hapus_barang: "barang",
+  pilih_kaki: "tahap aktif",
+  tambah_kaki: "tahap",
+  sisip_transit: "tahap transit",
+  hapus_kaki: "tahap",
+  set_kaki: "tahap",
+  reset_kaki: "tahap",
+  daftar_titipan: "daftar titipan",
+  buat_titipan: "titipan",
+  ubah_status_titipan: "status titipan",
+  daftar_orang: "daftar orang",
+  set_peran: "peran",
+  ringkasan_trip: "ringkasan",
+  usul_penutup_target: "usulan target",
+  periksa_risiko: "periksa risiko",
+};
+
+export function aksiLabel(name: string): string {
+  return AKSI_LABEL[name] ?? "data";
 }
 

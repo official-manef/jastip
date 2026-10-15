@@ -17,8 +17,8 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   {
     href: "/meja",
-    label: "Meja",
-    hint: "Kalkulator bagasi & tarif",
+    label: "Kalkulator",
+    hint: "Hitung bagasi, tarif & laba",
     icon: "M4 6h16M4 12h16M4 18h10",
     roles: [],
   },

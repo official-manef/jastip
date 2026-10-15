@@ -78,6 +78,8 @@
   }
 </script>
 
+<svelte:head><title>Orang & peran — Titipin</title></svelte:head>
+
 <section>
   {#if session.pending || loading}
     <p class="text-body text-muted" role="status">Memuat orang…</p>
@@ -88,7 +90,7 @@
   {:else if session.role !== "admin"}
     <h1>Orang</h1>
     <p class="mt-4 text-lead">Halaman ini hanya untuk admin, yaitu pengembang.</p>
-    <a href="/meja" class="btn mt-6">Ke meja</a>
+    <a href="/meja" class="btn mt-6">Ke kalkulator</a>
   {:else}
     <header class="max-w-[40rem]" data-rise style="--i: 0">
       <h1>Orang</h1>

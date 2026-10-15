@@ -81,7 +81,8 @@ function scenarioKakiJepang(): Scenario {
     ...base,
     kursTry: 105,
     hargaPerKg: 420000,
-    hargaCurrency: "JPY",
+    // F06: tarif jasa = rupiah. Mata uang belanja (JPY) hanya untuk harga beli
+    // barang, bukan untuk label omzet/laba.
     goods: [
       { id: "skin", name: "Skincare Jepang", kg: 0.25, qty: 6, beli: 1800 },
       { id: "fig", name: "Figure", kg: 0.4, qty: 3, beli: 3200 },

@@ -1,36 +1,36 @@
 # titipin
 
-Kalkulator bagasi jastip **multi-negara**: trip disusun sebagai daftar kaki (penerbangan) berurutan, tiap kaki punya negara, mata uang belanja, dan muatannya sendiri. Plus akun untuk klien, jastiper, dan admin.
+Kalkulator bagasi jastip **multi-negara**: trip disusun sebagai daftar tahap (penerbangan) berurutan, tiap tahap punya negara, mata uang belanja, dan muatannya sendiri. Plus akun untuk klien, jastiper, dan admin.
 
 Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 
 ## Yang sudah jalan
 
-- **Trip berkaki bebas**: 1, 2, 3, atau lebih kaki; tiap kaki pilih negara dari katalog. Transit = kaki bertanda khusus yang tetap boleh diisi barang.
+- **Trip bertahap bebas**: 1, 2, 3, atau lebih tahap; tiap tahap pilih negara dari katalog. Transit = tahap bertanda khusus yang tetap boleh diisi barang.
 - Katalog 10 negara tujuan populer untuk pasar Indonesia + Turki (koridor lama): Jepang, Korea, Singapura, Hong Kong, Thailand, Amerika, Prancis, Malaysia, Jerman, Australia.
-- Meja per kaki: kuota bagasi, muatan per kg, harga per kg, opex, capex; total lintas kaki (jasa, muatan, kapasitas, laba) dihitung sekaligus.
-- Capex (koper, timbangan) dipakai bersama semua kaki, dibagi umur trip, dihitung sekali.
+- Kalkulator per tahap: kuota bagasi, muatan per kg, harga per kg, biaya jalan, biaya alat; total lintas tahap (jasa, muatan, kapasitas, laba) dihitung sekaligus.
+- Biaya alat (koper, timbangan) dipakai bersama semua tahap, dibagi umur trip, dihitung sekali.
 - Target omzet sebagai indikator progres (batang + "butuh lagi"), bukan pengubah harga otomatis.
 - Kalkulasi pengunjung tersimpan di perangkat. Skenario trip akun tersimpan di Convex (`tripScenarios`), dibatasi oleh sesi pengguna.
 - Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu dan ditetapkan operator melalui ID akun.
-- Asisten AI di `/asisten` dengan **function calling**: bisa menyusun kaki, ganti destinasi, isi muatan, dan ubah peran.
+- Asisten AI di `/asisten` dengan **function calling**: bisa menyusun tahap, ganti destinasi, isi muatan, dan ubah peran.
 - Titipan per akun, dan antrean untuk jastiper.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
-- Beranda mengajak tiga langkah: **Gratis** (meja hitung tanpa akun) → **Akun** (daftar gratis) → **Langganan** (`/` seksi `#paket`). Harga contoh; belum ada gating atau pembayaran.
+- Beranda mengajak tiga langkah: **Coba** (kalkulator tanpa akun) → **Akun** (daftar gratis) → **Langganan** (`/` seksi `#paket`). Harga contoh; belum ada gating atau pembayaran.
 - PWA: `manifest.webmanifest` (start_url `/meja`, ikon maskable, screenshot manifest), service worker offline shell + toast "versi baru". Dua shell layout: beranda/masuk tanpa sidebar dan terpusat; halaman app memakai rail sidebar.
 
 Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [docs/progress.md](docs/progress.md). Bahasa visual ada di [DESIGN.md](DESIGN.md). Perbandingan dengan template starter ada di [docs/bandingkan-template.md](docs/bandingkan-template.md).
 
 ## Model trip
 
-Satu trip = daftar **kaki** (penerbangan) berurutan. Tiap kaki menyimpan: destinasi (kode katalog),
+Satu trip = daftar **tahap** (penerbangan) berurutan. Tiap tahap menyimpan: destinasi (kode katalog),
 jenis (`utama` atau `transit`), lama (hari untuk utama, jam untuk transit), dan skenario lengkap
-(kuota bagasi, barang, opex, capex). Total trip menjumlahkan jasa, muatan, dan kapasitas semua kaki.
+(kuota bagasi, barang, biaya jalan, biaya alat). Total trip menjumlahkan jasa, muatan, dan kapasitas semua tahap.
 
-- **Transit** = kaki bertanda `transit`: kuota bagasi kecil, opex ringan, tetap boleh diisi barang.
-- **Capex** (koper, timbangan) dipakai bersama seluruh kaki; dibagi umur trip, dihitung sekali.
-- **Target omzet** = indikator progres di kaki aktif (batang + "butuh lagi"), bukan pengubah harga otomatis.
-- Trip lama (v1: satu koridor `dir`/`mode`) dimigrasi otomatis ke daftar kaki saat dibaca.
+- **Transit** = tahap bertanda `transit`: kuota bagasi kecil, biaya jalan ringan, tetap boleh diisi barang.
+- **Biaya alat** (koper, timbangan) dipakai bersama seluruh tahap; dibagi umur trip, dihitung sekali.
+- **Target omzet** = indikator progres di tahap aktif (batang + "butuh lagi"), bukan pengubah harga otomatis.
+- Trip lama (v1: satu koridor `dir`/`mode`) dimigrasi otomatis ke daftar tahap saat dibaca.
 
 Sumber: `src/lib/titip/destinasi.ts` (katalog), `src/lib/titip/kaki.ts` (tipe + migrasi),
 `src/lib/titip/pricing.ts` (`tripLintas`), `src/lib/titip/trip-state.ts` (skema v2 + zod).
@@ -40,7 +40,7 @@ Sumber: `src/lib/titip/destinasi.ts` (katalog), `src/lib/titip/kaki.ts` (tipe + 
 | Path | Untuk siapa | Isi | Shell |
 | --- | --- | --- | --- |
 | `/` | Semua | Beranda publik: instrumen hidup, rute, paket (Gratis/Akun/Langganan), peran | Publik (tanpa sidebar, konten terpusat) |
-| `/meja` | Semua | Meja hitung multi-kaki | App (sidebar) |
+| `/meja` | Semua | Kalkulator bagasi multi-tahap | App (sidebar) |
 | `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin), Deniz (klien lain) | App |
 | `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru | Publik |
 | `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan API key (BYOK) | App |
@@ -49,13 +49,13 @@ Sumber: `src/lib/titip/destinasi.ts` (katalog), `src/lib/titip/kaki.ts` (tipe + 
 | `/admin` | Admin | Daftar orang dan peran | App |
 
 Dua shell di satu layout: halaman app memakai rail sidebar + area kerja penuh; beranda dan masuk
-tidak memakai sidebar dan menaruh kontennya di tengah layar. Meja tidak dikunci login.
+tidak memakai sidebar dan menaruh kontennya di tengah layar. Kalkulator tidak dikunci login.
 
 ## Tumpukan
 
 SvelteKit, Svelte 5, Bun, Tailwind, Better Auth, Convex, Vercel.
 
-Meja aktif memakai perangkat (localStorage) untuk pengunjung. Convex menyimpan data akun (profiles, titipan, tripScenarios), deployment `impressive-wildcat-570`.
+Kalkulator aktif memakai perangkat (localStorage) untuk pengunjung. Convex menyimpan data akun (profiles, titipan, tripScenarios), deployment `impressive-wildcat-570`.
 
 ## Menjalankan
 
@@ -131,7 +131,7 @@ ground `#EEECEA`, surface `#E4E1DD`, field `#CDC3B6`, ink `#333231`, muted `#4A4
 `#5C6B54`, rugi `#7D3A2B`. Satu huruf: **Clash Grotesk** (Fontshare). Permukaan dipisah oleh tone,
 bukan garis atau bayangan. Rincian di [DESIGN.md](DESIGN.md).
 
-Foto rute di meja berasal dari Wikimedia Commons (CC BY-SA), bukan hasil produk Titipin; kredit ada di
+Foto rute di kalkulator berasal dari Wikimedia Commons (CC BY-SA), bukan hasil produk Titipin; kredit ada di
 footer dan figcaption.
 
 ## Repo
