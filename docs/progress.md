@@ -2,6 +2,20 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 16 Oktober 2026 (lanjutan 3): perbaiki skrip smoke basi (trip v2)
+
+Dua skrip uji manual masih memakai bentuk trip **v1** padahal `seedTrip()` sudah **v2** (kaki bebas),
+jadi keduanya gagal dijalankan — dan CI tidak menangkapnya (`test:trip-api` di-skip tanpa
+`CONVEX_DEPLOY_KEY`).
+
+- `scripts/trip-api-smoke.mjs`: `trip.cgkIst.hargaPerKg` → `trip.kaki[0].scenario.hargaPerKg`.
+- `scripts/register-smoke.mjs`: pemilih peran sekarang muncul **setelah** password + konfirmasi
+  cocok, jadi urutannya Nama/Email/Password/Konfirmasi → pilih Klien → "Buat akun"; `waitForURL`
+  dipersempit ke `/titip|/meja|/admin` (dulu `/masuk` cocok di `/masuk/selesai`).
+
+Verifikasi: `svelte-check` 0 error; 65 tes lulus; `test:trip-api` PASS; register flow PASS
+(`pageerrors: none`); smoke dev 6 halaman bersih desktop+mobile; CI hijau. Commit `7408675`.
+
 ## 16 Oktober 2026 (lanjutan 2): katalog 25 negara + wizard ala booking + daftar berurutan
 
 Permintaan pemilik: hindari isian bebas, perbanyak negara (seed) dengan aturan mata uang, opsi
