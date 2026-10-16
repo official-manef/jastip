@@ -17,6 +17,12 @@ function bypassLocalApi(req: { url?: string }): string | undefined {
     path.startsWith("/api/trips/") ||
     path === "/api/readiness" ||
     path.startsWith("/api/readiness/") ||
+    path === "/api/kurs" ||
+    path.startsWith("/api/kurs/") ||
+    path === "/api/langganan" ||
+    path.startsWith("/api/langganan/") ||
+    path === "/api/doku" ||
+    path.startsWith("/api/doku/") ||
     path === "/api/auth" ||
     path.startsWith("/api/auth/") ||
     path === "/api/saya" ||

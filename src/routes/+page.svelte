@@ -36,7 +36,7 @@
       janji: "Hitung trip pertamamu sekarang.",
       fitur: [
         "Kalkulator bagasi multi-tahap",
-        "10 negara tujuan + transit",
+        "25 negara tujuan + transit + negara sendiri",
         "Laba, muatan, dan sisa kuota langsung",
         "Tersimpan di perangkat ini",
       ],
@@ -140,10 +140,10 @@
 </section>
 
 <section class="mt-14" data-reveal aria-labelledby="rute">
-  <h2 id="rute" class="text-center" data-reveal>Sepuluh negara, satu rute</h2>
+  <h2 id="rute" class="text-center" data-reveal>Dari mana saja, ke mana saja</h2>
   <p class="mx-auto mt-3 max-w-[46ch] text-center text-body text-muted" data-reveal>
-    Jepang, Korea, Singapura, Hong Kong, Thailand, Amerika, Prancis, Malaysia, Jerman, Australia.
-    Transit di negara lain tetap bisa diisi barang. Foto di bawah contoh rute, bukan hasil produk Titipin.
+    Susun rute dari nol: pilih negara mana pun dari katalog 25 tujuan, tambah transit, atau isi negara
+    yang belum ada. Tiap tahap punya muatan dan biayanya sendiri. Foto di bawah hanya contoh suasana bandara.
   </p>
 
   <div class="crossfade relative mx-auto mt-6 aspect-[16/9] w-full overflow-hidden rounded bg-surface" aria-hidden="true">
@@ -156,7 +156,7 @@
     <figure data-reveal>
       <img class="w-full rounded object-cover" src="/img/soetta-skytrain-9.jpg" alt="Skytrain di Bandara Soekarno-Hatta, Jakarta" width="1920" height="1280" loading="lazy" decoding="async" />
       <figcaption class="mt-2 text-small text-muted">
-        Skytrain Soekarno-Hatta, ujung Jakarta. "Soetta Skytrain 9", Gunawan Kartapranata, CC BY-SA 4.0.
+        Skytrain Soekarno-Hatta, ujung keberangkatan. "Soetta Skytrain 9", Gunawan Kartapranata, CC BY-SA 4.0.
       </figcaption>
     </figure>
     <figure data-reveal>
@@ -164,7 +164,7 @@
         <source src="/img/a-ferry-in-the-bosphorus-20251015.webm" type="video/webm" />
       </video>
       <figcaption class="mt-2 text-small text-muted">
-        Feri berlayar, sisi Istanbul. "A ferry in the Bosphorus", Kurmanbek, CC BY-SA 4.0.
+        Feri berlayar, salah satu kota singgah. "A ferry in the Bosphorus", Kurmanbek, CC BY-SA 4.0.
       </figcaption>
     </figure>
   </div>

@@ -130,7 +130,7 @@
         {#if session.role === "klien"}
           Catat barang yang mau dibawa. Jastiper yang mengubah status.
         {:else if session.role === "jastiper"}
-          Permintaan klien di rute Jakarta ↔ Turki. Tandai saat barang dibawa atau selesai.
+          Permintaan klien di semua rute. Tandai saat barang dibawa atau selesai.
         {:else}
           Kamu bisa menitip untuk uji, dan mengubah status seperti jastiper.
         {/if}

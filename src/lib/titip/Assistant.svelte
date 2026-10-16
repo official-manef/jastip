@@ -102,7 +102,7 @@
       </li>
     {:else}
       <li class="panel p-6 text-body text-muted">
-        Coba: “set harga per kg jadi 350rb”, “tambah barang Kopi 1 kg 4 pcs tarif 300rb/kg”, “buat titipan serum 0,3 kg ke Turki”.
+        Coba: “set harga per kg jadi 350rb”, “tambah barang Kopi 1 kg 4 pcs tarif 300rb/kg”, “tambah tahap ke Jepang”.
       </li>
     {/each}
     {#if busy}<li class="text-body text-muted" role="status">Asisten bekerja…</li>{/if}

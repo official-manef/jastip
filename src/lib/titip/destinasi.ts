@@ -31,7 +31,7 @@ export type Destinasi = {
   iata?: string;
   /** Mata uang belanja utama di negara itu. */
   currency: Currency;
-  /** Rupiah per 1 unit `currency` (perkiraan; jastiper boleh ubah). */
+  /** Rupiah per 1 unit `currency` (nilai contoh; ditimpa kurs dinamis bila ada). */
   kurs: number;
   /** Kawasan, untuk pengelompokan pemilih. */
   kawasan: Kawasan;
@@ -42,6 +42,27 @@ export type Destinasi = {
   /** Ringkasan singkat untuk daftar. */
   ringkas: string;
 };
+
+/**
+ * Kurs dinamis yang bisa ditimpa dari luar (fetch `/api/kurs`). Disimpan di
+ * modul supaya `viewOf` dan pemilih negara membaca nilai terbaru tanpa
+ * membawa kurs ke dalam state trip.
+ */
+let kursLive: { rates: Partial<Record<Currency, number>>; updatedAt: string; sumber: string } | null = null;
+
+export function setKursLive(k: { rates: Partial<Record<Currency, number>>; updatedAt: string; sumber: string } | null) {
+  kursLive = k;
+}
+
+export function kursLiveInfo() {
+  return kursLive;
+}
+
+/** Rupiah per 1 unit, dinamis bila ada, kalau tidak nilai seed. */
+export function kursUntuk(currency: Currency, seed: number): number {
+  const live = kursLive?.rates[currency];
+  return typeof live === "number" && live > 0 ? live : seed;
+}
 
 /**
  * Negara di luar katalog. Disimpan di dalam tahap (bukan di katalog global),
@@ -424,12 +445,12 @@ export function customKode(negara: string): string {
   return `custom:${slug}`;
 }
 
-/** Katalog → view. */
+/** Katalog → view. Kurs diganti kurs dinamis bila tersedia. */
 export function toView(d: Destinasi): DestinasiView {
-  return { ...d, kode: d.code, custom: false };
+  return { ...d, kode: d.code, kurs: kursUntuk(d.currency, d.kurs), custom: false };
 }
 
-/** Custom (disimpan di tahap) → view. */
+/** Custom (disimpan di tahap) → view. Kurs custom dipakai apa adanya. */
 export function customToView(kode: string, c: CustomDest): DestinasiView {
   return {
     code: kode,
@@ -459,8 +480,23 @@ export function viewOf(code: string, custom?: CustomDest): DestinasiView | undef
       kategori: [], alasan: "Titik asal.", ringkas: "Indonesia.", custom: false,
     };
   }
+  if (isCustom(code)) {
+    // Kode `custom:<slug>` tapi data custom tak ada (data lama) → tampilkan apa adanya.
+    return {
+      kode: code, code,
+      negara: code.replace(/^custom:/, "").replace(/-/g, " "),
+      kota: code.replace(/^custom:/, ""),
+      currency: "USD", kurs: kursUntuk("USD", 15800),
+      kategori: [], alasan: "Negara tambahan (data tak lengkap).", ringkas: "Negara tambahan.", custom: true,
+    };
+  }
   const d = BY_CODE.get(code);
   return d ? toView(d) : undefined;
+}
+
+/** True bila kode adalah negara tambahan (`custom:<slug>`). */
+function isCustom(code: string): boolean {
+  return code.startsWith("custom:");
 }
 
 /** Daftar negara per kawasan, urut sesuai katalog. */

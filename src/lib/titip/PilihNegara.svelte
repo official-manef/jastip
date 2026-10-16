@@ -15,6 +15,7 @@
     type Currency,
   } from "./destinasi";
   import { idr } from "./model";
+  import { kursLabel } from "./kurs-store.svelte";
 
   type Props = {
     /** Kode destinasi terpilih (katalog, `custom:<slug>`, atau "jakarta"). */
@@ -101,6 +102,7 @@
     {:else}
       Mata uang {view.currency}, kurs {idr(view.kurs)}.
     {/if}
+    <span class="text-muted">· {kursLabel()}</span>
   </p>
 {/if}
 

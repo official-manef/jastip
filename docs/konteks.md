@@ -18,6 +18,10 @@ barang, biaya jalan, biaya alat. Tahap juga boleh memuat negara tambahan (`custo
 25 negara dikelompokkan per kawasan, plus Turki (koridor lama). Sumber:
 `src/lib/titip/destinasi.ts`. Kategori dan kurs adalah contoh — jastiper yang mengubah di kalkulator.
 
+**Kurs dinamis.** Kurs (Rp per 1 unit) diambil `/api/kurs` dari `open.er-api.com`, cache 6 jam,
+membawa `updatedAt` ("Kurs per tanggal"). Provider gagal → kurs seed, ditandai "Kurs contoh".
+Modul: `kurs.ts`, `kurs-store.svelte.ts`; `viewOf` memakai kurs live.
+
 **Hindari isian bebas:** pilihan negara memakai satu dropdown (`PilihNegara.svelte`) berisi
 katalog per kawasan. Kalau negara belum ada, ada opsi **"Negara lain…"** di dasar daftar: pengguna
 mengisi nama, kota, mata uang (dari daftar, bukan bebas), dan kurs sekali saja. Negara tambahan
@@ -85,7 +89,7 @@ Data akun disimpan terpusat di Convex; kalkulasi pengunjung memiliki salinan per
 **Semua data akun ada di Convex** (deployment `impressive-wildcat-570`):
 
 - Tabel auth (users/sessions/accounts) di komponen resmi `@convex-dev/better-auth`.
-- `profiles` (peran per akun), `titipan` (milik satu akun), `tripScenarios` (trip per akun, slug `utama` = trip aktif kalkulator).
+- `profiles` (peran per akun), `titipan` (milik satu akun), `tripScenarios` (trip per akun, slug `utama` = trip aktif kalkulator), `subscriptions` (langganan, status dari webhook DOKU).
 - `trips` menyimpan skenario contoh lama (kode historis).
 
 Route SvelteKit (`/api/saya,peran,admin,titipan,trip,trips`) memanggil fungsi Convex lewat `ConvexHttpClient` di server; token sesi diambil otomatis dari cookie. Logika server ada di `src/convex/`. Pengunjung tanpa akun memakai localStorage perangkat.
@@ -105,9 +109,31 @@ dan peran dipilih.
 
 Klien dan jastiper dapat memilih peran sekali. Admin harus ditetapkan operator dengan `TITIPIN_ADMIN_USER_ID`; identitas email yang belum diverifikasi tidak dapat digunakan untuk mengambil admin. Admin tetap hanya satu.
 
+## Dashboard per peran
+
+`/dashboard` menampilkan ringkasan sesuai peran dari data Convex asli (bukan contoh):
+
+- **Klien**: jumlah titipan, berat, yang masih jalan, aksi ke `/titip`.
+- **Jastiper**: titipan masuk, antrean, kapasitas trip (dari kalkulator), aksi ke `/meja`.
+- **Admin**: jumlah orang, jastiper, titipan, aksi ke `/admin`.
+- Semua peran melihat status **langganan**.
+
+`homeFor(role)` kini menuju `/dashboard` untuk semua peran setelah masuk.
+
+## Langganan (scaffold DOKU)
+
+Struktur siap, pembayaran nyata belum aktif:
+
+- Tabel `subscriptions`: `plan`, `status` (pending/aktif/batal/kadaluarsa), `invoiceId` (unik, kunci idempoten webhook), `harga`, `mulai`, `selesai`, `metode`.
+- Fungsi `subscriptions.ts`: `mine` (baca status pemilik), `buatInvoice` (buat `pending`; harga dari server `HARGA.pro`), `tandaiBayar` (dipakai webhook; cek `DOKU_WEBHOOK_SECRET`).
+- Route `GET/POST /api/langganan`, `POST /api/doku/webhook`.
+- Mengaktifkan: isi `DOKU_CLIENT_ID`/`DOKU_SECRET_KEY`/`DOKU_API_BASE_URL` + `DOKU_WEBHOOK_SECRET` (Vercel + Convex), lalu ganti webhook ke signature resmi DOKU.
+
 ## Yang sengaja ditunda
 
 - Integrasi bea cukai / aturan hukum per negara (katalog hanya kategori & kurs contoh).
 - OAuth broker tidak diperlukan oleh login email/password mandiri.
 - Reset password dan verifikasi email.
 - Target omzet sebagai pengubah harga otomatis (sekarang hanya indikator progres).
+- Pembayaran DOKU nyata (sekarang scaffold: invoice + webhook, tanpa panggilan checkout).
+- Verifikasi signature webhook DOKU (sekarang shared secret; butuh spec merchant).

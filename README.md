@@ -33,14 +33,20 @@ jenis (`utama` atau `transit`), lama (hari untuk utama, jam untuk transit), dan 
 - **Target omzet** = indikator progres di tahap aktif (batang + "butuh lagi"), bukan pengubah harga otomatis.
 - Trip lama (v1: satu koridor `dir`/`mode`) dimigrasi otomatis ke daftar tahap saat dibaca.
 
+- **Kurs dinamis**: `/api/kurs` mengambil kurs dari `open.er-api.com` (gratis, tanpa key), cache 6 jam, dan menampilkan **tanggal update** ("Kurs per 16 Okt 2026"). Bila provider gagal, UI jatuh ke kurs seed katalog dan menandainya "Kurs contoh".
+- **Dashboard per peran** di `/dashboard`: klien (titipan + status + langganan), jastiper (titipan masuk + kapasitas trip), admin (orang + peran + titipan). Data asli dari Convex, bukan contoh.
+- **Langganan (scaffold DOKU)**: tabel `subscriptions` + `/api/langganan` (buat invoice `pending`) + webhook `/api/doku/webhook`. Pembayaran nyata belum aktif — butuh kredensial DOKU.
+
 Sumber: `src/lib/titip/destinasi.ts` (katalog), `src/lib/titip/kaki.ts` (tipe + migrasi),
-`src/lib/titip/pricing.ts` (`tripLintas`), `src/lib/titip/trip-state.ts` (skema v2 + zod).
+`src/lib/titip/kurs.ts` + `kurs-store.svelte.ts` (kurs dinamis), `src/lib/titip/pricing.ts`
+(`tripLintas`), `src/lib/titip/trip-state.ts` (skema v2 + zod).
 
 ## Halaman
 
 | Path | Untuk siapa | Isi | Shell |
 | --- | --- | --- | --- |
-| `/` | Semua | Beranda publik: instrumen hidup, rute, paket (Gratis/Akun/Langganan), peran | Publik (tanpa sidebar, konten terpusat) |
+| `/` | Semua | Beranda publik: instrumen hidup, rute, paket, peran | Publik (tanpa sidebar, konten terpusat) |
+| `/dashboard` | Klien, jastiper, admin | Dashboard sesuai peran (data asli) | App |
 | `/meja` | Semua | Kalkulator bagasi multi-tahap | App (sidebar) |
 | `/portal` | Semua | Dashboard contoh: Sari & Deniz (klien), Raka (jastiper) — klien dan jastiper saling menemukan | App |
 | `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru | Publik |
@@ -83,6 +89,32 @@ Auth akun dan data aplikasi semuanya di **Convex** (komponen resmi `@convex-dev/
 - Route app (`/api/saya,peran,admin,titipan,trip,trips`) memakai `ConvexHttpClient` di server; token dari cookie Better Auth dibaca otomatis via `withServerConvexToken` di `hooks.server.ts`. Isi logika ada di `src/convex/*` (`accounts.ts`, `titipan.ts`, `tripScenarios.ts`).
 - Auth client di browser (`src/lib/auth/client.ts`) memakai plugin `convexClient()` untuk menukar sesi jadi JWT Convex.
 
+## Kurs dinamis
+
+Kurs (rupiah per 1 unit mata uang) diambil dari `open.er-api.com` lewat `/api/kurs`
+(gratis, tanpa key), cache in-memory 6 jam. Setiap respons membawa `updatedAt`, dan UI
+menampilkan **"Kurs per tanggal"**. Bila provider gagal, dipakai kurs seed katalog dan
+ditandai **"Kurs contoh"** — kalkulator tetap jalan.
+
+- Modul murni: `src/lib/titip/kurs.ts` (normalisasi + tanggal). Store klien:
+  `kurs-store.svelte.ts` (menulis ke `setKursLive`, dibaca `viewOf`).
+- Angka kurs **tidak** ikut tersimpan di state trip; hanya dipakai untuk tampilan/pemilih.
+
+## Langganan (scaffold DOKU)
+
+Struktur siap, pembayaran nyata belum aktif (butuh kredensial merchant DOKU):
+
+- Tabel Convex `subscriptions` (`status`: pending/aktif/batal/kadaluarsa) + `subscriptions.ts`
+  (`mine`, `buatInvoice`, `tandaiBayar`). Harga paket ditentukan server, bukan klien.
+- Route: `GET/POST /api/langganan` (status + buat invoice `pending`),
+  `POST /api/doku/webhook` (ubah status; butuh `DOKU_WEBHOOK_SECRET`).
+- Dashboard `/dashboard` menampilkan status langganan + tombol "Langganan Pro".
+
+Cara mengaktifkan nanti: isi `DOKU_CLIENT_ID`, `DOKU_SECRET_KEY`, `DOKU_API_BASE_URL`
+(server-only) + `DOKU_WEBHOOK_SECRET` di Vercel **dan** Convex
+(`npx convex env set DOKU_WEBHOOK_SECRET ...`), lalu ganti route webhook agar memakai
+signature resmi DOKU. Jangan pernah menaruh kredensial di chat.
+
 ## Env di Vercel
 
 Ditetapkan operator di project `manef/jastip`:
@@ -91,6 +123,8 @@ Ditetapkan operator di project `manef/jastip`:
 | --- | --- |
 | `PUBLIC_CONVEX_URL` | URL backend Convex, mis. `https://impressive-wildcat-570.convex.cloud` |
 | `TITIPIN_ADMIN_USER_ID` | ID akun admin tunggal (opsional) |
+| `DOKU_WEBHOOK_SECRET` | Rahasia webhook DOKU (langganan; set di Vercel **dan** Convex) |
+| `DOKU_CLIENT_ID` / `DOKU_SECRET_KEY` / `DOKU_API_BASE_URL` | Checkout DOKU (server-only; diisi saat langganan diaktifkan) |
 
 Asisten AI mode **BYOK**: tidak ada key server, pengguna mengisi key penyedia sendiri di `/pengaturan`. Tidak ada env AI di Vercel.
 

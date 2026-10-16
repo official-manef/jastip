@@ -16,6 +16,13 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   {
+    href: "/dashboard",
+    label: "Dashboard",
+    hint: "Ringkasan sesuai peran",
+    icon: "M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 8h6V4h-6z",
+    roles: ["klien", "jastiper", "admin"],
+  },
+  {
     href: "/meja",
     label: "Kalkulator",
     hint: "Hitung bagasi, tarif & laba",

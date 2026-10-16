@@ -44,4 +44,29 @@ export default defineSchema({
     state: v.any(),
     version: v.number(),
   }).index("by_user", ["userId"]).index("by_user_slug", ["userId", "slug"]),
+
+  /**
+   * Langganan per akun. Sumber status = webhook DOKU; aplikasi hanya membaca.
+   * `invoiceId` dari kita (kunci idempoten webhook). Lihat `subscriptions.ts`.
+   */
+  subscriptions: defineTable({
+    userId: v.string(),
+    /** Paket: "gratis" tak disimpan; hanya paket berbayar. */
+    plan: v.union(v.literal("pro")),
+    status: v.union(v.literal("pending"), v.literal("aktif"), v.literal("batal"), v.literal("kadaluarsa")),
+    /** ID invoice kita; harus unik, dipakai webhook untuk menemukan baris. */
+    invoiceId: v.string(),
+    /** ID transaksi dari DOKU, bila sudah ada. */
+    dokuInvoice: v.optional(v.string()),
+    /** Harga (rupiah) saat dibeli. */
+    harga: v.number(),
+    /** ISO-8601; kosong sampai aktif. */
+    mulai: v.optional(v.string()),
+    /** ISO-8601; kosong = berjalan. */
+    selesai: v.optional(v.string()),
+    /** Metode pembayaran dari DOKU, bila ada (mis. "QRIS", "VA"). */
+    metode: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_invoice", ["invoiceId"]),
 });

@@ -2,6 +2,30 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 16 Oktober 2026 (lanjutan 4): kurs dinamis + dashboard per peran + scaffold DOKU
+
+Permintaan pemilik: kurs dibuat dinamis + diberi tanggal update, landing jangan
+berpatokan Turki saja, siapkan DOKU untuk langganan, dan dashboard tiap role.
+
+- **Kurs dinamis** (`kurs.ts`, `kurs-store.svelte.ts`, `/api/kurs`): ambil dari
+  `open.er-api.com` (gratis, tanpa key), cache 6 jam, bawa `updatedAt`. UI menampilkan
+  "Kurs per 16 Okt 2026"; provider gagal -> kurs seed + label "Kurs contoh". `viewOf`
+  memakai kurs live (`setKursLive`/`kursUntuk`). Kurs tidak masuk state trip.
+- **Landing de-Turki**: "Sepuluh negara, satu rute" -> "Dari mana saja, ke mana saja";
+  caption foto netral; paket "25 negara ... + negara sendiri". `/titip` + contoh asisten
+  tak lagi menyebut Turki.
+- **Dashboard per peran** (`/dashboard`): klien (titipan/berat/jalan), jastiper
+  (titipan masuk/antrean/kapasitas), admin (orang/jastiper/titipan) + status langganan.
+  Data Convex asli. `homeFor` semua peran -> `/dashboard`. Nav + prefix shell ditambah.
+- **Langganan scaffold DOKU**: tabel `subscriptions` + `subscriptions.ts`
+  (`mine`/`buatInvoice`/`tandaiBayar`), route `/api/langganan` dan `/api/doku/webhook`.
+  Harga dari server (`HARGA.pro` = Rp99rb). Pembayaran nyata belum aktif (butuh kredensial).
+- `.env.example` + `vite.config.ts` (bypass `/api/kurs|langganan|doku` ke SvelteKit).
+- Verifikasi: `svelte-check` 0 error; 69 tes lulus (4 tes `kurs.test.ts`); build sukses;
+  `npx convex dev --once` push schema (24 fungsi); uji browser: `/api/kurs` 200 + tanggal,
+  label "Kurs per 16 Okt 2026" tampil, `/api/langganan` 401 tanpa sesi, webhook 503 tanpa
+  secret; smoke dev bersih (5 halaman) desktop+mobile.
+
 ## 16 Oktober 2026 (lanjutan 3): perbaiki skrip smoke basi (trip v2)
 
 Dua skrip uji manual masih memakai bentuk trip **v1** padahal `seedTrip()` sudah **v2** (kaki bebas),

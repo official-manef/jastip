@@ -5,6 +5,7 @@
   import Sidebar from "../lib/titip/Sidebar.svelte";
   import UpdateToast from "../lib/titip/UpdateToast.svelte";
   import { initLoopPause, initReveal } from "../lib/titip/motion";
+  import { loadKurs } from "../lib/titip/kurs-store.svelte";
   import { loadMe } from "../lib/titip/session.svelte";
   import { createSvelteAuthClient } from "@mmailaender/convex-better-auth-svelte/svelte";
   import { authClient } from "../lib/auth/client";
@@ -22,12 +23,13 @@
    * - Public shell (no sidebar, centred column, whole viewport) for the
    *   landing page and sign-in.
    */
-  const APP_PREFIXES = ["/meja", "/portal", "/titip", "/asisten", "/pengaturan", "/admin"];
+  const APP_PREFIXES = ["/dashboard", "/meja", "/portal", "/titip", "/asisten", "/pengaturan", "/admin"];
   const path = $derived(page.url.pathname);
   const isApp = $derived(APP_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`)));
 
   onMount(() => {
     void loadMe();
+    void loadKurs();
     const stopReveal = initReveal();
     const stopPause = initLoopPause();
     // Register the app's own service worker (offline shell + installable PWA).

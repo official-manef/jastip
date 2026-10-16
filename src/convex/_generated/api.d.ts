@@ -11,6 +11,7 @@
 import type * as accounts from "../accounts.js";
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as titipan from "../titipan.js";
 import type * as trip from "../trip.js";
 import type * as tripScenarios from "../tripScenarios.js";
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   accounts: typeof accounts;
   auth: typeof auth;
   http: typeof http;
+  subscriptions: typeof subscriptions;
   titipan: typeof titipan;
   trip: typeof trip;
   tripScenarios: typeof tripScenarios;
