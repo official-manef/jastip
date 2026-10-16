@@ -141,7 +141,9 @@
   }
 
   function focusDraft() {
-    document.getElementById("barang-baru")?.focus();
+    // Tombol di header bisa ditekan dari langkah mana pun; pindah ke Muatan dulu.
+    langkah = 1;
+    requestAnimationFrame(() => document.getElementById("barang-baru")?.focus());
   }
 </script>
 
