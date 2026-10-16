@@ -2,6 +2,28 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 16 Oktober 2026: validasi audit oleh Antigravity + perbaikan lanjutan
+
+Agent Antigravity (`agy`, headless) memvalidasi 18 temuan memakai
+[docs/prompt-antigravity-validasi.md](prompt-antigravity-validasi.md). Hasil
+lengkap: [docs/audit-antigravity-2026-10-16.md](audit-antigravity-2026-10-16.md).
+
+- **16 PASS, 1 PARTIAL, 1 FAIL.** F03 (PARTIAL) dan F12 (FAIL) diperbaiki.
+- **F03** — akar teknis ditemukan: `forceVisible` hanya reveal elemen dalam
+  viewport (`bottom > 0`), jadi elemen yang dilewati saat lompat ke dasar (End)
+  tetap transparan. Sekarang reveal semua yang `top < vh*0.98` + listener scroll
+  rAF-throttled. Uji 6 halaman: 0 transparan setelah End dan balik ke atas.
+- **F12** — ring `.field` 32%→70% muted (hover 55%→88%); kontras batas 1,70:1 →
+  3,73:1 (WCAG non-teks ≥3:1). Kontribusi Antigravity, diverifikasi hitung ulang.
+- **Temuan Convex baru** — `titipan.list` buang `.collect()+slice()`, pakai
+  `.order("desc").take(100)`; `titipan.setStatus` pakai `v.id("titipan")` (ID
+  tabel lain ditolak), route memetakan lemparan validasi ke 400.
+- **F17** dikonfirmasi masih ada (risiko otorisasi jastiper) → keputusan produk,
+  belum diubah. Rekomendasi dicatat.
+
+Verifikasi: svelte-check 0 error; convex tsc 0 error; 61 tes lulus; build sukses;
+smoke dev + produksi bersih desktop+mobile.
+
 ## 16 Oktober 2026: tindak lanjut audit 15 Okt (13 dari 18 temuan)
 
 Audit eksternal 15 Okt (18 temuan: 8 P1, 10 P2) diperiksa ulang terhadap kode. Status:
