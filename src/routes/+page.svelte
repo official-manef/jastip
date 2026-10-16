@@ -6,7 +6,7 @@
   import { onMount } from "svelte";
   import { desk, initDesk, kakiAktif, patch } from "../lib/titip/trip-store.svelte";
   import { computeRevenue, tripLintas } from "../lib/titip/pricing";
-  import { destinasiByCode } from "../lib/titip/destinasi";
+  import { viewOf } from "../lib/titip/destinasi";
   import { kakiCode } from "../lib/titip/kaki";
   import { idr, kg } from "../lib/titip/model";
 
@@ -15,7 +15,7 @@
   const kaki = $derived(desk.kaki);
   const idx = $derived(Math.min(desk.aktif, Math.max(0, kaki.length - 1)));
   const now = $derived(kakiAktif());
-  const meta = $derived(destinasiByCode(now.destinasi));
+  const meta = $derived(viewOf(now.destinasi, now.custom));
   const rev = $derived(computeRevenue(now.scenario.goods, now.scenario.hargaPerKg, meta?.currency ?? "IDR"));
   const lintas = $derived(tripLintas(kaki.map((k) => ({ id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario }))));
   const bersih = $derived(Math.max(0, now.scenario.bags * now.scenario.kgPerBag + now.scenario.cabin - now.scenario.tare));

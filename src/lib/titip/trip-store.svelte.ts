@@ -10,6 +10,7 @@ import { browser } from "$app/env";
 import { authedFetch, loadMe, session } from "./session.svelte";
 import { parseTrip, seedTrip, TRIP_STORAGE_KEY, type TripStateV2 } from "./trip-state";
 import { newKaki, type Kaki } from "./kaki";
+import { customKode, type CustomDest } from "./destinasi";
 import type { CapexLine, Good, Scenario } from "./calc";
 
 export const desk = $state({
@@ -172,11 +173,39 @@ export function setAktif(index: number) {
   commit();
 }
 
-/** Ganti destinasi kaki aktif; skenario diset ulang mengikuti destinasi. */
+/** Ganti destinasi kaki aktif; skenario diset ulang mengikuti destinasi.
+ *  `custom` mengisi data negara tambahan (opsi "Negara lain…"). */
 export function setDestinasi(index: number, kode: string, jenis?: Kaki["jenis"]) {
   const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
   const current = desk.kaki[i];
-  const next = newKaki(kode, jenis ?? current.jenis);
+  const next = newKaki(kode, jenis ?? current.jenis, current.custom);
+  desk.kaki = desk.kaki.map((k, idx) => (idx === i ? { ...next, id: current.id } : k));
+  commit();
+}
+
+/** Simpan/edit data negara tambahan untuk kaki aktif (tetap pertahankan barang). */
+export function setCustom(index: number, custom: Kaki["custom"]) {
+  const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
+  if (desk.kaki[i].custom && !custom) return;
+  desk.kaki = desk.kaki.map((k, idx) => {
+    if (idx !== i) return k;
+    const next: Kaki = { ...k };
+    if (custom) next.custom = custom;
+    else delete next.custom;
+    return next;
+  });
+  commit();
+}
+
+/** Ubah destinasi kaki ke negara custom baru (buat kaki baru dengan data custom). */
+export function setDestinasiCustom(
+  index: number,
+  custom: { negara: string; kota: string; currency: string; kurs: number; iata?: string },
+) {
+  const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
+  const current = desk.kaki[i];
+  const kode = customKode(custom.negara);
+  const next = newKaki(kode, current.jenis, custom as CustomDest);
   desk.kaki = desk.kaki.map((k, idx) => (idx === i ? { ...next, id: current.id } : k));
   commit();
 }

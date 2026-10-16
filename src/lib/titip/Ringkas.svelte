@@ -7,7 +7,7 @@
    */
   import { desk, kakiAktif } from "./trip-store.svelte";
   import { computeRevenue, tripLintas } from "./pricing";
-  import { destinasiByCode } from "./destinasi";
+  import { viewOf } from "./destinasi";
   import { kakiCode, kakiLabel } from "./kaki";
   import { idr, kg } from "./model";
 
@@ -17,7 +17,7 @@
   const idx = $derived(Math.min(desk.aktif, Math.max(0, kaki.length - 1)));
   const now = $derived(kakiAktif());
   const prev = $derived(idx > 0 ? kaki[idx - 1] : undefined);
-  const meta = $derived(destinasiByCode(now.destinasi));
+  const meta = $derived(viewOf(now.destinasi, now.custom));
   const rev = $derived(computeRevenue(now.scenario.goods, now.scenario.hargaPerKg, meta?.currency ?? "IDR"));
   const lintas = $derived(tripLintas(kaki.map((k) => ({ id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario }))));
   const bersih = $derived(Math.max(0, now.scenario.bags * now.scenario.kgPerBag + now.scenario.cabin - now.scenario.tare));

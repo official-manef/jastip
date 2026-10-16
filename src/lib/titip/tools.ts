@@ -14,7 +14,7 @@ import {
 } from "./trip-store.svelte";
 import { compute } from "./calc";
 import { capacity, computeRevenue, targetProgress, tripLintas } from "./pricing";
-import { DESTINASI, destinasiByCode } from "./destinasi";
+import { DESTINASI, viewOf } from "./destinasi";
 import { newKaki as baruKaki } from "./kaki";
 import { suggestToTarget, type SuggestCandidate } from "./suggest";
 import { evaluateRisk, type RiskRule } from "./risk";
@@ -76,7 +76,7 @@ function ringkasan(): Json {
   const s = snapshot();
   const idx = Math.min(desk.aktif, Math.max(0, s.kaki.length - 1));
   const now = s.kaki[idx];
-  const meta = destinasiByCode(now.destinasi);
+  const meta = viewOf(now.destinasi, now.custom);
   const rev = computeRevenue(now.scenario.goods, now.scenario.hargaPerKg, meta?.currency ?? "IDR");
   const lintas = tripLintas(s.kaki.map((k) => ({ id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario })));
   const bebanTrip = s.kaki.reduce((sum, k) => {
@@ -92,12 +92,12 @@ function ringkasan(): Json {
     rute: s.kaki.map((k, i) => ({
       index: i,
       destinasi: k.destinasi,
-      negara: destinasiByCode(k.destinasi)?.negara ?? (k.destinasi === "jakarta" ? "Indonesia" : k.destinasi),
-      kota: destinasiByCode(k.destinasi)?.kota ?? k.destinasi,
+      negara: viewOf(k.destinasi, k.custom)?.negara ?? (k.destinasi === "jakarta" ? "Indonesia" : k.destinasi),
+      kota: viewOf(k.destinasi, k.custom)?.kota ?? k.destinasi,
       jenis: k.jenis,
       lama: k.lama,
       aktif: i === idx,
-      mataUangBelanja: destinasiByCode(k.destinasi)?.currency ?? "IDR",
+      mataUangBelanja: viewOf(k.destinasi, k.custom)?.currency ?? "IDR",
       muatanKg: tripLintas([{ id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario }]).totalKg,
     })),
     sisaKgKakiIni: Math.round((bersihKaki - rev.totalKg) * 10) / 10,

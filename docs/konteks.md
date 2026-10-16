@@ -4,9 +4,9 @@ Titipin adalah MVP jastip pribadi multi-negara. Orang yang menitip (klien) mengi
 
 ## Model trip: tahap
 
-Satu **trip** = daftar **tahap** (penerbangan) berurutan. Tiap tahap punya destinasi dari katalog 10 negara
-(+ Turki), jenis `utama`|`transit`, lama (hari/jam), dan skenario lengkap sendiri: kuota bagasi, barang,
-biaya jalan, biaya alat.
+Satu **trip** = daftar **tahap** (penerbangan) berurutan. Tiap tahap punya destinasi dari katalog 25
+negara (+ Turki), jenis `utama`|`transit`, lama (hari/jam), dan skenario lengkap sendiri: kuota bagasi,
+barang, biaya jalan, biaya alat. Tahap juga boleh memuat negara tambahan (`custom`) bila tak ada di katalog.
 
 - **Transit** = tahap singgah pendek; kuota kecil, biaya jalan ringan, tapi tetap bisa diisi barang.
 - **Biaya alat** dipakai bersama seluruh tahap (koper, timbangan); dibagi umur trip, dihitung sekali.
@@ -15,21 +15,27 @@ biaya jalan, biaya alat.
 
 ## Katalog tujuan
 
-Sepuluh negara paling populer untuk pasar Indonesia, plus Turki (koridor lama). Sumber:
+25 negara dikelompokkan per kawasan, plus Turki (koridor lama). Sumber:
 `src/lib/titip/destinasi.ts`. Kategori dan kurs adalah contoh — jastiper yang mengubah di kalkulator.
 
-| Negara | Kategori khas |
+**Hindari isian bebas:** pilihan negara memakai satu dropdown (`PilihNegara.svelte`) berisi
+katalog per kawasan. Kalau negara belum ada, ada opsi **"Negara lain…"** di dasar daftar: pengguna
+mengisi nama, kota, mata uang (dari daftar, bukan bebas), dan kurs sekali saja. Negara tambahan
+disimpan di dalam tahap (`Kaki.custom`), bukan di katalog global.
+
+| Kawasan | Negara |
 | --- | --- |
-| Jepang | Skincare, makeup, kamera, elektronik, figure |
-| Korea Selatan | K-beauty, fashion, album/fotokard K-pop, makanan |
-| Singapura | Kosmetik, obat, brand regional, barang premium |
-| Hong Kong | Skincare, tas branded, aksesori, lifestyle |
-| Thailand | Kosmetik lokal, fashion murah, snack, herbal |
-| Amerika Serikat | Sepatu, streetwear, gadget, supplement |
-| Prancis | Parfum, kosmetik, fashion, luxury |
-| Malaysia | Produk halal, fashion, kebutuhan harian |
-| Jerman | Skincare/farmasi, alat rumah tangga, otomotif |
-| Australia | Vitamin, kesehatan, skincare, susu |
+| Asia Tenggara | Singapura, Malaysia, Thailand, Vietnam, Filipina |
+| Asia Timur | Jepang, Korea Selatan, Tiongkok, Taiwan, Hong Kong |
+| Asia Selatan | India |
+| Timur Tengah | Turki, Uni Emirat Arab, Arab Saudi |
+| Afrika | Mesir |
+| Eropa | Prancis, Jerman, Belanda, Inggris, Italia, Swiss |
+| Amerika | Amerika Serikat, Kanada |
+| Oseania | Australia, Selandia Baru |
+
+Mata uang per negara ikut katalog (`KATALOG_CURRENCIES`). Tarif jasa tetap dalam rupiah; mata uang
+belanja hanya untuk harga beli barang.
 
 ## Peran
 
@@ -92,6 +98,10 @@ hanya ada di memori halaman; keduanya saling bertemu tanpa perantara.
 ## Masuk
 
 Email/password mandiri melalui Better Auth (database di Convex). Login akun lama tidak membutuhkan pilihan peran ulang. Belum ada reset password atau verifikasi email.
+
+Saat **daftar**, pilihan peran (klien / jastiper) baru muncul **setelah password + konfirmasi password
+cocok** — bukan sebelum isi form (permintaan pemilik). Tombol "Buat akun" nonaktif sampai password cocok
+dan peran dipilih.
 
 Klien dan jastiper dapat memilih peran sekali. Admin harus ditetapkan operator dengan `TITIPIN_ADMIN_USER_ID`; identitas email yang belum diverifikasi tidak dapat digunakan untuk mengambil admin. Admin tetap hanya satu.
 

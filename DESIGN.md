@@ -31,12 +31,23 @@ Permukaan dipisahkan oleh **satu langkah tone**, bukan garis atau bayangan.
 - **App** (`/meja`, `/portal`, `/titip`, `/asisten`, `/pengaturan`, `/admin`): rail sidebar tetap
   (>=lg) + bar/drawer (mobile). Area kerja memakai sisa lebar penuh, konten `max-w-[68rem]` di tengah.
 
-## Kalkulator multi-tahap
+## Kalkulator multi-tahap (wizard ala booking)
 
 Kalkulator menyusun trip sebagai daftar tahap. Pemilih tahap = deretan tombol berurutan berisi kode rute
-(mis. `CGK → TYO`), kota, dan lama; tahap aktif disorot. Di bawahnya, panel tahap aktif memuat pemilih
-negara, jenis (utama/transit), lama, lalu kuota, muatan, biaya jalan, biaya alat. Total lintas tahap (jasa, muatan,
-kapasitas, laba) tampil sebagai satu panel. Readout besar tetap sisa kuota tahap aktif.
+(mis. `CGK → TYO`), kota, dan lama; tahap aktif disorot.
+
+Layout mengambil pola aplikasi booking pesawat supaya familiar:
+
+- **Stepper** empat langkah di atas kolom kerja: **Rute → Muatan → Biaya → Ringkasan**. Nomor langkah
+  aktif di-accent, langkah selesai tone lebih tua; bisa diklik langsung.
+- **Kolom kerja** = satu bagian per langkah (bukan halaman panjang). Navigasi "Sebelumnya / Berikutnya".
+- **Ringkasan lengket** (`position: sticky`, `lg` ke atas) di sisi kanan: sisa kuota besar, total muatan,
+  jasa/beban/laba trip — angka kunci selalu terlihat seperti ringkasan harga tiket.
+- Di **mobile**, kolom kanan pindah ke bawah; stepper bisa digulir mendatar.
+
+Pemilih negara (`PilihNegara.svelte`) = satu dropdown dikelompokkan per kawasan (`optgroup`), plus
+opsi **"Negara lain…"** di dasar untuk negara yang belum ada. Form custom hanya muncul saat opsi itu
+dipilih; mata uang dipilih dari daftar, bukan diketik.
 
 ## Tipe
 

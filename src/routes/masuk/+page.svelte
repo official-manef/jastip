@@ -11,7 +11,13 @@
   let name = $state("");
   let email = $state("");
   let password = $state("");
+  let konfirmasi = $state("");
   const field = "field";
+
+  /** Password cocok hanya kalau mode daftar & isian konfirmasi sama. */
+  const cocok = $derived(!registering || (password.length > 0 && password === konfirmasi));
+  /** Peran boleh dipilih setelah password + konfirmasi cocok (permintaan pemilik). */
+  const bolehPilihPeran = $derived(!registering || cocok);
 
   onMount(() => {
     void loadMe();
@@ -58,7 +64,11 @@
 
   async function lanjut(event: SubmitEvent) {
     event.preventDefault();
-    if ((registering && !chosen) || busy || !session.databaseReady) return;
+    if (busy || !session.databaseReady) return;
+    if (registering) {
+      if (!cocok) { notice = "Password dan konfirmasi belum sama."; return; }
+      if (!chosen) { notice = "Pilih peran dulu setelah password cocok."; return; }
+    }
     busy = true;
     notice = "";
     try {
@@ -144,23 +154,8 @@
         </p>
       {/if}
 
-      <!-- Pilihan peran hanya saat mendaftar, bukan saat login biasa. -->
-      {#if registering}
-        <div class="mt-6 flex flex-col gap-2">
-          {#each ROLES.filter((item) => item.id !== "admin" || session.canClaimAdmin) as item (item.id)}
-            <button
-              type="button"
-              class="rounded p-4 text-left transition-colors {chosen === item.id ? 'bg-primary text-primary-fg' : 'bg-surface hover:bg-field'}"
-              aria-pressed={chosen === item.id}
-              onclick={() => (chosen = item.id)}
-            >
-              <span class="block text-lead">{item.label}</span>
-              <span class="mt-1 block text-small {chosen === item.id ? 'text-primary-fg/80' : 'text-muted'}">{item.blurb}</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
-
+      <!-- Pilihan peran hanya saat mendaftar, dan muncul SETELAH password +
+           konfirmasi cocok (permintaan pemilik: pilih peran sesudah konfirmasi). -->
       <form class="mt-6 flex flex-col gap-4" onsubmit={lanjut}>
         {#if registering}
           <label class="block">
@@ -176,15 +171,60 @@
           <span class="mb-2 block text-small text-muted">Password</span>
           <input class={field} type="password" bind:value={password} autocomplete={registering ? "new-password" : "current-password"} required minlength={registering ? 12 : 1} maxlength="128" />
         </label>
-        {#if registering}<p class="text-small text-muted">Gunakan minimal 12 karakter.</p>{/if}
-        <button type="submit" class="btn disabled:opacity-50" disabled={(registering && !chosen) || busy || !session.databaseReady}>
+        {#if registering}
+          <label class="block">
+            <span class="mb-2 block text-small text-muted">Konfirmasi password</span>
+            <input
+              class={field}
+              type="password"
+              bind:value={konfirmasi}
+              autocomplete="new-password"
+              required
+              minlength="12"
+              maxlength="128"
+              aria-invalid={konfirmasi.length > 0 && !cocok}
+            />
+          </label>
+          {#if konfirmasi.length > 0 && !cocok}
+            <p class="text-small text-accent" role="status">Password belum sama.</p>
+          {:else}
+            <p class="text-small text-muted">Gunakan minimal 12 karakter.</p>
+          {/if}
+        {/if}
+
+        <!-- Peran muncul setelah password + konfirmasi cocok. -->
+        {#if registering && bolehPilihPeran}
+          <fieldset class="rounded bg-surface p-4">
+            <legend class="px-1 text-body">Kamu masuk sebagai siapa?</legend>
+            <p class="mt-1 text-small text-muted">Pilih sekali, tidak bisa diubah sendiri nanti.</p>
+            <div class="mt-3 flex flex-col gap-2">
+              {#each ROLES.filter((item) => item.id !== "admin" || session.canClaimAdmin) as item (item.id)}
+                <button
+                  type="button"
+                  class="rounded p-4 text-left transition-colors {chosen === item.id ? 'bg-primary text-primary-fg' : 'bg-bg hover:bg-field'}"
+                  aria-pressed={chosen === item.id}
+                  onclick={() => (chosen = item.id)}
+                >
+                  <span class="block text-lead">{item.label}</span>
+                  <span class="mt-1 block text-small {chosen === item.id ? 'text-primary-fg/80' : 'text-muted'}">{item.blurb}</span>
+                </button>
+              {/each}
+            </div>
+          </fieldset>
+        {:else if registering}
+          <p class="rounded bg-surface p-3 text-small text-muted">
+            Isi password dan konfirmasi yang sama dulu, lalu pilihan peran muncul di sini.
+          </p>
+        {/if}
+
+        <button type="submit" class="btn disabled:opacity-50" disabled={busy || !session.databaseReady || (registering && (!cocok || !chosen))}>
           {busy ? "Memproses…" : registering ? "Buat akun" : "Masuk"}
         </button>
-        <button type="button" class="btn-quiet" disabled={busy} onclick={() => { registering = !registering; password = ""; notice = ""; }}>
+        <button type="button" class="btn-quiet" disabled={busy} onclick={() => { registering = !registering; password = ""; konfirmasi = ""; chosen = null; notice = ""; }}>
           {registering ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar"}
         </button>
       </form>
-      {#if registering && !chosen}
+      {#if registering && cocok && !chosen}
         <p class="mt-3 text-small text-muted">Pilih peran dulu, baru lanjut.</p>
       {/if}
     {/if}

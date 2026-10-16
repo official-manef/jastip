@@ -44,7 +44,14 @@ const tripV1Schema = z.object({
 
 const kakiSchema = z.object({
   id: z.string().min(1).max(80),
-  destinasi: z.string().min(1).max(40),
+  destinasi: z.string().min(1).max(60),
+  custom: z.object({
+    negara: z.string().min(1).max(60),
+    kota: z.string().min(1).max(60),
+    currency: z.string().min(1).max(12),
+    kurs: z.number().finite().positive().max(1_000_000),
+    iata: z.string().min(1).max(8).optional(),
+  }).optional(),
   jenis: z.enum(["utama", "transit"]),
   lama: z.number().finite().min(0).max(3650),
   scenario: scenarioSchema,

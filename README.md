@@ -7,7 +7,8 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 ## Yang sudah jalan
 
 - **Trip bertahap bebas**: 1, 2, 3, atau lebih tahap; tiap tahap pilih negara dari katalog. Transit = tahap bertanda khusus yang tetap boleh diisi barang.
-- Katalog 10 negara tujuan populer untuk pasar Indonesia + Turki (koridor lama): Jepang, Korea, Singapura, Hong Kong, Thailand, Amerika, Prancis, Malaysia, Jerman, Australia.
+- **Katalog 25 negara** per kawasan (Asia Tenggara, Asia Timur, Asia Selatan, Timur Tengah, Afrika, Eropa, Amerika, Oseania) + Turki. Negara yang belum ada bisa ditambahkan lewat opsi **"Negara lain…"** di dropdown (nama, kota, mata uang, kurs) — hindari isian bebas.
+- **Meja jadi wizard ala booking pesawat**: stepper Rute → Muatan → Biaya → Ringkasan, plus ringkasan lengket (sticky) berisi sisa kuota, muatan, jasa/beban/laba trip.
 - Kalkulator per tahap: kuota bagasi, muatan per kg, harga per kg, biaya jalan, biaya alat; total lintas tahap (jasa, muatan, kapasitas, laba) dihitung sekaligus.
 - Biaya alat (koper, timbangan) dipakai bersama semua tahap, dibagi umur trip, dihitung sekali.
 - Target omzet sebagai indikator progres (batang + "butuh lagi"), bukan pengubah harga otomatis.

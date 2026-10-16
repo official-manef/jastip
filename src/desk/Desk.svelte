@@ -11,6 +11,7 @@
     setAktif,
     setCapex,
     setDestinasi,
+    setDestinasiCustom,
     setGood,
     setGoods,
     setJenis,
@@ -27,7 +28,8 @@
   } from "../lib/titip/trip-store.svelte";
   import { type CapexLine, type LinePricing } from "../lib/titip/calc";
   import { capacity, computeRevenue, CURRENCIES, ITEM_UNITS, lineWeightKg, targetProgress, tripLintas } from "../lib/titip/pricing";
-  import { DESTINASI, destinasiByCode } from "../lib/titip/destinasi";
+  import { DESTINASI, viewOf, type CustomDest } from "../lib/titip/destinasi";
+  import PilihNegara from "../lib/titip/PilihNegara.svelte";
   import { kakiCode, kakiLabel, type Kaki } from "../lib/titip/kaki";
   import { idr, kg } from "../lib/titip/model";
 
@@ -41,7 +43,7 @@
   const idx = $derived(Math.min(desk.aktif, Math.max(0, kaki.length - 1)));
   const now = $derived<Kaki>(kaki[idx]);
   const scenario = $derived(now.scenario);
-  const meta = $derived(destinasiByCode(now.destinasi));
+  const meta = $derived(viewOf(now.destinasi, now.custom));
   const prev = $derived<Kaki | undefined>(idx > 0 ? kaki[idx - 1] : undefined);
   const shopCurrency = $derived(meta?.currency ?? "IDR");
   /** F06: tarif jasa punya mata uangnya sendiri (`hargaCurrency`), terpisah dari
@@ -49,6 +51,15 @@
   const tariffCurrency = $derived(scenario.hargaCurrency ?? "IDR");
 
   onMount(() => { initDesk(); });
+
+  /**
+   * Wizard bertahap (ala booking pesawat): Rute → Muatan → Biaya → Ringkasan.
+   * Stepper di atas (desktop) dan accordion (mobile) memakai `langkah` yang sama.
+   */
+  const LANGKAH = ["Rute", "Muatan", "Biaya", "Ringkasan"] as const;
+  let langkah = $state(0);
+  function maju() { langkah = Math.min(LANGKAH.length - 1, langkah + 1); }
+  function mundur() { langkah = Math.max(0, langkah - 1); }
 
   let draftName = $state("");
   let draftKg = $state("0,5");
@@ -58,6 +69,8 @@
   let undoBarang = $state<{ name: string; goods: typeof scenario.goods } | null>(null);
   /** F11: konfirmasi reset sebelum menimpa skenario. */
   let konfirmReset = $state(false);
+  /** Pilih negara custom untuk tahap aktif. */
+  function pilihCustom(c: CustomDest) { setDestinasiCustom(idx, c); }
 
   /** Hapus barang dengan simpan snapshot untuk Undo. */
   function hapusBarang(id: string) {
@@ -173,365 +186,385 @@
     {#if conflict}<button type="button" class="link mt-2 block text-body" onclick={() => window.location.reload()}>Muat ulang trip dari akun</button>{/if}
   </header>
 
-  <!-- Pemilih tahap: rute berurutan, tahap aktif disorot. -->
-  <section class="mt-8" data-reveal aria-labelledby="rute-kaki">
-    <h2 id="rute-kaki" class="text-lead">Rute</h2>
-    <div class="mt-3 flex flex-wrap items-stretch gap-2">
-      {#each kaki as k, i (k.id)}
-        {@const d = destinasiByCode(k.destinasi)}
-        {@const aktif = i === idx}
-        <button
-          type="button"
-          aria-current={aktif ? "true" : undefined}
-          onclick={() => setAktif(i)}
-          class="min-h-14 rounded px-4 text-left {aktif ? 'bg-primary text-primary-fg' : 'bg-surface text-fg hover:bg-field'}"
-        >
-          <span class="block text-small {aktif ? 'text-primary-fg/80' : 'text-muted'}">{kakiCode(k, i > 0 ? kaki[i - 1] : undefined)}</span>
-          <span class="block text-body">{d?.kota ?? k.destinasi}</span>
-          <span class="block text-small {aktif ? 'text-primary-fg/80' : 'text-muted'}">
-            {k.jenis === "transit" ? `transit ${k.lama}j` : `${k.lama} hari`}
-          </span>
-        </button>
-      {/each}
-      <div class="flex flex-col justify-center gap-2">
-        <button type="button" class="btn-quiet px-3 text-small" onclick={() => tambahKaki()} aria-label="Tambah tahap di akhir">+ Tahap</button>
-        <button type="button" class="btn-quiet px-3 text-small" onclick={() => sisipKaki(idx, "singapura", "transit")} aria-label="Sisipkan tahap transit setelah tahap ini">+ Transit</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Pengaturan tahap aktif -->
-  <section class="panel mt-6 p-5" data-reveal aria-labelledby="kaki-aktif">
-    <div class="flex flex-wrap items-end justify-between gap-3">
-      <h2 id="kaki-aktif" class="text-lead">{kakiLabel(now, prev)}</h2>
-      {#if kaki.length > 1}
-        <button type="button" class="link text-small" onclick={() => hapusKaki(idx)}>Hapus tahap ini</button>
-      {/if}
-    </div>
-
-    <div class="mt-4 grid gap-4 sm:grid-cols-3">
-      <label class="block">
-        <span class="mb-2 block text-small text-muted">Negara tujuan</span>
-        <select class={field} value={now.destinasi} onchange={(e) => setDestinasi(idx, e.currentTarget.value)}>
-          {#each DESTINASI as d (d.code)}
-            <option value={d.code}>{d.negara}</option>
-          {/each}
-          <option value="jakarta">Indonesia (Jakarta)</option>
-        </select>
-      </label>
-      <label class="block">
-        <span class="mb-2 block text-small text-muted">Jenis singgah</span>
-        <select class={field} value={now.jenis} onchange={(e) => setJenis(idx, e.currentTarget.value === "transit" ? "transit" : "utama")}>
-          <option value="utama">Utama (belanja)</option>
-          <option value="transit">Transit (singgah)</option>
-        </select>
-      </label>
-      <label class="block">
-        <span class="mb-2 block text-small text-muted">{now.jenis === "transit" ? "Lama (jam)" : "Lama (hari)"}</span>
-        <input type="number" min="0" class="{field} num" value={now.lama}
-          oninput={(e) => setLama(idx, Number(e.currentTarget.value))} aria-label="Lama di tahap ini" />
-      </label>
-    </div>
-
-    {#if meta}
-      <p class="mt-3 text-small text-muted">
-        Kategori khas: {meta.kategori.join(", ")}. {meta.alasan}
-        Mata uang belanja {meta.currency} (kurs contoh {idr(meta.kurs)}).
-      </p>
-    {/if}
-  </section>
-
-  <!-- Instrumen: satu-satunya hal besar. Total trip + tahap aktif. -->
-  <section class="panel-deep mt-6 p-5" data-rise data-ui style="--i: 2" aria-label="Sisa kuota dan laba">
-    <p class="text-small">{kakiLabel(now, prev)} · {kakiCode(now, prev)}</p>
-    <p class="readout mt-3 {over ? 'text-accent' : 'text-fg'}">
-      {over ? `−${kg(-sisaKaki)}` : kg(sisaKaki)}
-    </p>
-    <p class="mt-2 text-body">{over ? "kelebihan bagasi tahap ini" : "sisa kuota tahap ini"} · {kg(terpakaiKaki)} dari {kg(bersihKaki)}</p>
-    <div class="meter mt-4" aria-hidden="true"><span style="width: {Math.round(penuh * 100)}%; background: {over ? 'var(--color-accent)' : ''}"></span></div>
-
-    <dl class="mt-6 grid gap-3 sm:grid-cols-2">
-      {#if multivaluta}
-        {#each Object.entries(lintas.perCurrency) as [cur, val] (cur)}
-          {@render row(`Jasa (${cur})`, fmtTarif(val), "subtotal per mata uang")}
+  <!-- Layout ala booking: kolom kerja (wizard) + ringkasan lengket di kanan (>=lg). -->
+  <div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+    <div class="min-w-0">
+      <!-- Stepper: satu sumber langkah, juga dipakai accordion di mobile. -->
+      <nav class="stepper" aria-label="Tahapan kalkulator">
+        {#each LANGKAH as nama, i (nama)}
+          <button
+            type="button"
+            class="stepper-item {i === langkah ? 'is-active' : ''} {i < langkah ? 'is-done' : ''}"
+            aria-current={i === langkah ? "step" : undefined}
+            onclick={() => (langkah = i)}
+          >
+            <span class="stepper-num">{i + 1}</span>
+            <span class="stepper-label">{nama}</span>
+          </button>
         {/each}
-      {:else}
-        {@render row("Jasa tahap ini", `${fmtTarif(rev.service)}${rev.currencies.length === 1 ? ` ${rev.currencies[0]}` : ""}`)}
-      {/if}
-      {@render row("Beban tahap ini", idr(bebanKaki(now)))}
-      {#if !multivaluta}
-        {@render row("Jasa seluruh trip", `${fmtTarif(lintas.service)}${lintas.currencies.length === 1 ? ` ${lintas.currencies[0]}` : ""}`, `${kaki.length} tahap`)}
-      {/if}
-      {@render row("Laba trip (estimasi)", idr(labaTrip), multivaluta ? "campur mata uang — perkiraan kasar" : "jasa semua tahap − beban semua tahap")}
-    </dl>
-    {#if multivaluta}
-      <p class="mt-3 text-small text-accent" role="status">
-        Baris memakai lebih dari satu mata uang ({lintas.currencies.join(", ")}). Angka dijumlahkan tanpa kurs, jadi
-        "Laba trip" hanya perkiraan. Pakai satu mata uang per trip untuk laporan final.
-      </p>
-    {/if}
+      </nav>
 
-    <div class="mt-4 rounded bg-bg/40 p-4">
-      <div class="flex items-end justify-between gap-3">
-        <span class="text-body">Total muatan</span>
-        <span class="num text-body">{kg(lintas.totalKg)} / {kg(lintas.capacityKg)}</span>
-      </div>
-      <div class="meter mt-3" aria-hidden="true">
-        <span style="width: {Math.min(100, Math.max(0, Math.round((lintas.totalKg / Math.max(0.1, lintas.capacityKg)) * 100)))}%; background: {lintas.overKg > 0 ? 'var(--color-accent)' : ''}"></span>
-      </div>
-      {#if lintas.overKg > 0}
-        <p class="mt-2 text-small text-accent">Kelebihan total {kg(lintas.overKg)}. Cek tahap paling ketat.</p>
-      {/if}
-    </div>
+      {#if langkah === 0}
+      <!-- 1) Rute -->
+      <section class="panel mt-5 p-5" data-reveal aria-labelledby="rute-kaki">
+        <h2 id="rute-kaki" class="text-lead">Rute</h2>
+        <p class="mt-2 text-small text-muted">Pilih tahap, lalu negara dan jenis singgah. Urutan tombol = urutan penerbangan.</p>
 
-    <div class="mt-6 grid gap-4 sm:grid-cols-2">
-      <label class="block">
-        <span class="mb-2 flex items-baseline justify-between gap-3">
-          <span>Harga jual / kg</span><span class="num text-body">{idr(scenario.hargaPerKg)}</span>
-        </span>
-        <input type="range" min="50000" max="2000000" step="10000" value={scenario.hargaPerKg}
-          oninput={(e) => patch({ hargaPerKg: Number(e.currentTarget.value) })} class="w-full" />
-      </label>
-      <label class="block">
-        <span class="mb-2 flex items-baseline justify-between gap-3">
-          <span>Markup atas modal</span><span class="num text-body">{scenario.margin}%</span>
-        </span>
-        <input type="range" min="0" max="120" step="5" value={scenario.margin}
-          oninput={(e) => patch({ margin: Number(e.currentTarget.value) })} class="w-full" />
-      </label>
-    </div>
-    <button type="button" class="btn-quiet mt-4 w-full disabled:opacity-50" disabled={saranPerKg === null}
-      onclick={() => { if (saranPerKg !== null) patch({ hargaPerKg: saranPerKg }); }}>
-      Pakai harga saran{saranPerKg === null ? " (kuota 0)" : ""}
-    </button>
-
-    <h3 class="mt-6 text-lead">Omzet & target</h3>
-    <dl class="mt-2 grid gap-3 sm:grid-cols-2">
-      {@render row("Berat baris", kg(lintas.totalKg), "presisi per baris, semua tahap")}
-      {#if progres.set}
-        {@render row("Target omzet", `${fmtTarif(scenario.target ?? 0)} ${scenario.hargaCurrency ?? "USD"}`, `${progres.persen}% tercapai`)}
-        {@render row(progres.achieved ? "Lebih target" : "Butuh lagi", fmtTarif(progres.achieved ? progres.lebih : progres.butuh))}
-      {:else}
-        {@render row("Target omzet", "belum diatur")}
-      {/if}
-    </dl>
-    <div class="meter mt-4" aria-hidden="true">
-      <span style="width: {Math.min(100, Math.max(0, Math.round(progres.persen)))}%"></span>
-    </div>
-    <div class="mt-4 grid gap-4 sm:grid-cols-2">
-      <label class="block">
-        <span class="mb-2 block">Target omzet jasa</span>
-        <input type="number" min="0" step="50" value={scenario.target ?? 0} class="{field} num"
-          aria-label="Target omzet jasa" oninput={(e) => patch({ target: Math.max(0, Number(e.currentTarget.value)) })} />
-      </label>
-      <label class="block">
-        <span class="mb-2 block">Mata uang target</span>
-        <select class={field} value={scenario.hargaCurrency ?? shopCurrency} aria-label="Mata uang target"
-          onchange={(e) => patch({ hargaCurrency: e.currentTarget.value })}>
-          {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
-        </select>
-      </label>
-    </div>
-    {#if asumsi}
-      <p class="mt-3 text-small text-accent" role="status">
-        Proyeksi memakai tarif asumsi global; {tarifKosong > 0 ? `${tarifKosong} baris belum bertarif` : "baris bercampur mata uang tanpa kurs"}. Bukan laporan final.
-      </p>
-    {/if}
-  </section>
-
-  <section class="mt-14" aria-labelledby="bagasi">
-    <h2 id="bagasi" data-reveal>Kuota bagasi tahap ini</h2>
-    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" data-reveal>
-      {@render slider("Koper check-in", scenario.bags, 0, 3, 1, `${scenario.bags} koper`, (bags) => patch({ bags }))}
-      {@render slider("Kg per koper", scenario.kgPerBag, 10, 60, 1, kg(scenario.kgPerBag), (kgPerBag) => patch({ kgPerBag }))}
-      {@render slider("Kabin", scenario.cabin, 0, 12, 1, kg(scenario.cabin), (cabin) => patch({ cabin }))}
-      {@render slider("Tara koper & pribadi", scenario.tare, 0, 12, 0.1, kg(scenario.tare), (tare) => patch({ tare }))}
-      {@render slider("Denda kelebihan / kg", scenario.overPerKg, 0, 800000, 10000, idr(scenario.overPerKg), (overPerKg) => patch({ overPerKg }))}
-      {@render slider("Uji muat 1 pcs", scenario.ujiKg, 0.1, 3, 0.1, kg(scenario.ujiKg), (ujiKg) => patch({ ujiKg }))}
-    </div>
-  </section>
-
-  <section class="mt-14" aria-labelledby="muatan">
-    <div class="flex flex-wrap items-baseline justify-between gap-3">
-      <h2 id="muatan" data-reveal>Muatan {meta?.kota ?? "tahap ini"}</h2>
-      <p class="num text-body text-muted" data-reveal>{kg(terpakaiKaki)} terpakai · {fmtTarif(rev.service)} jasa</p>
-    </div>
-
-    <ul class="mt-5 flex flex-col gap-3">
-      {#each scenario.goods as g (g.id)}
-        {@const r = rowById.get(g.id)}
-        {@const tarif = g.pricing}
-        <li class="panel p-4">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-body">{g.name}</p>
-              <p class="num mt-1 text-small text-muted">
-                {kg(g.kg)} × {g.qty} = {kg(lineWeightKg(g))} · beli {meta?.currency === "IDR" || now.destinasi === "jakarta" ? idr(g.beli) : `${meta?.currency ?? ""} ${g.beli}`}
-              </p>
-              <p class="num mt-1 text-small {tarif ? 'text-fg' : 'text-muted'}">
-                {#if r && tarif}
-                  {pickTarifLabel(tarif)} = {fmtTarif(r.service)}
-                {:else}
-                  tarif global {idr(r?.rate ?? scenario.hargaPerKg)}/kg = {fmtTarif(r?.service ?? 0)}
-                {/if}
-              </p>
-            </div>
-            <div class="flex items-center gap-2">
-              <button type="button" aria-label="Kurangi {g.name}" class="grid size-11 place-items-center rounded bg-bg text-lead" onclick={() => setGood(g.id, { qty: Math.max(0, g.qty - 1) })}>−</button>
-              <span class="num w-8 text-center text-body">{g.qty}</span>
-              <button type="button" aria-label="Tambah {g.name}" class="grid size-11 place-items-center rounded bg-bg text-lead" onclick={() => setGood(g.id, { qty: g.qty + 1 })}>+</button>
-              <button type="button" class="btn-quiet px-3" aria-label="Hapus {g.name}" onclick={() => hapusBarang(g.id)}>Hapus</button>
-            </div>
+        <div class="mt-4 flex flex-wrap items-stretch gap-2">
+          {#each kaki as k, i (k.id)}
+            {@const d = viewOf(k.destinasi, k.custom)}
+            {@const aktif = i === idx}
+            <button
+              type="button"
+              aria-current={aktif ? "true" : undefined}
+              onclick={() => setAktif(i)}
+              class="min-h-14 rounded px-4 text-left {aktif ? 'bg-primary text-primary-fg' : 'bg-bg text-fg hover:bg-field'}"
+            >
+              <span class="block text-small {aktif ? 'text-primary-fg/80' : 'text-muted'}">{kakiCode(k, i > 0 ? kaki[i - 1] : undefined)}</span>
+              <span class="block text-body">{d?.kota ?? k.destinasi}</span>
+              <span class="block text-small {aktif ? 'text-primary-fg/80' : 'text-muted'}">
+                {k.jenis === "transit" ? `transit ${k.lama}j` : `${k.lama} hari`}
+              </span>
+            </button>
+          {/each}
+          <div class="flex flex-col justify-center gap-2">
+            <button type="button" class="btn-quiet px-3 text-small" onclick={() => tambahKaki()} aria-label="Tambah tahap di akhir">+ Tahap</button>
+            <button type="button" class="btn-quiet px-3 text-small" onclick={() => sisipKaki(idx, "singapura", "transit")} aria-label="Sisipkan tahap transit setelah tahap ini">+ Transit</button>
           </div>
-          <div class="mt-4 flex flex-wrap items-center gap-3">
-            <div class="flex gap-1 rounded bg-bg p-1" role="group" aria-label="Model tarif {g.name}">
-              <button type="button" aria-pressed={!tarif} class="min-h-9 rounded px-3 text-small {!tarif ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}" onclick={() => clearPricing(g.id)}>Global</button>
-              <button type="button" aria-pressed={tarif?.model === "per_kg"} class="min-h-9 rounded px-3 text-small {tarif?.model === 'per_kg' ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}" onclick={() => setPricing(g.id, { model: "per_kg" })}>Per kg</button>
-              <button type="button" aria-pressed={tarif?.model === "per_item"} class="min-h-9 rounded px-3 text-small {tarif?.model === 'per_item' ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}" onclick={() => setPricing(g.id, { model: "per_item" })}>Per item</button>
-            </div>
-            {#if tarif}
-              <label class="flex items-center gap-2 text-small text-muted">
-                Tarif
-                <input type="number" min="0" step="1" value={tarif.rate} class="{field} num w-24"
-                  aria-label="Tarif {g.name}" oninput={(e) => setPricing(g.id, { rate: Math.max(0, Number(e.currentTarget.value)) })} />
-              </label>
-              {#if tarif.model === "per_item"}
-                <label class="flex items-center gap-2 text-small text-muted">
-                  Satuan
-                  <select value={tarif.unit ?? "unit"} class="{field} w-28" aria-label="Satuan {g.name}"
-                    onchange={(e) => setPricing(g.id, { unit: e.currentTarget.value })}>
-                    {#each ITEM_UNITS as u (u)}<option value={u}>{u}</option>{/each}
-                  </select>
-                </label>
-              {/if}
-              <label class="flex items-center gap-2 text-small text-muted">
-                Mata uang
-                <select value={tarif.currency ?? shopCurrency} class="{field} w-24" aria-label="Mata uang {g.name}"
-                  onchange={(e) => setPricing(g.id, { currency: e.currentTarget.value })}>
-                  {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
-                </select>
-              </label>
-              {#if (tarif.rate ?? 0) <= 0}
-                <span class="text-small text-accent">tarif belum ditetapkan</span>
-              {/if}
-            {/if}
-          </div>
-        </li>
-      {:else}
-        <li class="panel p-6 text-body text-muted">Belum ada barang di tahap ini.</li>
-      {/each}
-    </ul>
-
-    <!-- F11: Undo hapus, terlihat langsung di dekat daftar. -->
-    {#if undoBarang}
-      <p class="mt-3 flex flex-wrap items-center gap-3 text-body" role="status">
-        <span class="text-muted">“{undoBarang.name}” dihapus.</span>
-        <button
-          type="button"
-          class="link text-body"
-          onclick={() => { if (undoBarang) { setGoods(undoBarang.goods); undoBarang = null; } }}
-        >Urungkan</button>
-      </p>
-    {/if}
-
-    <form class="panel mt-4 grid gap-3 p-4 sm:grid-cols-[1fr_6rem_7rem_auto]"
-      onsubmit={(e) => { e.preventDefault(); addDraft(); }}>
-      <label class="block">
-        <span class="mb-2 block text-small text-muted">Barang baru</span>
-        <input id="barang-baru" bind:value={draftName} class={field} aria-label="Nama barang" />
-      </label>
-      <label class="block">
-        <span class="mb-2 block text-small text-muted">Kg per pcs</span>
-        <input bind:value={draftKg} inputmode="decimal" class="{field} num" aria-label="Kg per pcs" />
-      </label>
-      <label class="block">
-        <span class="mb-2 block text-small text-muted">Harga beli</span>
-        <input bind:value={draftBeli} inputmode="numeric" placeholder={shopCurrency === "IDR" ? "Rp" : shopCurrency} class="{field} num" aria-label="Harga beli" />
-      </label>
-      <button type="submit" class="btn self-end">Tambah</button>
-    </form>
-    {#if draftNotice}<p class="mt-3 text-body text-accent" role="status">{draftNotice}</p>{/if}
-  </section>
-
-  <section class="mt-14" aria-labelledby="opex">
-    <h2 id="opex" data-reveal>Biaya jalan tahap ini</h2>
-    <p class="num mt-2 text-body text-muted" data-reveal>
-      {kakiCode(now, prev)} · tiket {idr(scenario.opex.find((l) => l.id === "tiket")?.amount ?? 0)}
-    </p>
-    <ul class="mt-5 flex flex-col gap-2">
-      {#each scenario.opex as line (line.id)}
-        <li class="flex items-center justify-between gap-3">
-          <label class="text-body" for={"opex-" + line.id}>{line.label}</label>
-          <input id={"opex-" + line.id} type="number" value={line.amount} min="0" step="50000"
-            class="{field} num w-40" oninput={(e) => setOpex(line.id, Number(e.currentTarget.value))} />
-        </li>
-      {/each}
-    </ul>
-    {#if now.destinasi === "turki"}
-      <label class="mt-5 block">
-        <span class="mb-2 flex items-baseline justify-between gap-3">
-          <span>Kurs 1 TRY</span><span class="num text-body">{idr(scenario.kursTry)}</span>
-        </span>
-        <input type="range" min="200" max="900" step="10" value={scenario.kursTry}
-          oninput={(e) => patchKaki(idx, { kursTry: Number(e.currentTarget.value) })} class="w-full" />
-      </label>
-    {/if}
-  </section>
-
-  <section class="mt-14" aria-labelledby="capex">
-    <h2 id="capex" data-reveal>Biaya alat, dipakai semua tahap</h2>
-    <p class="mt-2 text-body text-muted" data-reveal>Koper dan timbangan dipakai bersama; dibagi umur trip, dihitung sekali.</p>
-    <ul class="mt-5 flex flex-col gap-3">
-      {#each scenario.capex as line (line.id)}
-        <li class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem_7rem] sm:items-end">
-          <p class="text-body">
-            {line.label}
-            <span class="num mt-1 block text-small text-muted">{idr(Math.round(line.price / Math.max(1, line.trips)))} / trip</span>
-          </p>
-          <label class="block">
-            <span class="mb-2 block text-small text-muted">Harga alat</span>
-            <input type="number" value={line.price} min="0" class="{field} num" oninput={(e) => setCapex(line.id, { price: Number(e.currentTarget.value) })} />
-          </label>
-          <label class="block">
-            <span class="mb-2 block text-small text-muted">Umur trip</span>
-            <input type="number" value={line.trips} min="1" class="{field} num" oninput={(e) => setCapex(line.id, { trips: Math.max(1, Number(e.currentTarget.value)) })} />
-          </label>
-        </li>
-      {:else}
-        <li class="panel p-6 text-body text-muted">Belum ada biaya alat.</li>
-      {/each}
-    </ul>
-    <!-- F11: reset cakupan besar → konfirmasi dulu, bukan langsung menimpa. -->
-    {#if konfirmReset}
-      <div class="panel mt-5 p-4" role="alertdialog" aria-label="Konfirmasi reset tahap">
-        <p class="text-body">Reset tahap ini ke skenario contoh? Perubahan yang belum disalin akan hilang.</p>
-        <div class="mt-3 flex flex-wrap gap-3">
-          <button type="button" class="btn" onclick={() => { resetKaki(); konfirmReset = false; undoBarang = null; }}>Ya, reset</button>
-          <button type="button" class="btn-quiet" onclick={() => (konfirmReset = false)}>Batal</button>
         </div>
-      </div>
-    {:else}
-      <button type="button" class="link mt-5 block text-body" onclick={() => (konfirmReset = true)}>Reset tahap ini ke skenario contoh</button>
-    {/if}
-  </section>
 
-  <section class="mt-14" aria-labelledby="negara">
-    <h2 id="negara" data-reveal>Negara tujuan jastip</h2>
-    <p class="mt-3 text-body text-muted" data-reveal>
-      Sepuluh tujuan paling populer untuk pasar Indonesia, plus Turki (koridor lama). Kategori dan kurs
-      di bawah ini contoh untuk memulai.
-    </p>
-    <ul class="mt-5 grid gap-3 sm:grid-cols-2">
-      {#each DESTINASI as d (d.code)}
-        <li class="panel p-4">
-          <div class="flex items-baseline justify-between gap-3">
-            <p class="text-body">{d.negara}</p>
-            <span class="num text-small text-muted">{d.currency} · {idr(d.kurs)}</span>
+        <div class="mt-5 flex flex-wrap items-end justify-between gap-3">
+          <h3 class="text-body">{kakiLabel(now, prev)}</h3>
+          {#if kaki.length > 1}
+            <button type="button" class="link text-small" onclick={() => hapusKaki(idx)}>Hapus tahap ini</button>
+          {/if}
+        </div>
+
+        <div class="mt-3 grid gap-4 sm:grid-cols-3">
+          <label class="block">
+            <span class="mb-2 block text-small text-muted">Negara tujuan</span>
+            <PilihNegara
+              nilai={now.destinasi}
+              custom={now.custom}
+              onpilih={(kode) => setDestinasi(idx, kode)}
+              oncustom={pilihCustom}
+            />
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-small text-muted">Jenis singgah</span>
+            <select class={field} value={now.jenis} onchange={(e) => setJenis(idx, e.currentTarget.value === "transit" ? "transit" : "utama")}>
+              <option value="utama">Utama (belanja)</option>
+              <option value="transit">Transit (singgah)</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="mb-2 block text-small text-muted">{now.jenis === "transit" ? "Lama (jam)" : "Lama (hari)"}</span>
+            <input type="number" min="0" class="{field} num" value={now.lama}
+              oninput={(e) => setLama(idx, Number(e.currentTarget.value))} aria-label="Lama di tahap ini" />
+          </label>
+        </div>
+        {#if meta && !meta.custom && meta.alasan}
+          <p class="mt-3 text-small text-muted">{meta.alasan}</p>
+        {/if}
+      </section>
+      {/if}
+
+      {#if langkah === 1}
+      <!-- 2) Muatan: kuota + barang tahap ini -->
+      <section class="mt-5" data-reveal aria-labelledby="bagasi">
+        <div class="panel p-5">
+          <div class="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="bagasi" class="text-lead">Kuota bagasi {meta?.kota ?? "tahap ini"}</h2>
+            <span class="num text-body text-muted">{kg(terpakaiKaki)} dari {kg(bersihKaki)}</span>
           </div>
-          <p class="mt-1 text-small text-muted">{d.ringkas}</p>
-          <button type="button" class="link mt-2 text-small" onclick={() => setDestinasi(idx, d.code)}>Pakai untuk tahap ini</button>
-        </li>
-      {/each}
-    </ul>
-  </section>
+          <div class="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {@render slider("Koper check-in", scenario.bags, 0, 3, 1, `${scenario.bags} koper`, (bags) => patch({ bags }))}
+            {@render slider("Kg per koper", scenario.kgPerBag, 10, 60, 1, kg(scenario.kgPerBag), (kgPerBag) => patch({ kgPerBag }))}
+            {@render slider("Kabin", scenario.cabin, 0, 12, 1, kg(scenario.cabin), (cabin) => patch({ cabin }))}
+            {@render slider("Tara koper & pribadi", scenario.tare, 0, 12, 0.1, kg(scenario.tare), (tare) => patch({ tare }))}
+            {@render slider("Denda kelebihan / kg", scenario.overPerKg, 0, 800000, 10000, idr(scenario.overPerKg), (overPerKg) => patch({ overPerKg }))}
+            {@render slider("Uji muat 1 pcs", scenario.ujiKg, 0.1, 3, 0.1, kg(scenario.ujiKg), (ujiKg) => patch({ ujiKg }))}
+          </div>
+        </div>
+
+        <div class="mt-5" aria-labelledby="muatan">
+          <div class="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="muatan" class="text-lead">Muatan {meta?.kota ?? "tahap ini"}</h2>
+            <p class="num text-body text-muted">{kg(terpakaiKaki)} terpakai · {fmtTarif(rev.service)} jasa</p>
+          </div>
+
+          <ul class="mt-4 flex flex-col gap-3">
+            {#each scenario.goods as g (g.id)}
+              {@const r = rowById.get(g.id)}
+              {@const tarif = g.pricing}
+              <li class="panel p-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-body">{g.name}</p>
+                    <p class="num mt-1 text-small text-muted">
+                      {kg(g.kg)} × {g.qty} = {kg(lineWeightKg(g))} · beli {meta?.currency === "IDR" || now.destinasi === "jakarta" ? idr(g.beli) : `${meta?.currency ?? ""} ${g.beli}`}
+                    </p>
+                    <p class="num mt-1 text-small {tarif ? 'text-fg' : 'text-muted'}">
+                      {#if r && tarif}
+                        {pickTarifLabel(tarif)} = {fmtTarif(r.service)}
+                      {:else}
+                        tarif global {idr(r?.rate ?? scenario.hargaPerKg)}/kg = {fmtTarif(r?.service ?? 0)}
+                      {/if}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button type="button" aria-label="Kurangi {g.name}" class="grid size-11 place-items-center rounded bg-bg text-lead" onclick={() => setGood(g.id, { qty: Math.max(0, g.qty - 1) })}>−</button>
+                    <span class="num w-8 text-center text-body">{g.qty}</span>
+                    <button type="button" aria-label="Tambah {g.name}" class="grid size-11 place-items-center rounded bg-bg text-lead" onclick={() => setGood(g.id, { qty: g.qty + 1 })}>+</button>
+                    <button type="button" class="btn-quiet px-3" aria-label="Hapus {g.name}" onclick={() => hapusBarang(g.id)}>Hapus</button>
+                  </div>
+                </div>
+                <div class="mt-4 flex flex-wrap items-center gap-3">
+                  <div class="flex gap-1 rounded bg-bg p-1" role="group" aria-label="Model tarif {g.name}">
+                    <button type="button" aria-pressed={!tarif} class="min-h-9 rounded px-3 text-small {!tarif ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}" onclick={() => clearPricing(g.id)}>Global</button>
+                    <button type="button" aria-pressed={tarif?.model === "per_kg"} class="min-h-9 rounded px-3 text-small {tarif?.model === 'per_kg' ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}" onclick={() => setPricing(g.id, { model: "per_kg" })}>Per kg</button>
+                    <button type="button" aria-pressed={tarif?.model === "per_item"} class="min-h-9 rounded px-3 text-small {tarif?.model === 'per_item' ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}" onclick={() => setPricing(g.id, { model: "per_item" })}>Per item</button>
+                  </div>
+                  {#if tarif}
+                    <label class="flex items-center gap-2 text-small text-muted">
+                      Tarif
+                      <input type="number" min="0" step="1" value={tarif.rate} class="{field} num w-24"
+                        aria-label="Tarif {g.name}" oninput={(e) => setPricing(g.id, { rate: Math.max(0, Number(e.currentTarget.value)) })} />
+                    </label>
+                    {#if tarif.model === "per_item"}
+                      <label class="flex items-center gap-2 text-small text-muted">
+                        Satuan
+                        <select value={tarif.unit ?? "unit"} class="{field} w-28" aria-label="Satuan {g.name}"
+                          onchange={(e) => setPricing(g.id, { unit: e.currentTarget.value })}>
+                          {#each ITEM_UNITS as u (u)}<option value={u}>{u}</option>{/each}
+                        </select>
+                      </label>
+                    {/if}
+                    <label class="flex items-center gap-2 text-small text-muted">
+                      Mata uang
+                      <select value={tarif.currency ?? shopCurrency} class="{field} w-24" aria-label="Mata uang {g.name}"
+                        onchange={(e) => setPricing(g.id, { currency: e.currentTarget.value })}>
+                        {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
+                      </select>
+                    </label>
+                    {#if (tarif.rate ?? 0) <= 0}
+                      <span class="text-small text-accent">tarif belum ditetapkan</span>
+                    {/if}
+                  {/if}
+                </div>
+              </li>
+            {:else}
+              <li class="panel p-6 text-body text-muted">Belum ada barang di tahap ini.</li>
+            {/each}
+          </ul>
+
+          {#if undoBarang}
+            <p class="mt-3 flex flex-wrap items-center gap-3 text-body" role="status">
+              <span class="text-muted">“{undoBarang.name}” dihapus.</span>
+              <button
+                type="button"
+                class="link text-body"
+                onclick={() => { if (undoBarang) { setGoods(undoBarang.goods); undoBarang = null; } }}
+              >Urungkan</button>
+            </p>
+          {/if}
+
+          <form class="panel mt-4 grid gap-3 p-4 sm:grid-cols-[1fr_6rem_7rem_auto]"
+            onsubmit={(e) => { e.preventDefault(); addDraft(); }}>
+            <label class="block">
+              <span class="mb-2 block text-small text-muted">Barang baru</span>
+              <input id="barang-baru" bind:value={draftName} class={field} aria-label="Nama barang" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-small text-muted">Kg per pcs</span>
+              <input bind:value={draftKg} inputmode="decimal" class="{field} num" aria-label="Kg per pcs" />
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-small text-muted">Harga beli</span>
+              <input bind:value={draftBeli} inputmode="numeric" placeholder={shopCurrency === "IDR" ? "Rp" : shopCurrency} class="{field} num" aria-label="Harga beli" />
+            </label>
+            <button type="submit" class="btn self-end">Tambah</button>
+          </form>
+          {#if draftNotice}<p class="mt-3 text-body text-accent" role="status">{draftNotice}</p>{/if}
+        </div>
+      </section>
+      {/if}
+
+      {#if langkah === 2}
+      <!-- 3) Biaya: jalan + alat + target -->
+      <section class="mt-5" aria-labelledby="opex">
+        <div class="panel p-5">
+          <h2 id="opex" class="text-lead">Biaya jalan {meta?.kota ?? "tahap ini"}</h2>
+          <p class="num mt-2 text-body text-muted" data-reveal>
+            {kakiCode(now, prev)} · tiket {idr(scenario.opex.find((l) => l.id === "tiket")?.amount ?? 0)}
+          </p>
+          <ul class="mt-4 flex flex-col gap-2">
+            {#each scenario.opex as line (line.id)}
+              <li class="flex items-center justify-between gap-3">
+                <label class="text-body" for={"opex-" + line.id}>{line.label}</label>
+                <input id={"opex-" + line.id} type="number" value={line.amount} min="0" step="50000"
+                  class="{field} num w-40" oninput={(e) => setOpex(line.id, Number(e.currentTarget.value))} />
+              </li>
+            {/each}
+          </ul>
+          {#if now.destinasi === "turki"}
+            <label class="mt-5 block">
+              <span class="mb-2 flex items-baseline justify-between gap-3">
+                <span>Kurs 1 TRY</span><span class="num text-body">{idr(scenario.kursTry)}</span>
+              </span>
+              <input type="range" min="200" max="900" step="10" value={scenario.kursTry}
+                oninput={(e) => patchKaki(idx, { kursTry: Number(e.currentTarget.value) })} class="w-full" />
+            </label>
+          {/if}
+        </div>
+
+        <div class="panel mt-5 p-5" aria-labelledby="capex">
+          <h2 id="capex" class="text-lead">Biaya alat, dipakai semua tahap</h2>
+          <p class="mt-2 text-body text-muted">Koper dan timbangan dipakai bersama; dibagi umur trip, dihitung sekali.</p>
+          <ul class="mt-4 flex flex-col gap-3">
+            {#each scenario.capex as line (line.id)}
+              <li class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem_7rem] sm:items-end">
+                <p class="text-body">
+                  {line.label}
+                  <span class="num mt-1 block text-small text-muted">{idr(Math.round(line.price / Math.max(1, line.trips)))} / trip</span>
+                </p>
+                <label class="block">
+                  <span class="mb-2 block text-small text-muted">Harga alat</span>
+                  <input type="number" value={line.price} min="0" class="{field} num" oninput={(e) => setCapex(line.id, { price: Number(e.currentTarget.value) })} />
+                </label>
+                <label class="block">
+                  <span class="mb-2 block text-small text-muted">Umur trip</span>
+                  <input type="number" value={line.trips} min="1" class="{field} num" oninput={(e) => setCapex(line.id, { trips: Math.max(1, Number(e.currentTarget.value)) })} />
+                </label>
+              </li>
+            {:else}
+              <li class="panel p-6 text-body text-muted">Belum ada biaya alat.</li>
+            {/each}
+          </ul>
+          {#if konfirmReset}
+            <div class="panel mt-5 p-4" role="alertdialog" aria-label="Konfirmasi reset tahap">
+              <p class="text-body">Reset tahap ini ke skenario contoh? Perubahan yang belum disalin akan hilang.</p>
+              <div class="mt-3 flex flex-wrap gap-3">
+                <button type="button" class="btn" onclick={() => { resetKaki(); konfirmReset = false; undoBarang = null; }}>Ya, reset</button>
+                <button type="button" class="btn-quiet" onclick={() => (konfirmReset = false)}>Batal</button>
+              </div>
+            </div>
+          {:else}
+            <button type="button" class="link mt-5 block text-body" onclick={() => (konfirmReset = true)}>Reset tahap ini ke skenario contoh</button>
+          {/if}
+        </div>
+      </section>
+      {/if}
+
+      {#if langkah === 3}
+      <!-- 4) Ringkasan: omzet, tarif, target, katalog -->
+      <section class="panel mt-5 p-5" data-rise data-ui aria-label="Ringkasan omzet dan target">
+        <h2 class="text-lead">Omzet & target</h2>
+        <dl class="mt-3 grid gap-3 sm:grid-cols-2">
+          {#if multivaluta}
+            {#each Object.entries(lintas.perCurrency) as [cur, val] (cur)}
+              {@render row(`Jasa (${cur})`, fmtTarif(val), "subtotal per mata uang")}
+            {/each}
+          {:else}
+            {@render row("Jasa tahap ini", `${fmtTarif(rev.service)}${rev.currencies.length === 1 ? ` ${rev.currencies[0]}` : ""}`)}
+          {/if}
+          {@render row("Beban tahap ini", idr(bebanKaki(now)))}
+          {@render row("Berat baris", kg(lintas.totalKg), "presisi per baris, semua tahap")}
+          {#if progres.set}
+            {@render row("Target omzet", `${fmtTarif(scenario.target ?? 0)} ${scenario.hargaCurrency ?? "USD"}`, `${progres.persen}% tercapai`)}
+            {@render row(progres.achieved ? "Lebih target" : "Butuh lagi", fmtTarif(progres.achieved ? progres.lebih : progres.butuh))}
+          {:else}
+            {@render row("Target omzet", "belum diatur")}
+          {/if}
+        </dl>
+        <div class="meter mt-4" aria-hidden="true">
+          <span style="width: {Math.min(100, Math.max(0, Math.round(progres.persen)))}%"></span>
+        </div>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+          <label class="block">
+            <span class="mb-2 block">Target omzet jasa</span>
+            <input type="number" min="0" step="50" value={scenario.target ?? 0} class="{field} num"
+              aria-label="Target omzet jasa" oninput={(e) => patch({ target: Math.max(0, Number(e.currentTarget.value)) })} />
+          </label>
+          <label class="block">
+            <span class="mb-2 block">Mata uang target</span>
+            <select class={field} value={scenario.hargaCurrency ?? shopCurrency} aria-label="Mata uang target"
+              onchange={(e) => patch({ hargaCurrency: e.currentTarget.value })}>
+              {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
+            </select>
+          </label>
+        </div>
+        {#if asumsi}
+          <p class="mt-3 text-small text-accent" role="status">
+            Proyeksi memakai tarif asumsi global; {tarifKosong > 0 ? `${tarifKosong} baris belum bertarif` : "baris bercampur mata uang tanpa kurs"}. Bukan laporan final.
+          </p>
+        {/if}
+
+        <h3 class="mt-8 text-lead" id="negara">Negara tujuan jastip</h3>
+        <p class="mt-2 text-body text-muted">
+          Katalog {DESTINASI.length} negara + Turki. Kategori dan kurs contoh untuk memulai. Kalau negara
+          tak ada, pilih "Negara lain…" di pemilih rute.
+        </p>
+        <ul class="mt-4 grid gap-3 sm:grid-cols-2">
+          {#each DESTINASI as d (d.code)}
+            <li class="panel p-4">
+              <div class="flex items-baseline justify-between gap-3">
+                <p class="text-body">{d.negara}</p>
+                <span class="num text-small text-muted">{d.currency} · {idr(d.kurs)}</span>
+              </div>
+              <p class="mt-1 text-small text-muted">{d.ringkas}</p>
+              <button type="button" class="link mt-2 text-small" onclick={() => { setDestinasi(idx, d.code); langkah = 0; }}>Pakai untuk tahap ini</button>
+            </li>
+          {/each}
+        </ul>
+      </section>
+      {/if}
+
+      <!-- Navigasi langkah -->
+      <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <button type="button" class="btn-quiet disabled:opacity-50" disabled={langkah === 0} onclick={mundur}>← Sebelumnya</button>
+        <span class="text-small text-muted">Langkah {langkah + 1} dari {LANGKAH.length}</span>
+        <button type="button" class="btn disabled:opacity-50" disabled={langkah === LANGKAH.length - 1} onclick={maju}>Berikutnya →</button>
+      </div>
+    </div>
+
+    <!-- Ringkasan lengket (desktop): angka kunci selalu terlihat ala ringkasan harga tiket. -->
+    <aside class="lg:sticky lg:top-6" aria-label="Ringkasan trip">
+      <div class="panel-deep rounded p-5" data-ui>
+        <p class="text-small">{kakiLabel(now, prev)} · {kakiCode(now, prev)}</p>
+        <p class="readout mt-3 {over ? 'text-accent' : 'text-fg'}">
+          {over ? `−${kg(-sisaKaki)}` : kg(sisaKaki)}
+        </p>
+        <p class="mt-2 text-body">{over ? "kelebihan bagasi tahap ini" : "sisa kuota tahap ini"}</p>
+        <div class="meter mt-3" aria-hidden="true"><span style="width: {Math.round(penuh * 100)}%; background: {over ? 'var(--color-accent)' : ''}"></span></div>
+
+        <dl class="mt-5 grid gap-2 text-body">
+          <div class="flex items-baseline justify-between gap-3">
+            <dt>Total muatan</dt>
+            <dd class="num">{kg(lintas.totalKg)} / {kg(lintas.capacityKg)}</dd>
+          </div>
+          <div class="flex items-baseline justify-between gap-3">
+            <dt>Jasa trip</dt>
+            <dd class="num">{multivaluta ? "campur" : fmtTarif(lintas.service)}</dd>
+          </div>
+          <div class="flex items-baseline justify-between gap-3">
+            <dt>Beban trip</dt>
+            <dd class="num">{idr(bebanTrip)}</dd>
+          </div>
+          <div class="flex items-baseline justify-between gap-3">
+            <dt>Laba trip</dt>
+            <dd class="num {labaTrip < 0 ? 'text-accent' : 'text-fg'}">{idr(labaTrip)}</dd>
+          </div>
+        </dl>
+        {#if lintas.overKg > 0}
+          <p class="mt-3 text-small text-accent">Kelebihan total {kg(lintas.overKg)}. Cek tahap paling ketat.</p>
+        {/if}
+        {#if multivaluta}
+          <p class="mt-3 text-small text-accent">
+            Baris memakai lebih dari satu mata uang ({lintas.currencies.join(", ")}). "Laba trip" hanya perkiraan.
+          </p>
+        {/if}
+      </div>
+    </aside>
+  </div>
 </article>

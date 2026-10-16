@@ -2,6 +2,31 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 16 Oktober 2026 (lanjutan 2): katalog 25 negara + wizard ala booking + daftar berurutan
+
+Permintaan pemilik: hindari isian bebas, perbanyak negara (seed) dengan aturan mata uang, opsi
+"Negara lain…" di dasar dropdown, pilihan peran muncul **setelah** konfirmasi password, dan tata
+letak meja dibuat seperti aplikasi booking pesawat (carousel/accordion bila perlu).
+
+- **Katalog 25 negara** (`destinasi.ts`) dikelompokkan per kawasan (Asia Tenggara/Timur/Selatan,
+  Timur Tengah, Afrika, Eropa, Amerika, Oseania) + Turki. Tiap negara: mata uang, kurs, kategori,
+  alasan, ringkas. `KATALOG_CURRENCIES` dipakai sebagai daftar mata uang (bukan isian bebas).
+- **Negara custom**: opsi **"Negara lain…"** di dasar dropdown (`PilihNegara.svelte`). Form muncul
+  hanya saat dipilih: nama, kota, mata uang (dropdown), kurs. Disimpan di `Kaki.custom`, bukan
+  katalog global; skema zod + store (`setDestinasiCustom`) mendukung. `viewOf()` menyatukan
+  katalog/custom/asal untuk UI, label rute, dan AI.
+- **Wizard ala booking** (`Desk.svelte`): stepper **Rute → Muatan → Biaya → Ringkasan** (CSS
+  `.stepper`), kolom kerja per langkah, navigasi Sebelumnya/Berikutnya, dan **ringkasan lengket**
+  (`lg:sticky`) berisi sisa kuota besar + total muatan/jasa/beban/laba. Mobile: ringkasan pindah
+  bawah, stepper bisa digulir.
+- **Daftar tanpa peran di awal** (`/masuk`): ditambah konfirmasi password; pilihan peran klien/
+  jastiper baru muncul setelah password + konfirmasi cocok. Tombol "Buat akun" nonaktif sampai
+  cocok dan peran dipilih.
+- Verifikasi: `svelte-check` 0 error; 65 tes lulus (4 tes baru `destinasi.test.ts`); build sukses;
+  uji browser: stepper=4, ringkasan `sticky`, klik langkah menampilkan bagian benar; dropdown punya
+  8 optgroup + opsi custom, simpan "Panama" menampilkan "Negara tambahan"; register: password beda →
+  peran tak muncul, cocok → peran muncul, tombol aktif setelah pilih. Smoke dev bersih desktop+mobile.
+
 ## 16 Oktober 2026 (lanjutan): peran admin disembunyikan dari antarmuka publik
 
 - Permintaan pemilik: jangan tampilkan peran **admin** di depan; cukup **klien** dan

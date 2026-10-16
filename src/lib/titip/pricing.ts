@@ -1,4 +1,5 @@
 import type { Dir, Good, LinePricing, TripMode } from "./calc.ts";
+import { KATALOG_CURRENCIES } from "./destinasi.ts";
 
 /**
  * Stage 1 pricing engine (docs/rencana-omzet-trip.md §5).
@@ -10,8 +11,8 @@ export type PricingModel = LinePricing["model"];
 /** Satuan tagih yang pasti untuk baris `per_item`. Dropdown, bukan isian bebas. */
 export const ITEM_UNITS = ["unit", "pcs", "slop", "box", "pack", "lusin", "set"] as const;
 
-/** Mata uang tarif jasa yang didukung. */
-export const CURRENCIES = ["USD", "IDR", "TRY"] as const;
+/** Mata uang tarif jasa yang didukung (ikut katalog destinasi). */
+export const CURRENCIES = KATALOG_CURRENCIES;
 
 export type Currency = (typeof CURRENCIES)[number];
 
