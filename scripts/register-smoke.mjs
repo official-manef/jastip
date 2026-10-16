@@ -24,15 +24,17 @@ page.on("console", (m) => m.type() === "error" && errors.push(m.text().slice(0, 
 await page.getByRole("button", { name: /Belum punya akun/i }).click();
 await snap("register-mode");
 
-// 2. pick the client role
-await page.getByRole("button", { name: /^Klien/ }).click();
-
-// 3. fill and submit
+// 2. fill identity + password first; the role picker only appears once
+//    password and confirmation match (owner request).
 await page.getByLabel("Nama").fill("Uji Pendaftar");
 await page.getByLabel("Email").fill(email);
-await page.getByLabel("Password").fill("rahasia-rahasia-12");
+await page.getByLabel("Password", { exact: true }).fill("rahasia-rahasia-12");
+await page.getByLabel("Konfirmasi password").fill("rahasia-rahasia-12");
+
+// 3. pick the client role, then submit
+await page.getByRole("button", { name: /^Klien/ }).click();
 await page.getByRole("button", { name: /^Buat akun$/ }).click();
-await page.waitForURL(/\/titip|\/masuk/, { timeout: 20000 }).catch(() => {});
+await page.waitForURL(/\/titip|\/meja|\/admin/, { timeout: 20000 }).catch(() => {});
 await page.waitForTimeout(1500);
 await snap("after-signup");
 

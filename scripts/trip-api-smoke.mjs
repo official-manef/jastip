@@ -31,7 +31,7 @@ assert.equal((await request("/api/trip", a, "PUT", {})).status, 400);
 assert.equal((await request("/api/trip", a, "PUT", seedTrip(), { "sec-fetch-site": "cross-site" })).status, 403);
 const meB = await (await request("/api/saya", b)).json();
 const trip = seedTrip();
-trip.cgkIst.hargaPerKg = 333000;
+trip.kaki[0].scenario.hargaPerKg = 333000;
 assert.equal((await request("/api/trip", a, "PUT", { ...trip, userId: meB.user.id })).status, 200);
 assert.deepEqual((await (await request("/api/trip", a)).json()).trip, trip);
 assert.equal((await (await request("/api/trip", b)).json()).trip, null);
