@@ -10,7 +10,22 @@
   import { kakiCode } from "../lib/titip/kaki";
   import { idr, kg } from "../lib/titip/model";
 
-  onMount(() => { initDesk(); });
+  onMount(() => {
+    initDesk();
+    const script = document.createElement("script");
+    script.src = "https://airin-staging-1110-oraahc-dd614a-43-156-62-134.sslip.io/widget.js";
+    script.dataset.airinWidget = "02ba8469-a1a3-4958-9da0-97dc5dba8604";
+    script.defer = true;
+    document.body.appendChild(script);
+    return () => {
+      // Stop polling and remove the bubble when leaving the public landing page.
+      script.removeAttribute("data-airin-widget");
+      script.remove();
+      const host = document.querySelector("[data-airin-chat-host]");
+      host?.shadowRoot?.querySelector<HTMLButtonElement>('button[aria-label="Close chat"]')?.click();
+      host?.remove();
+    };
+  });
 
   const kaki = $derived(desk.kaki);
   const idx = $derived(Math.min(desk.aktif, Math.max(0, kaki.length - 1)));
@@ -222,3 +237,4 @@
     <a class="link text-body" href="/meja">Buka kalkulator</a>
   </div>
 </section>
+
