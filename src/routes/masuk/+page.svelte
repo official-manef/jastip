@@ -104,7 +104,7 @@
       <h1>{session.user ? "Pilih peran" : registering ? "Daftar akun titipin" : "Masuk ke titipin"}</h1>
       <p class="mt-4 text-lead">
         {#if session.user}
-          Kamu sudah masuk sebagai {session.user.name || session.user.email}. Pilih peran sekali. Admin ditetapkan oleh operator.
+          Kamu sudah masuk sebagai {session.user.name || session.user.email}. Pilih peran sekali — klien atau jastiper.
         {:else if registering}
           Buat akun dengan email dan password, lalu pilih peran klien atau jastiper.
         {:else}

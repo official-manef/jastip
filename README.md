@@ -12,10 +12,10 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Biaya alat (koper, timbangan) dipakai bersama semua tahap, dibagi umur trip, dihitung sekali.
 - Target omzet sebagai indikator progres (batang + "butuh lagi"), bukan pengubah harga otomatis.
 - Kalkulasi pengunjung tersimpan di perangkat. Skenario trip akun tersimpan di Convex (`tripScenarios`), dibatasi oleh sesi pengguna.
-- Login mandiri memakai email/password. Peran: klien, jastiper, admin. Admin hanya satu dan ditetapkan operator melalui ID akun.
+- Login mandiri memakai email/password. Peran yang ditawarkan ke pengunjung: **klien** dan **jastiper** (saling menemukan). Admin hanya untuk operator (`TITIPIN_ADMIN_USER_ID`), tak ditampilkan di antarmuka publik.
 - Asisten AI di `/asisten` dengan **function calling**: bisa menyusun tahap, ganti destinasi, isi muatan, dan ubah peran.
 - Titipan per akun, dan antrean untuk jastiper.
-- Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan.
+- Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan. Hanya menampilkan klien dan jastiper (keduanya saling menemukan); admin tak ditampilkan.
 - Beranda mengajak tiga langkah: **Coba** (kalkulator tanpa akun) → **Akun** (daftar gratis) → **Langganan** (`/` seksi `#paket`). Harga contoh; belum ada gating atau pembayaran.
 - PWA: `manifest.webmanifest` (start_url `/meja`, ikon maskable, screenshot manifest), service worker offline shell + toast "versi baru". Dua shell layout: beranda/masuk tanpa sidebar dan terpusat; halaman app memakai rail sidebar.
 
@@ -41,7 +41,7 @@ Sumber: `src/lib/titip/destinasi.ts` (katalog), `src/lib/titip/kaki.ts` (tipe + 
 | --- | --- | --- | --- |
 | `/` | Semua | Beranda publik: instrumen hidup, rute, paket (Gratis/Akun/Langganan), peran | Publik (tanpa sidebar, konten terpusat) |
 | `/meja` | Semua | Kalkulator bagasi multi-tahap | App (sidebar) |
-| `/portal` | Semua | Dashboard contoh: Sari (klien), Raka (jastiper), Manef (admin), Deniz (klien lain) | App |
+| `/portal` | Semua | Dashboard contoh: Sari & Deniz (klien), Raka (jastiper) — klien dan jastiper saling menemukan | App |
 | `/masuk` | Belum masuk | Email/password; peran dipilih untuk akun baru | Publik |
 | `/pengaturan` | Semua; panggilan AI untuk akun login | URL/model penyedia dan API key (BYOK) | App |
 | `/titip` | Klien, jastiper, admin | Permintaan titipan | App |

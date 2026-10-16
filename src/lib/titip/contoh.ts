@@ -24,10 +24,10 @@ export const CONTOH_ORANG: ContohOrang[] = [
   { id: "sari", name: "Sari Wulandari", email: "sari@contoh.titipin", role: "klien", city: "Jakarta" },
   { id: "deniz", name: "Deniz Kaya", email: "deniz@contoh.titipin", role: "klien", city: "Istanbul" },
   { id: "raka", name: "Raka Wijaya", email: "raka@contoh.titipin", role: "jastiper", city: "Jakarta" },
-  { id: "manef", name: "Manef", email: "manef@contoh.titipin", role: "admin", city: "Jakarta" },
 ];
 
-export const PORTAL_MASUK = ["sari", "raka", "manef"] as const;
+/** Dua sisi yang saling bertemu: klien dan jastiper. Admin tak ditampilkan di contoh. */
+export const PORTAL_MASUK = ["sari", "raka"] as const;
 
 const SEED: ContohTitipan[] = [
   {

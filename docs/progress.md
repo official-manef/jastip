@@ -2,6 +2,21 @@
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.
 
+## 16 Oktober 2026 (lanjutan): peran admin disembunyikan dari antarmuka publik
+
+- Permintaan pemilik: jangan tampilkan peran **admin** di depan; cukup **klien** dan
+  **jastiper**, dan keduanya saling menemukan.
+- Landing `#untuk`: "Untuk siapa" (3 kolom, ada Admin) → "Dua sisi, satu rute" (2 kolom:
+  Klien mengirim, Jastiper membawa; "keduanya saling bertemu — tanpa perantara").
+- Portal contoh: orang `Manef` (admin) dihapus dari `contoh.ts`; `PORTAL_MASUK` tinggal
+  `["sari","raka"]`. Cabang admin mati (ubah peran, `adminCount`) dibuang. Sisi klien
+  dapat panel "Jastiper yang bisa membawa" (Raka) — saling menemukan. Judul jadi
+  "Dua sisi, satu rute".
+- Halaman masuk: copy tak lagi menyebut "Admin ditetapkan oleh operator"; pilihan peran
+  tetap difilter `session.canClaimAdmin` (admin hanya untuk akun operator).
+- Verifikasi: HTML live `/`, `/portal`, `/masuk` = 0 kemunculan "Manef"/"Admin";
+  `svelte-check` 0 error; 61 tes lulus; smoke bersih desktop+mobile.
+
 ## 16 Oktober 2026: validasi audit oleh Antigravity + perbaikan lanjutan
 
 Agent Antigravity (`agy`, headless) memvalidasi 18 temuan memakai

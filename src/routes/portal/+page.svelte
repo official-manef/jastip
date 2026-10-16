@@ -3,7 +3,7 @@
   import { idr, kg } from "../../lib/titip/model";
   import { PORTAL_MASUK, salinOrang, salinTitipan, type ContohOrang, type ContohTitipan } from "../../lib/titip/contoh";
   import Ringkas from "../../lib/titip/Ringkas.svelte";
-  import { roleLabel, type Role } from "../../lib/titip/roles";
+  import { roleLabel } from "../../lib/titip/roles";
   import { ARAH, arahLabel, STATUSES, statusLabel, type Arah, type TitipanStatus } from "../../lib/titip/titipan";
   import { desk, initDesk } from "../../lib/titip/trip-store.svelte";
   import { computeRevenue, tripLintas } from "../../lib/titip/pricing";
@@ -45,7 +45,8 @@
   const milikku = $derived(rows.filter((row) => row.orangId === aku.id));
   const antrian = $derived(rows.filter((row) => row.status !== "selesai"));
   const kgSaya = $derived(milikku.reduce((sum, row) => sum + row.kg, 0));
-  const adminCount = $derived(orang.filter((item) => item.role === "admin").length);
+  /** Jastiper contoh yang bisa ditemui klien (saling menemukan). */
+  const jastiper = $derived(orang.filter((item) => item.role === "jastiper"));
 
   function namaOrang(id: string) {
     return orang.find((item) => item.id === id)?.name ?? "—";
@@ -73,21 +74,6 @@
 
   function ubahStatus(id: string, status: TitipanStatus) {
     rows = rows.map((row) => (row.id === id ? { ...row, status } : row));
-  }
-
-  function ubahPeran(id: string, role: Role) {
-    const target = orang.find((item) => item.id === id);
-    if (!target) return;
-    if (role === "admin" && target.role !== "admin") {
-      notice = "Hanya satu admin.";
-      return;
-    }
-    if (target.role === "admin" && role !== "admin" && adminCount <= 1) {
-      notice = "Admin terakhir tidak bisa diturunkan.";
-      return;
-    }
-    notice = "";
-    orang = orang.map((item) => (item.id === id ? { ...item, role } : item));
   }
 
   function tambah(event: SubmitEvent) {
@@ -123,7 +109,7 @@
 
 <section>
   <header class="max-w-[40rem]" data-rise style="--i: 0">
-    <h1>Tiga panel, satu rute</h1>
+    <h1>Dua sisi, satu rute</h1>
     <p class="mt-4 text-lead">
       Dashboard contoh supaya alur terlihat tanpa akun sungguhan. Semua nama dan angka di halaman ini pura-pura.
     </p>
@@ -173,6 +159,21 @@
         <dd class="num mt-1 text-lead">{milikku.filter((row) => row.status !== "selesai").length}</dd>
       </div>
     </dl>
+
+    <!-- Klien melihat jastiper yang bisa membawa (saling menemukan). -->
+    {#if jastiper.length}
+      <div class="panel mt-4 p-4" data-reveal>
+        <p class="text-body">Jastiper yang bisa membawa</p>
+        <ul class="mt-3 flex flex-col gap-2">
+          {#each jastiper as item (item.id)}
+            <li class="flex flex-wrap items-baseline justify-between gap-2">
+              <span class="text-body">{item.name}</span>
+              <span class="text-small text-muted">{item.city} · {arahLabel("cgk-ist")}</span>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
 
     <form class="panel mt-4 grid gap-3 p-4 sm:grid-cols-2" onsubmit={tambah}>
       <label class="block sm:col-span-2">
@@ -258,8 +259,8 @@
         <dd class="num mt-1 text-lead">{orang.length}</dd>
       </div>
       <div class="panel p-4">
-        <dt class="text-small text-muted">Klien</dt>
-        <dd class="num mt-1 text-lead">{orang.filter((item) => item.role === "klien").length}</dd>
+        <dt class="text-small text-muted">Jastiper</dt>
+        <dd class="num mt-1 text-lead">{orang.filter((item) => item.role === "jastiper").length}</dd>
       </div>
       <div class="panel p-4">
         <dt class="text-small text-muted">Titipan</dt>
@@ -274,21 +275,7 @@
             <p class="text-body">{item.name}</p>
             <p class="text-small text-muted">{item.email} · {item.city}</p>
           </div>
-          <label>
-            <span class="sr-only">Peran {item.name}</span>
-            <select
-              class={field}
-              value={item.role}
-              onchange={(event) => {
-                const value = event.currentTarget.value;
-                if (value === "klien" || value === "jastiper" || value === "admin") ubahPeran(item.id, value);
-              }}
-            >
-              <option value="klien">Klien</option>
-              <option value="jastiper">Jastiper</option>
-              <option value="admin" disabled={item.role !== "admin"}>Admin</option>
-            </select>
-          </label>
+          <span class="rounded bg-surface px-3 py-1.5 text-small">{roleLabel(item.role)}</span>
         </li>
       {/each}
     </ul>

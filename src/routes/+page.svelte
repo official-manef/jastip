@@ -203,19 +203,18 @@
 </section>
 
 <section class="mt-14" data-reveal aria-labelledby="untuk">
-  <h2 id="untuk" class="text-center" data-reveal>Untuk siapa</h2>
-  <dl class="mx-auto mt-6 grid max-w-[46rem] gap-6 text-center sm:grid-cols-3">
+  <h2 id="untuk" class="text-center" data-reveal>Dua sisi, satu rute</h2>
+  <p class="mx-auto mt-3 max-w-[46ch] text-center text-body text-muted" data-reveal>
+    Klien menitip barang, jastiper membawanya. Di sini keduanya saling bertemu — tanpa perantara.
+  </p>
+  <dl class="mx-auto mt-6 grid max-w-[46rem] gap-6 text-center sm:grid-cols-2">
     <div data-reveal>
       <dt class="text-body">Klien</dt>
-      <dd class="mt-1 text-small text-muted">Catat barang yang mau dibawa. Jastiper yang mengubah status.</dd>
+      <dd class="mt-1 text-small text-muted">Catat barang yang mau dibawa, lihat siapa yang jalan, ikuti statusnya sampai tiba.</dd>
     </div>
     <div data-reveal>
       <dt class="text-body">Jastiper</dt>
-      <dd class="mt-1 text-small text-muted">Lihat semua titipan, hitung kuota dan laba trip.</dd>
-    </div>
-    <div data-reveal>
-      <dt class="text-body">Admin</dt>
-      <dd class="mt-1 text-small text-muted">Satu orang, ditetapkan operator. Atur peran akun.</dd>
+      <dd class="mt-1 text-small text-muted">Umumkan rute, lihat permintaan masuk, hitung kuota dan laba trip.</dd>
     </div>
   </dl>
   <div class="mt-8 flex flex-wrap items-center justify-center gap-3">

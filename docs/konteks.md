@@ -41,6 +41,12 @@ Sepuluh negara paling populer untuk pasar Indonesia, plus Turki (koridor lama). 
 
 Peran klien/jastiper terkunci setelah dipilih. Akun tidak bisa menaikkan dirinya sendiri. Operator dapat menetapkan satu ID akun sebagai admin; admin kedua ditolak, baik lewat klaim maupun lewat panel.
 
+**Peran admin disembunyikan dari antarmuka publik.** Landing, portal contoh, dan halaman
+masuk hanya menampilkan **klien** dan **jastiper** — keduanya saling menemukan (klien mengirim
+titipan, jastiper membawa). Admin tetap ada di backend untuk operator, tapi tak pernah
+ditawarkan sebagai pilihan bagi pengunjung umum: pilihan admin hanya muncul bila akun sudah
+ditetapkan operator lewat `TITIPIN_ADMIN_USER_ID` (`session.canClaimAdmin`).
+
 Rumah setelah masuk: klien `/titip`, jastiper `/meja`, admin `/admin`.
 
 Dua shell layout: beranda `/` (publik, terpusat) dan `/meja` (app, sidebar). Kalkulator hitung tak
@@ -80,7 +86,8 @@ Route SvelteKit (`/api/saya,peran,admin,titipan,trip,trips`) memanggil fungsi Co
 
 Sumber data resmi proyek ini adalah Convex. Postgres/Neon/PGlite sudah dihapus dari kode.
 
-Portal `/portal` tidak menulis ke Convex. Sari, Raka, Deniz, dan Manef hanya ada di memori halaman.
+Portal `/portal` tidak menulis ke Convex. Sari (klien), Deniz (klien), dan Raka (jastiper)
+hanya ada di memori halaman; keduanya saling bertemu tanpa perantara.
 
 ## Masuk
 
