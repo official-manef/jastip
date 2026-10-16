@@ -41,20 +41,40 @@ export function initReveal(): () => void {
   const mo = new MutationObserver(() => observe());
   mo.observe(document.body, { childList: true, subtree: true });
 
-  // Jaring pengaman: apa pun yang sudah masuk viewport tapi belum ter-reveal,
-  // dipaksa terlihat. Menutup celah observer yang tidak sempat memicu.
+  /**
+   * Jaring pengaman: apa pun yang atapnya sudah melewati garis bawah viewport
+   * (`top < vh*0.98`) dipaksa terlihat. Termasuk elemen yang sudah terlewat di
+   * atas (top negatif / bottom ≤ 0) — kasus lompat ke dasar halaman (End), di
+   * mana IntersectionObserver tidak pernah melaporkan `isIntersecting` untuk
+   * elemen yang dilewati. Elemen yang masih di bawah fold (top > vh) dibiarkan
+   * menunggu scroll.
+   */
   const forceVisible = () => {
     const vh = window.innerHeight || 0;
     for (const el of all()) {
       const r = el.getBoundingClientRect();
-      if (r.top < vh * 0.98 && r.bottom > 0) reveal(el);
+      if (r.top < vh * 0.98) reveal(el);
     }
   };
+
+  // Ikut scroll: lompat cepat (End/Home, anchor, restore) tak boleh meninggalkan
+  // konten transparan. rAF-throttled supaya tidak membebani.
+  const scroller = document.getElementById("konten-app");
+  let raf = 0;
+  const onScroll = () => {
+    if (raf) return;
+    raf = window.requestAnimationFrame(() => { raf = 0; forceVisible(); });
+  };
+  (scroller ?? window).addEventListener("scroll", onScroll, { passive: true });
+
   const timers = [600, 1600, 3000].map((ms) => window.setTimeout(() => { observe(); forceVisible(); }, ms));
+  forceVisible();
 
   return () => {
     io.disconnect();
     mo.disconnect();
+    (scroller ?? window).removeEventListener("scroll", onScroll);
+    if (raf) window.cancelAnimationFrame(raf);
     for (const t of timers) window.clearTimeout(t);
   };
 }

@@ -36,7 +36,15 @@ export async function PATCH({ request }: { request: Request }) {
   const body = await bodyOf(request);
   const id = typeof body.id === "string" ? body.id : "";
   if (!id || !isStatus(body.status)) return json({ error: "isian" }, 400);
-  const result = await convexServer().mutation(api.titipan.setStatus, { id, status: body.status });
+  let result: Record<string, unknown>;
+  try {
+    // `v.id("titipan")` di fungsi Convex menolak ID tak valid; petakan ke 400,
+    // jangan bocorkan 500. Cast ke `never` di boundary: bentuk ID divalidasi
+    // fungsi Convex, bukan route ini.
+    result = (await convexServer().mutation(api.titipan.setStatus, { id: id as never, status: body.status })) as Record<string, unknown>;
+  } catch {
+    return json({ error: "isian" }, 400);
+  }
   if ("error" in result && result.error) {
     const status = result.error === "masuk" ? 401 : result.error === "tidak-ada" ? 404 : 403;
     return json({ error: result.error }, status);

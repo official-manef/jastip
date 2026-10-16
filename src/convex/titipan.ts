@@ -29,13 +29,13 @@ export const list = query({
     const acc = await account(ctx);
     if (!acc) return { error: "masuk" as const };
     if (!acc.role) return { error: "peran" as const };
+    // Ambil halaman terbaru tanpa membaca seluruh tabel (index by_user bila klien).
     const rows =
       acc.role === "klien"
-        ? await ctx.db.query("titipan").withIndex("by_user", (q) => q.eq("userId", acc.user._id)).collect()
-        : await ctx.db.query("titipan").collect();
-    const sorted = rows.sort((a, b) => b._creationTime - a._creationTime).slice(0, 100);
+        ? await ctx.db.query("titipan").withIndex("by_user", (q) => q.eq("userId", acc.user._id)).order("desc").take(100)
+        : await ctx.db.query("titipan").order("desc").take(100);
     return {
-      rows: sorted.map((r) => ({
+      rows: rows.map((r) => ({
         id: r._id,
         userId: r.userId,
         pemilik: r.pemilik,
@@ -76,14 +76,15 @@ export const create = mutation({
 
 /** Ubah status titipan (jastiper/admin). */
 export const setStatus = mutation({
-  args: { id: v.string(), status },
+  // `v.id("titipan")` menolak ID dari tabel lain sebelum handler berjalan.
+  args: { id: v.id("titipan"), status },
   handler: async (ctx, args) => {
     const acc = await account(ctx);
     if (!acc) return { error: "masuk" as const };
     if (!canCarry(acc.role)) return { error: "bukan-jastiper" as const };
-    const row = await ctx.db.get(args.id as never);
+    const row = await ctx.db.get(args.id);
     if (!row) return { error: "tidak-ada" as const };
-    await ctx.db.patch(row._id, { status: args.status });
+    await ctx.db.patch(args.id, { status: args.status });
     return { ok: true as const, id: args.id, status: args.status };
   },
 });
