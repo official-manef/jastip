@@ -172,3 +172,42 @@ footer dan figcaption.
 ## Repo
 
 [official-manef/jastip](https://github.com/official-manef/jastip), cabang `main`. Push ke `main` membangun ulang situs Vercel.
+
+---
+
+## Catatan pemeliharaan (17 Oktober 2026)
+
+### Status dan batas cakupan
+
+- Cabang utama repositori adalah `main`. Perubahan pada [PR #12](https://github.com/official-manef/jastip/pull/12) masih dalam PR; jangan anggap isinya sudah menjadi perilaku `main`. Penugasan titipan juga belum live sampai backend terkait dideploy.
+- Kalkulator mendukung banyak negara, tetapi itu belum menjadikan produk ini marketplace operasional multi-negara. Audit mencatat alur titipan masih terbatas pada Jakarta–Turki; penugasan admin belum terhubung ke trip operasional, kapasitas yang dipesan, atau penerimaan oleh jastiper.
+- Integrasi DOKU masih berupa scaffold. Invoice berstatus `pending` bukan bukti pembayaran; checkout dan verifikasi signature resmi belum siap untuk penagihan.
+- Akun belum mendukung pemulihan password atau verifikasi email. Audit juga mencatat daftar dibatasi hingga 100 titipan terbaru dan 2.000 akun.
+- Kurs belanja tidak otomatis menjadi kurs jasa. Laba dalam mata uang asing tidak tersedia tanpa kurs jasa yang eksplisit.
+
+### Menjalankan dan memeriksa
+
+Sesuai petunjuk README, pasang dependensi lalu jalankan server pengembangan:
+
+```bash
+bun install --frozen-lockfile
+npm run dev
+```
+
+Skrip `dev` menjalankan Vite pada `0.0.0.0:8080`. Perintah pemeriksaan yang tersedia:
+
+```bash
+npm test
+npm run typecheck
+npm run build
+npm run lint
+npm run test:trip-api
+```
+
+Perintah-perintah tersebut menunjukkan jalur validasi yang disediakan repo, bukan jaminan bahwa pemeriksaan baru saja dijalankan atau lulus. `test:trip-api` adalah smoke test terkait backend Convex, bukan pengganti tes offline; catatan progres menyebut CI melewatinya bila `CONVEX_DEPLOY_KEY` tidak tersedia. Rincian bukti dan batas verifikasi ada di [audit 17 Oktober 2026](https://github.com/official-manef/jastip/blob/fix/shipment-access-trip-totals-20261017/docs/audit-2026-10-17.md).
+
+### Navigasi pemeliharaan
+
+- [docs/konteks.md](docs/konteks.md) dan [docs/progress.md](docs/progress.md): keputusan serta riwayat pekerjaan.
+- [docs/audit-2026-10-17.md](https://github.com/official-manef/jastip/blob/fix/shipment-access-trip-totals-20261017/docs/audit-2026-10-17.md): temuan audit, kritik produk, dan batas verifikasi.
+- `src/lib/titip/`: logika dan UI fitur titipin; `src/convex/`: fungsi serta skema backend; `scripts/`: skrip pengembangan dan smoke test.
