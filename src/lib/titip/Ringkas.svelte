@@ -6,8 +6,7 @@
    * potongan interface, bukan kotak dekoratif.
    */
   import { desk, kakiAktif } from "./trip-store.svelte";
-  import { computeRevenue, tripLintas } from "./pricing";
-  import { viewOf } from "./destinasi";
+  import { computeRevenue, tripFinances, tripLintas } from "./pricing";
   import { kakiCode, kakiLabel } from "./kaki";
   import { idr, kg } from "./model";
 
@@ -17,18 +16,13 @@
   const idx = $derived(Math.min(desk.aktif, Math.max(0, kaki.length - 1)));
   const now = $derived(kakiAktif());
   const prev = $derived(idx > 0 ? kaki[idx - 1] : undefined);
-  const meta = $derived(viewOf(now.destinasi, now.custom));
-  const rev = $derived(computeRevenue(now.scenario.goods, now.scenario.hargaPerKg, meta?.currency ?? "IDR"));
+  const rev = $derived(computeRevenue(now.scenario.goods, now.scenario.hargaPerKg, now.scenario.hargaCurrency ?? "IDR"));
   const lintas = $derived(tripLintas(kaki.map((k) => ({ id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario }))));
   const bersih = $derived(Math.max(0, now.scenario.bags * now.scenario.kgPerBag + now.scenario.cabin - now.scenario.tare));
   const sisa = $derived(Math.round((bersih - rev.totalKg) * 10) / 10);
   const over = $derived(sisa < 0);
 
-  const bebanTrip = $derived(kaki.reduce((sum, k) => {
-    const opex = k.scenario.opex.reduce((s, l) => s + l.amount, 0);
-    const capex = k.scenario.capex.reduce((s, l) => s + l.price / Math.max(1, l.trips), 0);
-    return sum + Math.round(opex + capex);
-  }, 0));
+  const finances = $derived(tripFinances(kaki));
 </script>
 
 <div class="panel-deep rounded p-4" data-ui aria-label="Ringkasan kalkulator">
@@ -44,7 +38,7 @@
     <dl class="mt-4 grid gap-2 text-body sm:grid-cols-2">
       <div class="flex items-baseline justify-between gap-3">
         <dt>Laba trip</dt>
-        <dd class="num {lintas.service - bebanTrip < 0 ? 'text-accent' : 'text-fg'}">{idr(Math.round(lintas.service - bebanTrip))}</dd>
+        <dd class="num {finances.laba !== null && finances.laba < 0 ? 'text-accent' : 'text-fg'}">{finances.laba === null ? "Perlu kurs ke IDR" : idr(finances.laba)}</dd>
       </div>
       <div class="flex items-baseline justify-between gap-3">
         <dt>Tahap aktif</dt>

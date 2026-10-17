@@ -15,12 +15,28 @@ Situs: [jastip-ochre.vercel.app](https://jastip-ochre.vercel.app)
 - Kalkulasi pengunjung tersimpan di perangkat. Skenario trip akun tersimpan di Convex (`tripScenarios`), dibatasi oleh sesi pengguna.
 - Login mandiri memakai email/password. Peran yang ditawarkan ke pengunjung: **klien** dan **jastiper** (saling menemukan). Admin hanya untuk operator (`TITIPIN_ADMIN_USER_ID`), tak ditampilkan di antarmuka publik.
 - Asisten AI di `/asisten` dengan **function calling**: bisa menyusun tahap, ganti destinasi, isi muatan, dan ubah peran.
-- Titipan per akun, dan antrean untuk jastiper.
+- Titipan per akun, dan antrean privat untuk jastiper yang ditugaskan operator.
 - Portal contoh di `/portal` supaya dashboard kelihatan tanpa akun sungguhan. Hanya menampilkan klien dan jastiper (keduanya saling menemukan); admin tak ditampilkan.
 - Beranda mengajak tiga langkah: **Coba** (kalkulator tanpa akun) → **Akun** (daftar gratis) → **Langganan** (`/` seksi `#paket`). Harga contoh; belum ada gating atau pembayaran.
 - PWA: `manifest.webmanifest` (start_url `/meja`, ikon maskable, screenshot manifest), service worker offline shell + toast "versi baru". Dua shell layout: beranda/masuk tanpa sidebar dan terpusat; halaman app memakai rail sidebar.
 
 Rincian keputusan ada di [docs/konteks.md](docs/konteks.md). Riwayat ada di [docs/progress.md](docs/progress.md). Bahasa visual ada di [DESIGN.md](DESIGN.md). Perbandingan dengan template starter ada di [docs/bandingkan-template.md](docs/bandingkan-template.md).
+
+## Akses titipan
+
+Klien hanya melihat titipannya. Jastiper hanya melihat dan mengubah titipan yang
+`jastiperId`-nya ditetapkan ke akun tersebut oleh admin di `/titip`. Pendaftaran
+sebagai jastiper tidak membuka data klien lain. Admin dapat mengganti/mencabut
+penugasan; akses jastiper lama langsung hilang pada permintaan berikutnya.
+Data lama tanpa penugasan tetap terlihat oleh pemilik dan admin saja. Daftar
+menampilkan maksimal 100 titipan terbaru; pagination lanjutan belum tersedia.
+Penugasan saat ini per titipan, belum terkait trip operasional.
+
+Biaya alat bersama dihitung sekali dari daftar alat pertama yang terisi dan dialokasikan merata
+untuk readout per tahap. Denda dihitung per penerbangan: kuota kosong tahap lain
+tidak menutup kelebihan tahap ini. Semua biaya dalam IDR. Tanpa kurs konversi
+jasa yang eksplisit, laba tidak ditampilkan untuk jasa non-IDR dan progres target
+berbeda mata uang ditahan. Kurs belanja katalog tidak otomatis menjadi kurs jasa.
 
 ## Model trip
 

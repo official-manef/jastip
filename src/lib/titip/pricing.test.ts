@@ -1,4 +1,5 @@
 import test from "node:test";
+import { seedTrip } from "./trip-state.ts";
 import assert from "node:assert/strict";
 import {
   capacity,
@@ -6,6 +7,9 @@ import {
   lineService,
   targetProgress,
   tripRevenue,
+  tripFinances,
+  tripLintas,
+  revenueTargetProgress,
   type PricedGood,
 } from "./pricing.ts";
 
@@ -143,4 +147,40 @@ test("switching the active leg tab does not change the PP total", () => {
     "ist-cgk": { goods: [{ id: "b", name: "B", kg: 1, qty: 1, beli: 0, pricing: { model: "per_kg", rate: 5, currency: "USD" } }] as PricedGood[], hargaPerKg: 0 },
   };
   assert.equal(tripRevenue("pp", "cgk-ist", byDir).service, tripRevenue("pp", "ist-cgk", byDir).service);
+});
+
+
+test("shared equipment is charged once and each overweight leg incurs its own fine", () => {
+  const trip = seedTrip();
+  for (const k of trip.kaki) {
+    k.scenario.bags = 0; k.scenario.cabin = 1; k.scenario.tare = 0;
+    k.scenario.opex = [{ id: "fare", label: "Fare", amount: 100 }];
+    k.scenario.capex = [{ id: "case", label: "Case", price: 1000, trips: 10 }];
+    k.scenario.hargaPerKg = 200; k.scenario.overPerKg = 50;
+    k.scenario.goods = [{ id: "a", name: "A", qty: 1, kg: 2, beli: 0 }];
+  }
+  const f = tripFinances(trip.kaki);
+  assert.equal(f.capexTrip, 100);
+  assert.equal(f.beban, 400);
+  assert.equal(f.laba, 400);
+  trip.kaki[1].scenario.cabin = 10;
+  assert.equal(tripLintas(trip.kaki).overKg, 1, "spare room on another flight cannot offset excess");
+});
+
+test("foreign revenue never becomes an IDR profit and mixed legs require a rate", () => {
+  const trip = seedTrip();
+  trip.kaki[0].scenario.hargaCurrency = "USD";
+  assert.equal(tripLintas(trip.kaki).needsRate, true);
+  assert.equal(tripFinances(trip.kaki).laba, null);
+  const rev = computeRevenue(fixture, 0);
+  assert.equal(revenueTargetProgress(rev, 1200, "IDR"), null);
+  assert.equal(revenueTargetProgress(rev, 1200, "USD")?.persen, 12.5);
+});
+
+
+test("equipment on a later legacy stage is retained when the first stage is empty", () => {
+  const trip = seedTrip();
+  const expected = tripFinances(trip.kaki).capexTrip;
+  trip.kaki[0].scenario.capex = [];
+  assert.equal(tripFinances(trip.kaki).capexTrip, expected);
 });

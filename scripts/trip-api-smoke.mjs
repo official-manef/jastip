@@ -35,8 +35,13 @@ trip.kaki[0].scenario.hargaPerKg = 333000;
 assert.equal((await request("/api/trip", a, "PUT", { ...trip, userId: meB.user.id })).status, 200);
 assert.deepEqual((await (await request("/api/trip", a)).json()).trip, trip);
 assert.equal((await (await request("/api/trip", b)).json()).trip, null);
-assert.equal((await request("/api/titipan", a, "POST", { arah: "cgk-ist", nama: "QA titipan", kg: 1 })).status, 201);
-assert.equal((await request("/api/peran", b, "POST", { role: "klien" })).status, 200);
+const created = await request("/api/titipan", a, "POST", { arah: "cgk-ist", nama: "QA titipan", kg: 1 });
+assert.equal(created.status, 201);
+const { id: titipanId } = await created.json();
+assert.equal((await request("/api/peran", b, "POST", { role: "jastiper" })).status, 200);
 assert.equal((await (await request("/api/titipan", b)).json()).rows.length, 0);
-assert.equal((await request("/api/titipan", b, "PATCH", { id: "other", status: "selesai" })).status, 403);
-console.log("PASS: local auth, admin restriction, session-owned trip storage, validation, CSRF, and titipan isolation.");
+assert.equal((await request("/api/titipan", b, "PATCH", { id: titipanId, status: "selesai" })).status, 404);
+
+assert.equal((await request("/api/titipan", b, "PATCH", { id: titipanId, jastiperId: meB.user.id })).status, 403);
+
+console.log("PASS: local auth, admin restriction, session-owned trip storage, validation, CSRF, and unassigned jastiper isolation.");

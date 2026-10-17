@@ -178,3 +178,9 @@ export function dariTripLama(input: { dir: Dir; mode: "one" | "pp"; cgkIst: Scen
     ? { nama: "Jakarta ↔ Turki", kaki: [jakarta, turki] }
     : { nama: "Jakarta → Turki", kaki: [jakarta] };
 }
+
+
+/** Biaya alat trip: gunakan daftar pertama yang terisi, termasuk state lama. */
+export function sharedCapex(kaki: { scenario: { capex: CapexLine[] } }[]): CapexLine[] {
+  return kaki.find((k) => k.scenario.capex.length > 0)?.scenario.capex ?? [];
+}

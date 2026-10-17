@@ -9,7 +9,7 @@
 import { browser } from "$app/env";
 import { authedFetch, loadMe, session } from "./session.svelte";
 import { parseTrip, seedTrip, TRIP_STORAGE_KEY, type TripStateV2 } from "./trip-state";
-import { newKaki, type Kaki } from "./kaki";
+import { newKaki, sharedCapex, type Kaki } from "./kaki";
 import { customKode, type CustomDest } from "./destinasi";
 import type { CapexLine, Good, Scenario } from "./calc";
 
@@ -243,7 +243,9 @@ export function setLama(index: number, lama: number) {
 /** Tambah kaki baru di akhir (default destinasi Jepang bila tak diberi). */
 export function tambahKaki(kode = "jepang", jenis: Kaki["jenis"] = "utama") {
   if (desk.kaki.length >= 24) return;
-  desk.kaki = [...desk.kaki, newKaki(kode, jenis)];
+  const next = newKaki(kode, jenis);
+  next.scenario.capex = structuredClone($state.snapshot(sharedCapex(desk.kaki)));
+  desk.kaki = [...desk.kaki, next];
   desk.aktif = desk.kaki.length - 1;
   commit();
 }
@@ -253,7 +255,9 @@ export function sisipKaki(index: number, kode = "singapura", jenis: Kaki["jenis"
   if (desk.kaki.length >= 24) return;
   const i = Math.min(Math.max(0, index), desk.kaki.length - 1);
   const next = [...desk.kaki];
-  next.splice(i + 1, 0, newKaki(kode, jenis));
+  const stage = newKaki(kode, jenis);
+  stage.scenario.capex = structuredClone($state.snapshot(sharedCapex(desk.kaki)));
+  next.splice(i + 1, 0, stage);
   desk.kaki = next;
   desk.aktif = i + 1;
   commit();
@@ -315,16 +319,17 @@ export function setOpex(id: string, amount: number) {
 export function setCapex(id: string, partial: Partial<CapexLine>) {
   if (partial.price !== undefined) partial.price = Math.min(1_000_000_000_000, Math.max(0, partial.price));
   if (partial.trips !== undefined) partial.trips = Math.min(10_000, Math.max(1, Math.round(partial.trips)));
-  const apply = (lines: CapexLine[]) => lines.map((line) => (line.id === id ? { ...line, ...partial } : line));
+  const lines = sharedCapex(desk.kaki).map((line) => (line.id === id ? { ...line, ...partial } : line));
   // Capex (koper, timbangan) dipakai bersama seluruh kaki — samakan di semua kaki.
-  desk.kaki = desk.kaki.map((k) => ({ ...k, scenario: { ...k.scenario, capex: apply(k.scenario.capex) } }));
+  desk.kaki = desk.kaki.map((k) => ({ ...k, scenario: { ...k.scenario, capex: lines } }));
   commit();
 }
 
 /** Kembalikan kaki aktif ke skenario contoh destinasi/jenis-nya. */
 export function resetKaki() {
   const k = kakiAktif();
-  const segar = newKaki(k.destinasi, k.jenis).scenario;
+  const segar = newKaki(k.destinasi, k.jenis, k.custom).scenario;
+  segar.capex = structuredClone($state.snapshot(sharedCapex(desk.kaki)));
   desk.kaki = desk.kaki.map((x, idx) => (x.id === k.id && idx === activeIndex() ? { ...x, scenario: segar } : x));
   commit();
 }

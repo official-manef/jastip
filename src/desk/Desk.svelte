@@ -27,7 +27,7 @@
     hapusKaki,
   } from "../lib/titip/trip-store.svelte";
   import { type CapexLine, type LinePricing } from "../lib/titip/calc";
-  import { capacity, computeRevenue, CURRENCIES, ITEM_UNITS, lineWeightKg, targetProgress, tripLintas } from "../lib/titip/pricing";
+  import { capacity, computeRevenue, CURRENCIES, ITEM_UNITS, lineWeightKg, revenueTargetProgress, tripFinances, tripLintas } from "../lib/titip/pricing";
   import { DESTINASI, viewOf, type CustomDest } from "../lib/titip/destinasi";
   import PilihNegara from "../lib/titip/PilihNegara.svelte";
   import { kakiCode, kakiLabel, type Kaki } from "../lib/titip/kaki";
@@ -66,7 +66,7 @@
   let draftBeli = $state("");
   let draftNotice = $state("");
   /** F11: item terakhir yang dihapus (untuk Undo), atau null. */
-  let undoBarang = $state<{ name: string; goods: typeof scenario.goods } | null>(null);
+  let undoBarang = $state<{ kakiId: string; name: string; goods: typeof scenario.goods } | null>(null);
   /** F11: konfirmasi reset sebelum menimpa skenario. */
   let konfirmReset = $state(false);
   /** Pilih negara custom untuk tahap aktif. */
@@ -76,7 +76,7 @@
   function hapusBarang(id: string) {
     const item = scenario.goods.find((g) => g.id === id);
     if (!item) return;
-    undoBarang = { name: item.name, goods: scenario.goods };
+    undoBarang = { kakiId: now.id, name: item.name, goods: scenario.goods };
     removeGood(id);
   }
 
@@ -86,22 +86,19 @@
   }))));
 
   const rev = $derived(computeRevenue(scenario.goods, scenario.hargaPerKg, tariffCurrency));
-  const progres = $derived(targetProgress(rev.service, scenario.target ?? 0));
+  const progres = $derived(revenueTargetProgress(rev, scenario.target ?? 0, tariffCurrency));
   const kapasitas = $derived(capacity(lintas.capacityKg, lintas.totalKg));
   const punyaTarif = $derived(rev.hasPricing);
   const tarifKosong = $derived(rev.rows.filter((r) => (scenario.goods.find((g) => g.id === r.id)?.pricing?.rate ?? 0) <= 0).length);
   const asumsi = $derived(tarifKosong > 0 || rev.needsRate);
   const rowById = $derived(new Map(rev.rows.map((r) => [r.id, r])));
 
-  /** Hitungan satu kaki (beban, laba) untuk readout & total trip. */
+  const finances = $derived(tripFinances(kaki));
+  const bebanTrip = $derived(finances.beban);
+  const labaTrip = $derived(finances.laba);
   function bebanKaki(k: Kaki): number {
-    const opex = k.scenario.opex.reduce((sum, line) => sum + line.amount, 0);
-    const capex = k.scenario.capex.reduce((sum, line) => sum + line.price / Math.max(1, line.trips), 0);
-    return Math.round(opex + capex);
+    return finances.perKaki[kaki.indexOf(k)]?.beban ?? 0;
   }
-  const bebanTrip = $derived(kaki.reduce((sum, k) => sum + bebanKaki(k), 0));
-  const omzetTrip = $derived(lintas.service);
-  const labaTrip = $derived(Math.round(omzetTrip - bebanTrip));
 
   const bersihKaki = $derived(Math.max(0, scenario.bags * scenario.kgPerBag + scenario.cabin - scenario.tare));
   const terpakaiKaki = $derived(rev.totalKg);
@@ -113,7 +110,7 @@
   /** F05: lebih dari satu mata uang → tampilkan subtotal, jangan satu total. */
   const multivaluta = $derived(lintas.currencies.length > 1);
   /** F04/F05: impas hanya bermakna kalau harga/kg > 0 dan kuota > 0. */
-  const impasKg = $derived(kuotaNol || scenario.hargaPerKg <= 0 ? null : Math.round((bebanKaki(now) / scenario.hargaPerKg) * 10) / 10);
+  const impasKg = $derived(tariffCurrency !== "IDR" || rev.hasPricing || kuotaNol || scenario.hargaPerKg <= 0 ? null : Math.round((bebanKaki(now) / scenario.hargaPerKg) * 10) / 10);
   const saranPerKg = $derived(kuotaNol ? null : Math.round((bebanKaki(now) / bersihKaki) * (1 + scenario.margin / 100)));
 
   function fmtTarif(rate: number): string {
@@ -310,7 +307,7 @@
                       {#if r && tarif}
                         {pickTarifLabel(tarif)} = {fmtTarif(r.service)}
                       {:else}
-                        tarif global {idr(r?.rate ?? scenario.hargaPerKg)}/kg = {fmtTarif(r?.service ?? 0)}
+                        tarif global {fmtTarif(r?.rate ?? scenario.hargaPerKg)} {tariffCurrency}/kg = {fmtTarif(r?.service ?? 0)}
                       {/if}
                     </p>
                   </div>
@@ -360,7 +357,7 @@
             {/each}
           </ul>
 
-          {#if undoBarang}
+          {#if undoBarang && undoBarang.kakiId === now.id}
             <p class="mt-3 flex flex-wrap items-center gap-3 text-body" role="status">
               <span class="text-muted">“{undoBarang.name}” dihapus.</span>
               <button
@@ -472,15 +469,15 @@
           {/if}
           {@render row("Beban tahap ini", idr(bebanKaki(now)))}
           {@render row("Berat baris", kg(lintas.totalKg), "presisi per baris, semua tahap")}
-          {#if progres.set}
-            {@render row("Target omzet", `${fmtTarif(scenario.target ?? 0)} ${scenario.hargaCurrency ?? "USD"}`, `${progres.persen}% tercapai`)}
+          {#if progres?.set}
+            {@render row("Target omzet", `${fmtTarif(scenario.target ?? 0)} ${tariffCurrency}`, `${progres.persen}% tercapai`)}
             {@render row(progres.achieved ? "Lebih target" : "Butuh lagi", fmtTarif(progres.achieved ? progres.lebih : progres.butuh))}
           {:else}
-            {@render row("Target omzet", "belum diatur")}
+            {@render row("Target omzet", progres === null ? "Perlu kurs: mata uang jasa dan target berbeda" : "belum diatur")}
           {/if}
         </dl>
         <div class="meter mt-4" aria-hidden="true">
-          <span style="width: {Math.min(100, Math.max(0, Math.round(progres.persen)))}%"></span>
+          <span style="width: {Math.min(100, Math.max(0, Math.round(progres?.persen ?? 0)))}%"></span>
         </div>
         <div class="mt-4 grid gap-4 sm:grid-cols-2">
           <label class="block">
@@ -490,7 +487,7 @@
           </label>
           <label class="block">
             <span class="mb-2 block">Mata uang target</span>
-            <select class={field} value={scenario.hargaCurrency ?? shopCurrency} aria-label="Mata uang target"
+            <select class={field} value={tariffCurrency} aria-label="Mata uang target"
               onchange={(e) => patch({ hargaCurrency: e.currentTarget.value })}>
               {#each CURRENCIES as c (c)}<option value={c}>{c}</option>{/each}
             </select>
@@ -547,7 +544,7 @@
           </div>
           <div class="flex items-baseline justify-between gap-3">
             <dt>Jasa trip</dt>
-            <dd class="num">{multivaluta ? "campur" : fmtTarif(lintas.service)}</dd>
+            <dd class="num">{multivaluta ? "Lihat subtotal" : `${fmtTarif(lintas.service)} ${lintas.currencies[0] ?? tariffCurrency}`}</dd>
           </div>
           <div class="flex items-baseline justify-between gap-3">
             <dt>Beban trip</dt>
@@ -555,15 +552,15 @@
           </div>
           <div class="flex items-baseline justify-between gap-3">
             <dt>Laba trip</dt>
-            <dd class="num {labaTrip < 0 ? 'text-accent' : 'text-fg'}">{idr(labaTrip)}</dd>
+            <dd class="num {labaTrip !== null && labaTrip < 0 ? 'text-accent' : 'text-fg'}">{labaTrip === null ? "Perlu kurs ke IDR" : idr(labaTrip)}</dd>
           </div>
         </dl>
         {#if lintas.overKg > 0}
           <p class="mt-3 text-small text-accent">Kelebihan total {kg(lintas.overKg)}. Cek tahap paling ketat.</p>
         {/if}
-        {#if multivaluta}
+        {#if labaTrip === null}
           <p class="mt-3 text-small text-accent">
-            Baris memakai lebih dari satu mata uang ({lintas.currencies.join(", ")}). "Laba trip" hanya perkiraan.
+            Jasa memakai {lintas.currencies.join(", ")}; biaya dalam IDR. Laba ditampilkan setelah ada kurs konversi.
           </p>
         {/if}
       </div>

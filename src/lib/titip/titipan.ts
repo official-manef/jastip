@@ -16,6 +16,7 @@ export type TitipanRow = {
   id: string;
   userId: string;
   pemilik: string;
+  jastiperId?: string | null;
   arah: Arah;
   nama: string;
   kg: number;

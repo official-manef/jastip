@@ -35,13 +35,15 @@ export async function PATCH({ request }: { request: Request }) {
   if (blocked) return blocked;
   const body = await bodyOf(request);
   const id = typeof body.id === "string" ? body.id : "";
-  if (!id || !isStatus(body.status)) return json({ error: "isian" }, 400);
+  const assigning = Object.hasOwn(body, "jastiperId");
+  if (!id || (assigning
+    ? Object.hasOwn(body, "status") || !(body.jastiperId === null || (typeof body.jastiperId === "string" && body.jastiperId.length > 0))
+    : !isStatus(body.status))) return json({ error: "isian" }, 400);
   let result: Record<string, unknown>;
   try {
-    // `v.id("titipan")` di fungsi Convex menolak ID tak valid; petakan ke 400,
-    // jangan bocorkan 500. Cast ke `never` di boundary: bentuk ID divalidasi
-    // fungsi Convex, bukan route ini.
-    result = (await convexServer().mutation(api.titipan.setStatus, { id: id as never, status: body.status })) as Record<string, unknown>;
+    result = assigning
+      ? await convexServer().mutation(api.titipan.assign, { id: id as never, jastiperId: body.jastiperId as string | null })
+      : await convexServer().mutation(api.titipan.setStatus, { id: id as never, status: body.status as "baru" | "dibawa" | "selesai" });
   } catch {
     return json({ error: "isian" }, 400);
   }
@@ -49,5 +51,5 @@ export async function PATCH({ request }: { request: Request }) {
     const status = result.error === "masuk" ? 401 : result.error === "tidak-ada" ? 404 : 403;
     return json({ error: result.error }, status);
   }
-  return json({ id, status: body.status });
+  return json(assigning ? { id, jastiperId: body.jastiperId } : { id, status: body.status });
 }

@@ -68,8 +68,9 @@ test("rollup surfaces target progress and mixed-currency flags", () => {
   const r = rollup(trip);
   assert.equal(r.service, 100);
   assert.equal(r.target, 1200);
-  assert.equal(r.progress.persen, 8.33);
-  assert.equal(r.progress.butuh, 1100);
+  assert.equal(r.progress.persen, 0);
+  assert.equal(r.progress.set, false);
+  assert.equal(r.progress.butuh, 0);
   assert.equal(r.hasPricing, true);
   assert.equal(r.needsRate, true);
 });
@@ -85,4 +86,13 @@ test("transit legs start with a small quota and service tariff stays in IDR", ()
   const jepang = newKaki("jepang", "utama");
   assert.equal(jepang.scenario.hargaCurrency, undefined);
   assert.equal(jepang.scenario.kursTry, 470);
+});
+
+
+test("long colliding names retain a unique valid suffix", () => {
+  const name = "a".repeat(40);
+  const second = uniqueSlug(name, [name]);
+  assert.equal(second, "a".repeat(38) + "-2");
+  assert.equal(isSlug(second), true);
+  assert.notEqual(uniqueSlug(name, [name, second]), second);
 });

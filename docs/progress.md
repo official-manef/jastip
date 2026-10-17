@@ -1,3 +1,18 @@
+## 17 Oktober 2026 — akses titipan dan konsistensi hitungan
+
+- F17: jastiper hanya membaca/mengubah titipan yang ditugaskan admin; penugasan
+  dan pencabutan tersedia di `/titip`. Data lama tidak dibuka ke semua jastiper.
+- `profiles` memakai index per role untuk pemeriksaan admin, dan daftar orang
+  mencari profil per ID akun tanpa membaca seluruh tabel profil.
+- Meja, Ringkas, Portal dan ringkasan AI memakai satu hitungan biaya: alat
+  bersama sekali, ditambah denda kelebihan bagasi per tahap.
+- Laba jasa non-IDR serta progres target lintas mata uang ditahan tanpa kurs.
+  Kelebihan bagasi tidak lagi dikurangi kuota kosong dari tahap berbeda.
+- Slug nama 40 karakter menyisakan ruang untuk suffix unik. Undo barang dibatasi
+  ke tahap asal agar tidak menimpa tahap lain.
+- Tes backend lokal memakai Convex-test dan auth sintetis; tidak membuat akun
+  atau mengubah data produksi. Uji provider auth dan penerimaan deploy tetap terpisah.
+
 # Progress
 
 Cabang `main`. Tanggal di bawah adalah hari kerja di repo, bukan janji rilis.

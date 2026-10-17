@@ -4,6 +4,8 @@ import { components } from "./_generated/api";
 import { authComponent } from "./auth";
 
 const role = v.union(v.literal("klien"), v.literal("jastiper"), v.literal("admin"));
+const errorResult = v.object({ error: v.string() });
+const person = v.object({ id: v.string(), name: v.string(), email: v.string(), role: v.union(role, v.null()) });
 
 async function userIdOf(ctx: QueryCtx | MutationCtx): Promise<string | null> {
   const user = await authComponent.safeGetAuthUser(ctx);
@@ -44,6 +46,10 @@ async function listAuthUsers(ctx: QueryCtx): Promise<{ id: string; name: string;
 /** Akun + peran. Dipakai route `/api/saya`. */
 export const me = query({
   args: {},
+  returns: v.object({
+    user: v.union(v.null(), v.object({ id: v.string(), name: v.string(), email: v.string(), image: v.union(v.string(), v.null()) })),
+    role: v.union(role, v.null()), canClaimAdmin: v.boolean(),
+  }),
   handler: async (ctx) => {
     const user = await authComponent.safeGetAuthUser(ctx);
     if (!user) return { user: null, role: null, canClaimAdmin: false };
@@ -59,6 +65,7 @@ export const me = query({
 /** Klaim peran sekali. Klien/jastiper terkunci; admin hanya oleh ID operator. */
 export const claimRole = mutation({
   args: { role },
+  returns: v.union(errorResult, v.object({ role, locked: v.boolean() })),
   handler: async (ctx, args) => {
     const userId = await userIdOf(ctx);
     if (!userId) return { error: "masuk" as const };
@@ -68,8 +75,8 @@ export const claimRole = mutation({
     if (args.role === "admin") {
       const adminUserId = process.env.TITIPIN_ADMIN_USER_ID?.trim();
       if (!adminUserId || userId !== adminUserId) return { error: "admin-forbidden" as const };
-      const admins = await ctx.db.query("profiles").collect();
-      if (admins.some((p) => p.role === "admin")) return { error: "admin-taken" as const };
+      const admins = await ctx.db.query("profiles").withIndex("by_role", (q) => q.eq("role", "admin")).take(1);
+      if (admins.length > 0) return { error: "admin-taken" as const };
     }
     await ctx.db.insert("profiles", { userId, role: args.role });
     return { role: args.role, locked: false as const };
@@ -81,20 +88,23 @@ export type Person = { id: string; name: string; email: string; role: "klien" | 
 /** Admin saja: daftar akun + peran. */
 export const listPeople = query({
   args: {},
+  returns: v.union(errorResult, v.object({ people: v.array(person) })),
   handler: async (ctx): Promise<{ people: Person[] } | { error: string }> => {
     const userId = await userIdOf(ctx);
     if (!userId) return { error: "masuk" };
     if ((await myRole(ctx, userId)) !== "admin") return { error: "bukan-admin" };
     const users = await listAuthUsers(ctx);
-    const profiles = await ctx.db.query("profiles").collect();
-    const byUser = new Map(profiles.map((p) => [p.userId, p.role]));
-    return { people: users.map((u) => ({ ...u, role: byUser.get(u.id) ?? null })) };
+    const people = await Promise.all(users.map(async (user) => ({
+      ...user, role: await myRole(ctx, user.id),
+    })));
+    return { people };
   },
 });
 
 /** Admin saja: ubah peran, jaga aturan admin tunggal. */
 export const setRole = mutation({
   args: { userId: v.string(), role },
+  returns: v.union(errorResult, v.object({ ok: v.literal(true) })),
   handler: async (ctx, args) => {
     const meId = await userIdOf(ctx);
     if (!meId) return { error: "masuk" as const };
@@ -103,8 +113,7 @@ export const setRole = mutation({
     const users = await listAuthUsers(ctx);
     if (!users.some((u) => u.id === args.userId)) return { error: "tidak-ada" as const };
 
-    const profiles = await ctx.db.query("profiles").collect();
-    const admins = profiles.filter((p) => p.role === "admin");
+    const admins = await ctx.db.query("profiles").withIndex("by_role", (q) => q.eq("role", "admin")).take(2);
     const targetIsAdmin = admins.some((p) => p.userId === args.userId);
     if (args.role === "admin" && admins.length > 0 && !targetIsAdmin) return { error: "admin-taken" as const };
     if (args.role !== "admin" && targetIsAdmin && admins.length === 1) return { error: "admin-terakhir" as const };

@@ -1,6 +1,6 @@
 import type { Dir, TripMode } from "./calc.ts";
 import type { TripState } from "./trip-state.ts";
-import { computeRevenue, targetProgress, capacity } from "./pricing.ts";
+import { computeRevenue, targetProgress, capacity, tripLintas } from "./pricing.ts";
 
 /**
  * Multi-trip helpers (docs/rencana-omzet-trip.md §4, §7 stage 3).
@@ -43,10 +43,11 @@ export function uniqueSlug(name: string, taken: string[]): string {
   const base = slugify(name);
   if (!taken.includes(base)) return base;
   for (let i = 2; i < 1000; i += 1) {
-    const candidate = `${base}-${i}`.slice(0, 40).replace(/-+$/, "");
+    const candidate = `${base.slice(0, 40 - String(i).length - 1).replace(/-+$/, "")}-${i}`;
     if (!taken.includes(candidate)) return candidate;
   }
-  return `${base}-${Date.now().toString(36)}`.slice(0, 40);
+  const suffix = Date.now().toString(36);
+  return `${base.slice(0, 39 - suffix.length).replace(/-+$/, "")}-${suffix}`;
 }
 
 export type TripRollup = {
@@ -87,6 +88,9 @@ export function rollup(trip: TripState): TripRollup {
   // Target dibaca dari kaki pertama yang memasangnya (indikator progres saja).
   const withTarget = trip.kaki.find((k) => (k.scenario.target ?? 0) > 0);
   const target = withTarget?.scenario.target ?? 0;
+  const targetCurrency = withTarget?.scenario.hargaCurrency ?? currency;
+  const currencies = tripLintas(trip.kaki).currencies;
+  needsRate ||= currencies.some((value) => value !== targetCurrency);
   return {
     service,
     totalKg,
@@ -94,7 +98,7 @@ export function rollup(trip: TripState): TripRollup {
     needsRate,
     target,
     currency: withTarget?.scenario.hargaCurrency ?? currency,
-    progress: targetProgress(service, target),
+    progress: targetProgress(service, needsRate ? 0 : target),
     legs,
   };
 }

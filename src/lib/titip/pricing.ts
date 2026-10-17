@@ -1,4 +1,5 @@
 import type { Dir, Good, LinePricing, TripMode } from "./calc.ts";
+import { sharedCapex } from "./kaki.ts";
 import { KATALOG_CURRENCIES } from "./destinasi.ts";
 
 /**
@@ -255,6 +256,7 @@ export function tripLintas(kaki: { id: string; destinasi: string; jenis: "utama"
   let service = 0;
   let totalKg = 0;
   let capacityKg = 0;
+  let overKg = 0;
   let hasPricing = false;
   let needsRate = false;
   let ketatKaki: string | null = null;
@@ -265,6 +267,7 @@ export function tripLintas(kaki: { id: string; destinasi: string; jenis: "utama"
     for (const c of rev.currencies) currencies.add(c);
     const bersih = Math.max(0, k.scenario.bags * k.scenario.kgPerBag + k.scenario.cabin - k.scenario.tare);
     const sisa = bersih - rev.totalKg;
+    overKg += Math.max(0, -sisa);
     if (sisa < ketatSisa) {
       ketatSisa = sisa;
       ketatKaki = k.id;
@@ -299,10 +302,35 @@ export function tripLintas(kaki: { id: string; destinasi: string; jenis: "utama"
     totalKg: round2(totalKg),
     currencies: [...currencies],
     hasPricing,
-    needsRate,
+    needsRate: needsRate || currencies.size > 1,
     capacityKg: round2(capacityKg),
     sisaKg,
-    overKg: Math.max(0, round2(-sisaKg)),
+    overKg: round2(overKg),
     ketatKaki: Number.isFinite(ketatSisa) ? ketatKaki : null,
   };
+}
+
+/** Biaya selalu IDR. Alat dipakai bersama, sehingga depresiasi dihitung sekali. */
+export function tripFinances(kaki: { scenario: import('./calc.ts').Scenario }[]) {
+  const capexTrip = Math.round(sharedCapex(kaki).reduce(
+    (sum, line) => sum + line.price / Math.max(1, line.trips), 0,
+  ));
+  const perKaki = kaki.map(({ scenario: s }) => {
+    const used = computeRevenue(s.goods, s.hargaPerKg, s.hargaCurrency ?? 'IDR').totalKg;
+    const quota = Math.max(0, s.bags * s.kgPerBag + s.cabin - s.tare);
+    const denda = Math.round(Math.max(0, used - quota) * s.overPerKg);
+    const opex = s.opex.reduce((sum, line) => sum + line.amount, 0);
+    return { opex, denda, beban: opex + denda + capexTrip / Math.max(1, kaki.length) };
+  });
+  const beban = Math.round(perKaki.reduce((sum, row) => sum + row.opex + row.denda, 0) + capexTrip);
+  const revenues = kaki.map(({ scenario: s }) => computeRevenue(s.goods, s.hargaPerKg, s.hargaCurrency ?? 'IDR'));
+  const comparable = revenues.every((rev) => rev.currencies.every((currency) => currency === 'IDR'));
+  const jasa = revenues.reduce((sum, rev) => sum + rev.service, 0);
+  return { capexTrip, perKaki, beban, laba: comparable ? Math.round(jasa - beban) : null };
+}
+
+/** Tanpa kurs eksplisit, target hanya dibandingkan dengan satu mata uang yang sama. */
+export function revenueTargetProgress(revenue: Revenue, target: number, currency: string): TargetProgress | null {
+  if (revenue.currencies.some((value) => value !== currency)) return null;
+  return targetProgress(revenue.service, target);
 }
