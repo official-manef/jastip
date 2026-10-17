@@ -36,6 +36,17 @@ for (const [name, viewport, path, full] of [
 ]) {
   const page = await browser.newPage({ viewport, isMobile: name === "mobile", hasTouch: name === "mobile" });
   const errors = [];
+  // Report failed resource origin and type, never query strings or URL paths
+  // (which may contain sensitive user data). Do not suppress HTTP/console failures.
+  page.on("response", (response) => {
+    if (response.status() < 400) return;
+    try {
+      const origin = new URL(response.url()).origin;
+      errors.push(`HTTP ${response.status()} from ${origin} (${response.request().resourceType()})`);
+    } catch {
+      errors.push(`HTTP ${response.status()} from unknown origin`);
+    }
+  });
   page.on("console", (m) => m.type() === "error" && errors.push(m.text().slice(0, 200)));
   page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
   await page.goto(target.href, { waitUntil: "networkidle", timeout: 60000 });

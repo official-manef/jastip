@@ -8,6 +8,8 @@
 
   let rows = $state<TitipanRow[]>([]);
   let loading = $state(true);
+  let carriers = $state<{ id: string; name: string; email: string; role: string | null }[]>([]);
+  let updating = $state<string | null>(null);
   let notice = $state("");
   let arah = $state<(typeof ARAH)[number]["id"]>("cgk-ist");
   let nama = $state("");
@@ -34,6 +36,11 @@
         return;
       }
       rows = data.rows ?? [];
+      if (session.role === "admin") {
+        const people = await authedFetch("/api/admin");
+        if (!people.ok) throw new Error("Daftar jastiper belum terbaca");
+        carriers = ((await people.json()).people ?? []).filter((person: { role: string | null }) => person.role === "jastiper");
+      }
     } catch {
       notice = "Titipan belum terbaca.";
       rows = [];
@@ -91,6 +98,8 @@
   }
 
   async function ubah(id: string, status: TitipanStatus) {
+    if (updating) return;
+    updating = id;
     notice = "";
     const previous = rows;
     rows = rows.map((row) => (row.id === id ? { ...row, status } : row));
@@ -106,6 +115,24 @@
     } catch {
       rows = previous;
       notice = "Status belum berubah.";
+    } finally {
+      updating = null;
+    }
+  }
+  async function tugaskan(id: string, jastiperId: string) {
+    if (updating) return;
+    updating = id;
+    notice = "";
+    try {
+      const res = await authedFetch("/api/titipan", {
+        method: "PATCH", body: JSON.stringify({ id, jastiperId: jastiperId || null }),
+      });
+      if (!res.ok) throw new Error("assign");
+      await muat();
+    } catch {
+      notice = "Penugasan belum berubah. Coba muat ulang.";
+    } finally {
+      updating = null;
     }
   }
 </script>
@@ -125,14 +152,14 @@
     <a href="/masuk" class="btn mt-6">Pilih peran</a>
   {:else}
     <header class="max-w-[40rem]" data-rise style="--i: 0">
-      <h1>{session.role === "klien" ? "Titipanmu" : "Semua titipan"}</h1>
+      <h1>{session.role === "klien" ? "Titipanmu" : session.role === "jastiper" ? "Titipan tugasmu" : "Semua titipan"}</h1>
       <p class="mt-4 text-lead">
         {#if session.role === "klien"}
           Catat barang yang mau dibawa. Jastiper yang mengubah status.
         {:else if session.role === "jastiper"}
-          Permintaan klien di semua rute. Tandai saat barang dibawa atau selesai.
+          Hanya titipan yang ditugaskan operator kepadamu. Tandai saat barang dibawa atau selesai.
         {:else}
-          Kamu bisa menitip untuk uji, dan mengubah status seperti jastiper.
+          Tugaskan titipan ke jastiper. Jastiper lain tidak dapat melihat atau mengubahnya.
         {/if}
       </p>
     </header>
@@ -170,7 +197,7 @@
     {/if}
 
     {#if rows.length === 0}
-      <p class="panel mt-6 p-6 text-body text-muted">Belum ada titipan.</p>
+      <p class="panel mt-6 p-6 text-body text-muted">{session.role === "jastiper" ? "Belum ada titipan yang ditugaskan kepadamu." : "Belum ada titipan."}</p>
     {:else}
       <ul class="mt-6 flex flex-col gap-3" data-reveal>
         {#each rows as row (row.id)}
@@ -188,11 +215,24 @@
             {#if row.catatan}
               <p class="mt-2 text-body">{row.catatan}</p>
             {/if}
+            {#if session.role === "admin"}
+              <label class="mt-4 block">
+                <span class="mb-2 block text-small text-muted">Jastiper untuk {row.nama}</span>
+                <select class={field} value={row.jastiperId ?? ""} disabled={updating !== null}
+                  onchange={(event) => tugaskan(row.id, event.currentTarget.value)}>
+                  <option value="">Belum ditugaskan</option>
+                  {#each carriers as person (person.id)}
+                    <option value={person.id}>{person.name || person.email}</option>
+                  {/each}
+                </select>
+              </label>
+            {/if}
             {#if canCarry}
               <div class="mt-4 flex flex-wrap gap-1" role="group" aria-label="Status {row.nama}">
                 {#each STATUSES as item (item.id)}
                   <button
                     type="button"
+                    disabled={updating !== null}
                     aria-pressed={row.status === item.id}
                     class="min-h-11 rounded px-3 text-body {row.status === item.id ? 'bg-primary text-primary-fg' : 'text-fg hover:bg-field'}"
                     onclick={() => ubah(row.id, item.id)}

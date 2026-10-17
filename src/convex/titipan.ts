@@ -15,16 +15,21 @@ async function account(ctx: QueryCtx | MutationCtx) {
   return { user, role: profile?.role ?? null };
 }
 
-function canCarry(role: string | null) {
-  return role === "jastiper" || role === "admin";
-}
 function canAsk(role: string | null) {
   return role === "klien" || role === "admin";
 }
 
-/** Klien melihat miliknya; jastiper/admin melihat semua. */
+const errorResult = v.object({ error: v.string() });
+const rowResult = v.object({
+  id: v.id("titipan"), userId: v.string(), pemilik: v.string(),
+  jastiperId: v.union(v.string(), v.null()), arah, nama: v.string(),
+  kg: v.number(), catatan: v.string(), status, createdAt: v.string(),
+});
+
+/** Klien melihat miliknya, jastiper hanya tugasnya, admin semua. */
 export const list = query({
   args: {},
+  returns: v.union(errorResult, v.object({ rows: v.array(rowResult) })),
   handler: async (ctx) => {
     const acc = await account(ctx);
     if (!acc) return { error: "masuk" as const };
@@ -33,12 +38,15 @@ export const list = query({
     const rows =
       acc.role === "klien"
         ? await ctx.db.query("titipan").withIndex("by_user", (q) => q.eq("userId", acc.user._id)).order("desc").take(100)
-        : await ctx.db.query("titipan").order("desc").take(100);
+        : acc.role === "jastiper"
+          ? await ctx.db.query("titipan").withIndex("by_jastiper", (q) => q.eq("jastiperId", acc.user._id)).order("desc").take(100)
+          : await ctx.db.query("titipan").order("desc").take(100);
     return {
       rows: rows.map((r) => ({
         id: r._id,
         userId: r.userId,
         pemilik: r.pemilik,
+        jastiperId: r.jastiperId ?? null,
         arah: r.arah,
         nama: r.nama,
         kg: r.kg,
@@ -53,6 +61,7 @@ export const list = query({
 /** Buat titipan (klien/admin). */
 export const create = mutation({
   args: { arah, nama: v.string(), kg: v.number(), catatan: v.string() },
+  returns: v.union(errorResult, v.object({ id: v.id("titipan") })),
   handler: async (ctx, args) => {
     const acc = await account(ctx);
     if (!acc) return { error: "masuk" as const };
@@ -78,13 +87,34 @@ export const create = mutation({
 export const setStatus = mutation({
   // `v.id("titipan")` menolak ID dari tabel lain sebelum handler berjalan.
   args: { id: v.id("titipan"), status },
+  returns: v.union(errorResult, v.object({ ok: v.literal(true), id: v.id("titipan"), status })),
   handler: async (ctx, args) => {
     const acc = await account(ctx);
     if (!acc) return { error: "masuk" as const };
-    if (!canCarry(acc.role)) return { error: "bukan-jastiper" as const };
+    if (acc.role !== "jastiper" && acc.role !== "admin") return { error: "bukan-jastiper" as const };
     const row = await ctx.db.get(args.id);
-    if (!row) return { error: "tidak-ada" as const };
+    if (!row || (acc.role !== "admin" && row.jastiperId !== acc.user._id)) return { error: "tidak-ada" as const };
     await ctx.db.patch(args.id, { status: args.status });
     return { ok: true as const, id: args.id, status: args.status };
+  },
+});
+
+/** Operator menugaskan satu jastiper; pemilihan peran sendiri bukan izin membaca. */
+export const assign = mutation({
+  args: { id: v.id("titipan"), jastiperId: v.union(v.string(), v.null()) },
+  returns: v.union(errorResult, v.object({ ok: v.literal(true) })),
+  handler: async (ctx, args) => {
+    const acc = await account(ctx);
+    if (!acc) return { error: "masuk" };
+    if (acc.role !== "admin") return { error: "bukan-admin" };
+    const row = await ctx.db.get(args.id);
+    if (!row) return { error: "tidak-ada" };
+    if (args.jastiperId !== null) {
+      const profile = await ctx.db.query("profiles")
+        .withIndex("by_user", (q) => q.eq("userId", args.jastiperId!)).unique();
+      if (profile?.role !== "jastiper") return { error: "bukan-jastiper" };
+    }
+    await ctx.db.patch(args.id, { jastiperId: args.jastiperId ?? undefined });
+    return { ok: true as const };
   },
 });

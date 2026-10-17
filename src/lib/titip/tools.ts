@@ -13,7 +13,7 @@ import {
   kakiAktif, tambahKaki, sisipKaki, hapusKaki, setAktif, setDestinasi, setNama, snapshot,
 } from "./trip-store.svelte";
 import { compute } from "./calc";
-import { capacity, computeRevenue, targetProgress, tripLintas } from "./pricing";
+import { capacity, computeRevenue, revenueTargetProgress, tripFinances, tripLintas } from "./pricing";
 import { DESTINASI, viewOf } from "./destinasi";
 import { newKaki as baruKaki } from "./kaki";
 import { suggestToTarget, type SuggestCandidate } from "./suggest";
@@ -51,7 +51,7 @@ export const TOOL_DEFS: AiToolDef[] = [
   { type: "function", function: { name: "ubah_barang", description: "Ubah barang berdasarkan id (lihat ringkasan_trip).", parameters: obj({ id: s, nama: s, kg: n, qty: n, beli: n, tarif: n, model_tarif: { type: "string", enum: ["per_kg", "per_item"] }, satuan: s }, ["id"]) } },
   { type: "function", function: { name: "hapus_barang", description: "Hapus barang dari muatan tahap aktif.", parameters: obj({ id: s }, ["id"]) } },
   { type: "function", function: { name: "reset_kaki", description: "Kembalikan tahap aktif ke nilai contoh destinasi/jenis-nya.", parameters: obj({}) } },
-  { type: "function", function: { name: "daftar_titipan", description: "Baca daftar titipan (butuh masuk; klien melihat miliknya, jastiper/admin melihat semua).", parameters: obj({}) } },
+  { type: "function", function: { name: "daftar_titipan", description: "Baca daftar titipan (butuh masuk; klien melihat miliknya, jastiper melihat tugasnya, admin melihat semua).", parameters: obj({}) } },
   { type: "function", function: { name: "buat_titipan", description: "Buat titipan baru (peran klien atau admin).", parameters: obj({ arah: dirEnum, nama: s, kg: n, catatan: s }, ["arah", "nama", "kg"]) } },
   { type: "function", function: { name: "ubah_status_titipan", description: "Ubah status titipan: baru | dibawa | selesai (peran jastiper atau admin).", parameters: obj({ id: s, status: { type: "string", enum: ["baru", "dibawa", "selesai"] } }, ["id", "status"]) } },
   { type: "function", function: { name: "daftar_orang", description: "Daftar akun dan peran (admin saja).", parameters: obj({}) } },
@@ -76,14 +76,10 @@ function ringkasan(): Json {
   const s = snapshot();
   const idx = Math.min(desk.aktif, Math.max(0, s.kaki.length - 1));
   const now = s.kaki[idx];
-  const meta = viewOf(now.destinasi, now.custom);
-  const rev = computeRevenue(now.scenario.goods, now.scenario.hargaPerKg, meta?.currency ?? "IDR");
+  const rev = computeRevenue(now.scenario.goods, now.scenario.hargaPerKg, now.scenario.hargaCurrency ?? "IDR");
   const lintas = tripLintas(s.kaki.map((k) => ({ id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario })));
-  const bebanTrip = s.kaki.reduce((sum, k) => {
-    const opex = k.scenario.opex.reduce((a, l) => a + l.amount, 0);
-    const capex = k.scenario.capex.reduce((a, l) => a + l.price / Math.max(1, l.trips), 0);
-    return sum + Math.round(opex + capex);
-  }, 0);
+  const finances = tripFinances(s.kaki);
+  const progres = revenueTargetProgress(rev, now.scenario.target ?? 0, now.scenario.hargaCurrency ?? "IDR");
   const bersihKaki = Math.max(0, now.scenario.bags * now.scenario.kgPerBag + now.scenario.cabin - now.scenario.tare);
   return {
     nama: s.nama,
@@ -104,11 +100,12 @@ function ringkasan(): Json {
     muatanTripKg: lintas.totalKg,
     kapasitasTripKg: lintas.capacityKg,
     overTripKg: lintas.overKg,
-    omzetJasaTrip: lintas.service,
-    labaTrip: Math.round(lintas.service - bebanTrip),
-    bebanTrip,
+    omzetJasaTrip: lintas.needsRate ? null : lintas.service,
+    jasaPerMataUang: lintas.perCurrency,
+    labaTrip: finances.laba,
+    bebanTrip: finances.beban,
     target: now.scenario.target ?? 0,
-    progresPersen: targetProgress(rev.service, now.scenario.target ?? 0).persen,
+    progresPersen: progres?.persen ?? null,
     barang: now.scenario.goods.map((g) => ({ id: g.id, nama: g.name, kg: g.kg, qty: g.qty, beli: g.beli, tarif: g.pricing?.rate, model: g.pricing?.model })),
     opex: now.scenario.opex,
     capex: now.scenario.capex,

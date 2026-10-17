@@ -6,7 +6,7 @@
   import { roleLabel } from "../../lib/titip/roles";
   import { ARAH, arahLabel, STATUSES, statusLabel, type Arah, type TitipanStatus } from "../../lib/titip/titipan";
   import { desk, initDesk } from "../../lib/titip/trip-store.svelte";
-  import { computeRevenue, tripLintas } from "../../lib/titip/pricing";
+  import { computeRevenue, tripFinances, tripLintas } from "../../lib/titip/pricing";
   const field = "field";
 
   let orang = $state<ContohOrang[]>(salinOrang());
@@ -25,12 +25,8 @@
   const lintas = $derived(tripLintas(desk.kaki.map((k) => ({
     id: k.id, destinasi: k.destinasi, jenis: k.jenis, scenario: k.scenario,
   }))));
-  const bebanTrip = $derived(desk.kaki.reduce((sum, k) => {
-    const opex = k.scenario.opex.reduce((a, l) => a + l.amount, 0);
-    const capex = k.scenario.capex.reduce((a, l) => a + l.price / Math.max(1, l.trips), 0);
-    return sum + Math.round(opex + capex);
-  }, 0));
-  const labaTrip = $derived(Math.round(lintas.service - bebanTrip));
+  const finances = $derived(tripFinances(desk.kaki));
+  const labaTrip = $derived(finances.laba);
   /** Sisa kuota tahap paling ketat, sama seperti instrumen di kalkulator. */
   const sisaAktif = $derived.by(() => {
     if (desk.kaki.length === 0) return 0;
@@ -220,7 +216,7 @@
       </div>
       <div class="panel p-4">
         <dt class="text-small text-muted">Laba trip (kalkulator)</dt>
-        <dd class="num mt-1 text-lead {labaTrip < 0 ? 'text-accent' : ''}">{idr(labaTrip)}</dd>
+        <dd class="num mt-1 text-lead {labaTrip !== null && labaTrip < 0 ? 'text-accent' : ''}">{labaTrip === null ? "Perlu kurs ke IDR" : idr(labaTrip)}</dd>
       </div>
       <div class="panel p-4">
         <dt class="text-small text-muted">Antrian</dt>

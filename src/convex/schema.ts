@@ -22,18 +22,20 @@ export default defineSchema({
   profiles: defineTable({
     userId: v.string(),
     role: v.union(v.literal("klien"), v.literal("jastiper"), v.literal("admin")),
-  }).index("by_user", ["userId"]),
+  }).index("by_user", ["userId"]).index("by_role", ["role"]),
 
   // Titipan milik satu akun auth.
   titipan: defineTable({
     userId: v.string(),
     pemilik: v.string(),
+    // Kosong pada data lama sampai operator menugaskan jastiper.
+    jastiperId: v.optional(v.string()),
     arah: v.union(v.literal("cgk-ist"), v.literal("ist-cgk")),
     nama: v.string(),
     kg: v.number(),
     catatan: v.string(),
     status: v.union(v.literal("baru"), v.literal("dibawa"), v.literal("selesai")),
-  }).index("by_user", ["userId"]),
+  }).index("by_user", ["userId"]).index("by_jastiper", ["jastiperId"]),
 
   // Skenario trip tersimpan per akun (multi-trip).
   tripScenarios: defineTable({

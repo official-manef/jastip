@@ -12,9 +12,20 @@
 
   onMount(() => {
     initDesk();
+    // The public landing must not depend on an unauthorised external staging
+    // widget. Enable chat only when an approved HTTPS URL and widget ID exist.
+    const env = import.meta.env as Record<string, string | undefined>;
+    const widgetSrc = env.PUBLIC_AIRIN_WIDGET_URL?.trim();
+    const widgetId = env.PUBLIC_AIRIN_WIDGET_ID?.trim();
+    if (!widgetSrc || !widgetId) return;
+    try {
+      if (new URL(widgetSrc).protocol !== "https:") return;
+    } catch {
+      return;
+    }
     const script = document.createElement("script");
-    script.src = "https://airin-staging-1110-oraahc-dd614a-43-156-62-134.sslip.io/widget.js";
-    script.dataset.airinWidget = "02ba8469-a1a3-4958-9da0-97dc5dba8604";
+    script.src = widgetSrc;
+    script.dataset.airinWidget = widgetId;
     script.defer = true;
     document.body.appendChild(script);
     return () => {

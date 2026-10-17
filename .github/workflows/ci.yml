@@ -21,6 +21,9 @@ jobs:
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
+      # Vitest resolves TS paths from the SvelteKit-generated $app/tsconfig.
+      # The backend suite runs before typecheck, so sync first on fresh CI runners.
+      - run: bunx svelte-kit sync
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
